@@ -1,0 +1,10 @@
+__pycache__
+*.db
+.DS_Store
+rase.sqlite
+.idea/
+/build/
+/dist/
+doc/_build/
+src/ui_generated/ui_*.py
+tests/
