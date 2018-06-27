@@ -46,19 +46,19 @@
     <Remark>This detector samples the neutron counts once every second. The measurement value represents the minimal neutron counts recorded while acquiring the spectrum.</Remark>
     <RadDetectorCategoryCode>Neutron</RadDetectorCategoryCode>
     <RadDetectorKindCode>He3</RadDetectorKindCode>
-    <RadDetectorDescription>³He tube 3He3/608/15NS</RadDetectorDescription>
+    <RadDetectorDescription>3He tube 3He3/608/15NS</RadDetectorDescription>
   </RadDetectorInformation>
   <RadDetectorInformation id="maximumNeutrons">
     <Remark>This detector samples the neutron counts once every second. The measurement value represents the maximum neutron counts recorded while acquiring the spectrum.</Remark>
     <RadDetectorCategoryCode>Neutron</RadDetectorCategoryCode>
     <RadDetectorKindCode>He3</RadDetectorKindCode>
-    <RadDetectorDescription>³He tube 3He3/608/15NS</RadDetectorDescription>
+    <RadDetectorDescription>3He tube 3He3/608/15NS</RadDetectorDescription>
   </RadDetectorInformation>
   <RadDetectorInformation id="totalNeutrons">
     <Remark>This detector samples the neutron counts once every second. The measurement value represents the sum of the neutron counts recorded while acquiring the spectrum.</Remark>
     <RadDetectorCategoryCode>Neutron</RadDetectorCategoryCode>
     <RadDetectorKindCode>He3</RadDetectorKindCode>
-    <RadDetectorDescription>³He tube 3He3/608/15NS</RadDetectorDescription>
+    <RadDetectorDescription>3He tube 3He3/608/15NS</RadDetectorDescription>
   </RadDetectorInformation>
   <EnergyCalibration id="energyCalibration">
     <CoefficientValues>${detector.ecal0} ${detector.ecal1} ${detector.ecal2} </CoefficientValues>
