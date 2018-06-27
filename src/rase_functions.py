@@ -537,7 +537,7 @@ def create_n42_file_from_template(n42_mako_template, filename, scenario, detecto
     if secondary_spectrum:
         template_data.update(dict(secondary_spectrum=secondary_spectrum))
 
-    f = open(filename, 'w')
+    f = open(filename, 'w', newline='')
     f.write(n42_mako_template.render(**template_data))
     f.close()
 
