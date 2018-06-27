@@ -340,7 +340,7 @@ def readSpectrumFile(filepath, sharedObject, tstatus):
                 else:
                     livetimeBckg = getSeconds(specElementBckg.find('LiveTimeDuration').text.strip())
 
-                    return counts, ecal, realtime, livetime, sensitivity, countsBckg, ecalBckg, realtimeBckg, livetimeBckg
+            return counts, ecal, realtime, livetime, sensitivity, countsBckg, ecalBckg, realtimeBckg, livetimeBckg
 
     except :
         print(sys.exc_info())
