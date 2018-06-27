@@ -29,19 +29,16 @@ def retrieve_FLIR_Results(filepath):
     it = ET.parse(filepath)
     root = it.getroot()
 
-    # Element.find() finds the child with a particular tag so the following
-    # finds the first spectrum which is the item spectrum in RASE base spectra files
-    resultsAll = root.find('{http://physics.nist.gov/N42/2011/N42}AnalysisResults').find(
-        '{http://physics.nist.gov/N42/2011/N42}NuclideAnalysisResults')
-    resultsElements = resultsAll.findall('{http://physics.nist.gov/N42/2011/N42}Nuclide')
+    resultsArray = []
 
-    resultsArray = [[], []]
+    resultsAll = root.find('.//{http://physics.nist.gov/N42/2011/N42}NuclideAnalysisResults')
 
-    for element in resultsElements:
-        nuclideID = element.find('{http://physics.nist.gov/N42/2011/N42}NuclideName')
-        confidenceValue = element.find('{http://physics.nist.gov/N42/2011/N42}NuclideIDConfidenceValue')
-        resultsArray[0].append(nuclideID.text)
-        resultsArray[1].append(confidenceValue.text)
+    if resultsAll:
+        resultsElements = resultsAll.findall('{http://physics.nist.gov/N42/2011/N42}Nuclide')
+        for element in resultsElements:
+            nuclideID = element.find('{http://physics.nist.gov/N42/2011/N42}NuclideName')
+            confidenceValue = element.find('{http://physics.nist.gov/N42/2011/N42}NuclideIDConfidenceValue')
+            resultsArray.append((nuclideID.text,confidenceValue.text))
 
     return resultsArray
 
@@ -84,7 +81,10 @@ def write_FLIR_results(resultsArray, outFilepath):
 
     root = ET.Element('IdentificationResults')
 
-    for iso, conf in zip(resultsArray[0], resultsArray[1]):
+    if not resultsArray:
+        resultsArray.append(('',0))
+
+    for iso, conf in resultsArray:
         identification = ET.SubElement(root, 'Identification')
         isotope = ET.SubElement(identification, 'IDName')
         isotope.text = iso
