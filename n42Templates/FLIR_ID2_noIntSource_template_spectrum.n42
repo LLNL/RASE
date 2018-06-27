@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding='utf-8'?>
+<RadInstrumentData n42DocUUID="4428771b-faa7-45fd-b574-e84a972c5e67" xmlns:flir="http://www.flir-radiation.com/XML/N4242Extensions" xmlns="http://physics.nist.gov/N42/2011/N42">
+  <RadInstrumentInformation id="instrumentInformation">
+    <RadInstrumentManufacturerName>FLIR Systems</RadInstrumentManufacturerName>
+    <RadInstrumentIdentifier>910422-2125</RadInstrumentIdentifier>
+    <RadInstrumentModelName>identiFINDER2 ULK-NGH</RadInstrumentModelName>
+    <RadInstrumentClassCode>Radionuclide Identifier</RadInstrumentClassCode>
+    <RadInstrumentVersion>
+      <RadInstrumentComponentName>Software</RadInstrumentComponentName>
+      <RadInstrumentComponentVersion>2016.0</RadInstrumentComponentVersion>
+    </RadInstrumentVersion>
+    <RadInstrumentCharacteristics>
+      <CharacteristicGroup>
+        <CharacteristicGroupName>Reachback Information</CharacteristicGroupName>
+      </CharacteristicGroup>
+    </RadInstrumentCharacteristics>
+  </RadInstrumentInformation>
+  <RadDetectorInformation id="spectra">
+    <RadDetectorCategoryCode>Gamma</RadDetectorCategoryCode>
+    <RadDetectorKindCode>NaI</RadDetectorKindCode>
+    <RadDetectorLengthValue>0.051</RadDetectorLengthValue>
+    <RadDetectorDiameterValue>0.035</RadDetectorDiameterValue>
+  </RadDetectorInformation>
+  <RadDetectorInformation id="maximumDoserate">
+    <Remark>This detector samples the dose rate once every second. The measurement value represents the maximal dose rate recorded while acquiring the spectrum.</Remark>
+    <RadDetectorCategoryCode>Gamma</RadDetectorCategoryCode>
+    <RadDetectorKindCode>NaI</RadDetectorKindCode>
+  </RadDetectorInformation>
+  <RadDetectorInformation id="averageDoserate">
+    <Remark>This detector samples the dose rate once every second. The measurement value represents the average dose rate recorded while acquiring the spectrum.</Remark>
+    <RadDetectorCategoryCode>Gamma</RadDetectorCategoryCode>
+    <RadDetectorKindCode>NaI</RadDetectorKindCode>
+  </RadDetectorInformation>
+  <RadDetectorInformation id="minimumDoserate">
+    <Remark>This detector samples the dose rate once every second. The measurement value represents the minimal dose rate recorded while acquiring the spectrum.</Remark>
+    <RadDetectorCategoryCode>Gamma</RadDetectorCategoryCode>
+    <RadDetectorKindCode>NaI</RadDetectorKindCode>
+  </RadDetectorInformation>
+  <RadDetectorInformation id="minimumNeutrons">
+    <Remark>This detector samples the neutron counts once every second. The measurement value represents the minimal neutron counts recorded while acquiring the spectrum.</Remark>
+    <RadDetectorCategoryCode>Neutron</RadDetectorCategoryCode>
+    <RadDetectorKindCode>He3</RadDetectorKindCode>
+    <RadDetectorDescription>3He tube 3He3/608/15NS</RadDetectorDescription>
+  </RadDetectorInformation>
+  <RadDetectorInformation id="maximumNeutrons">
+    <Remark>This detector samples the neutron counts once every second. The measurement value represents the maximum neutron counts recorded while acquiring the spectrum.</Remark>
+    <RadDetectorCategoryCode>Neutron</RadDetectorCategoryCode>
+    <RadDetectorKindCode>He3</RadDetectorKindCode>
+    <RadDetectorDescription>3He tube 3He3/608/15NS</RadDetectorDescription>
+  </RadDetectorInformation>
+  <RadDetectorInformation id="totalNeutrons">
+    <Remark>This detector samples the neutron counts once every second. The measurement value represents the sum of the neutron counts recorded while acquiring the spectrum.</Remark>
+    <RadDetectorCategoryCode>Neutron</RadDetectorCategoryCode>
+    <RadDetectorKindCode>He3</RadDetectorKindCode>
+    <RadDetectorDescription>3He tube 3He3/608/15NS</RadDetectorDescription>
+  </RadDetectorInformation>
+  <EnergyCalibration id="energyCalibration">
+    <CoefficientValues>${detector.ecal0} ${detector.ecal1} ${detector.ecal2} </CoefficientValues>
+  </EnergyCalibration>
+  <RadMeasurementGroup id="measurementGroup561" />
+  <RadMeasurement id="measurementGroup561ForegroundMeasurement" radMeasurementGroupReferences="measurementGroup561">
+    <MeasurementClassCode>Foreground</MeasurementClassCode>
+    <StartDateTime>2015-11-04T14:57:38-05:00</StartDateTime>
+    <RealTimeDuration>PT${scenario.acq_time}S</RealTimeDuration>
+    <Spectrum id="measurementGroup561ForegroundMeasurementSpectrum" radDetectorInformationReference="spectra" energyCalibrationReference="energyCalibration">
+      <LiveTimeDuration>PT${scenario.acq_time}S</LiveTimeDuration>
+      <ChannelData>${sample_counts}</ChannelData>
+    </Spectrum>
+    <GrossCounts id="measurementGroup561ForegroundMeasurementMinimumNeutrons" radDetectorInformationReference="minimumNeutrons">
+      <LiveTimeDuration>PT16M39S</LiveTimeDuration>
+      <CountData>0</CountData>
+    </GrossCounts>
+    <GrossCounts id="measurementGroup561ForegroundMeasurementMaximumNeutrons" radDetectorInformationReference="maximumNeutrons">
+      <LiveTimeDuration>PT16M39S</LiveTimeDuration>
+      <CountData>1</CountData>
+    </GrossCounts>
+    <GrossCounts id="measurementGroup561ForegroundMeasurementTotalNeutrons" radDetectorInformationReference="totalNeutrons">
+      <LiveTimeDuration>PT16M39S</LiveTimeDuration>
+      <CountData>1</CountData>
+    </GrossCounts>
+    <DoseRate id="measurementGroup561ForegroundMeasurementMaximumDoseRate" radDetectorInformationReference="maximumDoserate">
+      <DoseRateValue>0.5681819</DoseRateValue>
+    </DoseRate>
+    <DoseRate id="measurementGroup561ForegroundMeasurementAverageDoseRate" radDetectorInformationReference="averageDoserate">
+      <DoseRateValue>0.429384083</DoseRateValue>
+    </DoseRate>
+    <DoseRate id="measurementGroup561ForegroundMeasurementMinimumDoseRate" radDetectorInformationReference="minimumDoserate">
+      <DoseRateValue>0.2707004</DoseRateValue>
+    </DoseRate>
+  </RadMeasurement>
+</RadInstrumentData>
