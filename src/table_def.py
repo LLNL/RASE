@@ -36,11 +36,12 @@ from sqlalchemy import ForeignKey, Column, Integer, String, Float, Boolean
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm             import relationship, sessionmaker, scoped_session
 from sqlalchemy.sql.schema      import Table
+from sqlalchemy import event
 import numpy as np
 from typing import Set
 from .utils import compress_counts
 
-DB_VERSION_NAME = 'rase_db_v1_0_3'
+DB_VERSION_NAME = 'rase_db_v1_0_7'
 
 Base    = declarative_base()
 # Session = sessionmaker()
@@ -54,11 +55,6 @@ scen_infl_assoc_tbl = Table('scenario_influences', Base.metadata,
     Column('scenario_id',    Integer, ForeignKey('scenarios.id')),
     Column('influence_name', String, ForeignKey('influences.name')))
 
-cccList_idstr_assoc_tbl = Table('ccc_list_id_str', Base.metadata,
-    Column('ccc_list_id',   Integer, ForeignKey('ccc_lists.id')),
-    Column('ccc_name',  String, ForeignKey('ccc_names.name')))
-
-
 class CorrespondenceTableElement(Base):
     __tablename__   = 'correspondence_table_element'
     id              = Column(Integer, primary_key=True)
@@ -67,16 +63,29 @@ class CorrespondenceTableElement(Base):
     corrList2       = Column(String)
     corr_table_name = Column(String, ForeignKey('correspondence_table.name'))
 
+
 class CorrespondenceTable(Base):
     __tablename__   = 'correspondence_table'
     name            = Column(String, primary_key=True)
     corr_table_elements     = relationship('CorrespondenceTableElement')
+    is_default = Column(Boolean, default=False, nullable=False)
+
+@event.listens_for(CorrespondenceTable, "after_insert")
+@event.listens_for(CorrespondenceTable, "after_update")
+def _check_default(mapper, connection, target):
+    if target.is_default:
+        connection.execute(
+            CorrespondenceTable.__table__.
+                update().
+                values(is_default=False).
+                where(CorrespondenceTable.name != target.name)
+        )
+
 
 class Material(Base):
     __tablename__ = 'materials'
     name          = Column(String, primary_key=True)
     description   = Column(String)
-    cccLists      = relationship('CccList', cascade='save-update, merge, delete')
     associated_spectrum_counter = Column(Integer)
 
     def name_no_shielding(self) -> Set[str]:
@@ -85,17 +94,6 @@ class Material(Base):
         self.associated_spectrum_counter = self.associated_spectrum_counter + 1
     def decrement_associated_spectrum_counter(self):
         self.associated_spectrum_counter = self.associated_spectrum_counter - 1
-
-class CccList(Base):
-    __tablename__ = 'ccc_lists'
-    id            = Column(Integer, primary_key=True)
-    ccc_names     = relationship('CccName', secondary=cccList_idstr_assoc_tbl)
-    material_name = Column(String, ForeignKey('materials.name'))
-
-
-class CccName(Base):
-    __tablename__ = 'ccc_names'
-    name          = Column(String, primary_key=True)
 
 
 class Influence(Base):
@@ -114,46 +112,6 @@ class IdentificationSet(Base):
     scen_id       = Column(String, ForeignKey('scenarios.id'))
     repl_name     = Column(String, ForeignKey('replays.name'))
     det_name       = Column(String, ForeignKey('detectors.name'))
-
-    def compileResults(self):
-        expectedMaterials = [scenMaterial.material for scenMaterial in self.scenario.scen_materials]
-        compiledResults = []
-        for idReport in self.id_reports:
-            resultNamesSet = set(result.name.translate({ord('_'):None, ord('-'):None}).lower() for result in idReport.results if result.reported)
-
-            # calculate false positives and false negatives
-            falseNegatives = []
-            falsePositives = resultNamesSet.copy()
-            correctMatches = []
-
-            for expectMaterial in expectedMaterials:
-                found = False
-                for cccList in expectMaterial.cccLists:
-                    cccNamesSet = set(cccName.name.lower() for cccName in cccList.ccc_names)
-                    if cccNamesSet.issubset(resultNamesSet):
-                        falsePositives -= cccNamesSet
-                        correctMatches.append(expectMaterial.name)
-                        found = True
-                if not found: falseNegatives.append(expectMaterial.name)
-            falsePositives = list(falsePositives)
-            compiledResults.append({'falsePositives': falsePositives,
-                                    'falseNegatives': falseNegatives,
-                                    'correctMatches': correctMatches})
-        return compiledResults
-
-
-def reportScores(compiledResults):
-
-    ic = imr = ir = im = ccc = 0
-    for compiledResult in compiledResults:
-        # calc result
-        if compiledResult['falsePositives']:
-            if compiledResult['falseNegatives']: imr += 1  # incomplete and incorrect
-            else:              ir  += 1  # incorrect
-        else:
-            if compiledResult['falseNegatives']: im  += 1  # incomplete
-            else:              ccc += 1  # correct and complete
-    return {'ic':ic, 'imr':imr, 'ir':ir, 'im':im, 'ccc':ccc}
 
 
 class IdentificationReport(Base):
@@ -176,28 +134,35 @@ class IdentificationResult(Base):
 
 
 class Scenario(Base):
-    __tablename__  = 'scenarios'
-    id             = Column(String, primary_key=True)
-    acq_time       = Column(Float)
-    replication    = Column(Integer)
-    scen_materials = relationship('ScenarioMaterial', cascade='save-update, merge, delete')
-    influences     = relationship('Influence', secondary=scen_infl_assoc_tbl)
-    scen_group_id  = Column(Integer, ForeignKey('scenario_groups.id'))
+    __tablename__       = 'scenarios'
+    id                  = Column(String, primary_key=True)
+    acq_time            = Column(Float)
+    replication         = Column(Integer)
+    scen_materials      = relationship('ScenarioMaterial', cascade='save-update, merge, delete')
+    scen_bckg_materials = relationship('ScenarioBackgroundMaterial', cascade='save-update, merge, delete')
+    influences          = relationship('Influence', secondary=scen_infl_assoc_tbl)
+    scen_group_id       = Column(Integer, ForeignKey('scenario_groups.id'))
 
-    def __init__(self, acq_time, replication, scen_materials, influences, description = '', ):
+    def __init__(self, acq_time, replication, scen_materials, scen_bckg_materials, influences, description = '', ):
         # id: a hash of scenario parameters, truncated to a 6-digit hex string
-        self.id = hex(0xffffff & hash('{}{}{}'.format( acq_time, 
-                    ''.join(sorted('{}{:9.9f}'.format(
+        self.id = hex(0xffffff & hash('{}{}{}{}'.format( acq_time,
+                    ''.join(sorted('{}{:9.12f}'.format(
                         scenMat.material.name, scenMat.dose) for scenMat in scen_materials)),
+                    ''.join(sorted('{}{:9.12f}'.format(
+                        scenMat.material.name, scenMat.dose) for scenMat in scen_bckg_materials)),
                     ''.join(sorted(infl.name for infl in influences))
                   ))).upper()[2:]
         self.acq_time       = acq_time
         self.replication    = replication  # number of sample spectra to create
         self.influences     = influences
         self.scen_materials = scen_materials
+        self.scen_bckg_materials = scen_bckg_materials
 
     def get_material_names_no_shielding(self) -> Set[str]:
         return set(name for scenMat in self.scen_materials for name in scenMat.material.name_no_shielding())
+
+    def get_bckg_material_names_no_shielding(self) -> Set[str]:
+        return set(name for scenMat in self.scen_bckg_materials for name in scenMat.material.name_no_shielding())
 
     def exportScenarioToFile(self):
         pass
@@ -228,6 +193,14 @@ class ScenarioMaterial(Base):
     scenario_id   = Column(String, ForeignKey('scenarios.id'))
     material_name = Column(String, ForeignKey('materials.name'))
 
+class ScenarioBackgroundMaterial(Base):
+    """many-to-many table between scenario and material"""
+    __tablename__ = 'scenario_background_materials'
+    id            = Column(Integer, primary_key=True)
+    dose          = Column(Float)
+    material      = relationship('Material')
+    scenario_id   = Column(String, ForeignKey('scenarios.id'))
+    material_name = Column(String, ForeignKey('materials.name'))
 
 class Detector(Base):
     __tablename__= 'detectors'
@@ -271,6 +244,7 @@ class Replay(Base):
     is_cmd_line    = Column(Boolean)
     settings       = Column(String)
     n42_template_path   = Column(String)
+    input_filename_suffix = Column(String)
 
 
 class ResultsTranslator(Base):

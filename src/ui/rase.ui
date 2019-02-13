@@ -6,9 +6,15 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>808</width>
+    <width>850</width>
     <height>712</height>
    </rect>
+  </property>
+  <property name="sizePolicy">
+   <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+    <horstretch>0</horstretch>
+    <verstretch>0</verstretch>
+   </sizepolicy>
   </property>
   <property name="windowTitle">
    <string>RASE</string>
@@ -88,16 +94,6 @@
             <widget class="QLabel" name="label_12">
              <property name="text">
               <string>Scenario Selection: </string>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QCheckBox" name="checkBox">
-             <property name="enabled">
-              <bool>false</bool>
-             </property>
-             <property name="text">
-              <string>No ID</string>
              </property>
             </widget>
            </item>
@@ -299,7 +295,7 @@
          <item>
           <widget class="QPushButton" name="btnGenerate">
            <property name="text">
-            <string>Gen Sample Spectra</string>
+            <string>Gen Sampled Spectra</string>
            </property>
           </widget>
          </item>
@@ -311,19 +307,19 @@
           </widget>
          </item>
          <item>
+          <widget class="QPushButton" name="btnImportIDResults">
+           <property name="text">
+            <string>Import Replay Results...</string>
+           </property>
+          </widget>
+         </item>
+         <item>
           <widget class="QPushButton" name="btnRunResultsTranslator">
            <property name="enabled">
             <bool>true</bool>
            </property>
            <property name="text">
             <string>Run Result Translator</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QPushButton" name="btnImportIDResults">
-           <property name="text">
-            <string>Import Results...</string>
            </property>
           </widget>
          </item>
@@ -350,7 +346,7 @@
          <item>
           <widget class="QPushButton" name="btnSampleDir">
            <property name="text">
-            <string>Sample Spectra Dir</string>
+            <string>Sampled Spectra Dir</string>
            </property>
           </widget>
          </item>
@@ -367,7 +363,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>808</width>
+     <width>850</width>
      <height>22</height>
     </rect>
    </property>
@@ -395,8 +391,18 @@
     <addaction name="actionHelp"/>
     <addaction name="actionAbout"/>
    </widget>
+   <widget class="QMenu" name="menuTools_2">
+    <property name="title">
+     <string>Tools</string>
+    </property>
+    <addaction name="actionInput_Random_Seed"/>
+    <addaction name="actionBase_Spectra_Creation_Tool_under_development"/>
+    <addaction name="actionMDA_Studies_under_development"/>
+    <addaction name="actionDynamic_Scenarios_under_development"/>
+   </widget>
    <addaction name="menuFile"/>
    <addaction name="menuTools"/>
+   <addaction name="menuTools_2"/>
    <addaction name="menuHelp"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
@@ -407,7 +413,7 @@
   </action>
   <action name="actionDetector_List">
    <property name="text">
-    <string>Detectors...</string>
+    <string>Instruments...</string>
    </property>
   </action>
   <action name="actionScenario_Groups">
@@ -451,6 +457,35 @@
    </property>
    <property name="toolTip">
     <string>Help Index</string>
+   </property>
+  </action>
+  <action name="actionInput_Random_Seed">
+   <property name="text">
+    <string>Set Random Seed</string>
+   </property>
+  </action>
+  <action name="actionBase_Spectra_Creation_Tool_under_development">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Base Spectra Creation (under development)</string>
+   </property>
+  </action>
+  <action name="actionMDA_Studies_under_development">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>MDA Studies (under development)</string>
+   </property>
+  </action>
+  <action name="actionDynamic_Scenarios_under_development">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Dynamic Scenarios (under development)</string>
    </property>
   </action>
  </widget>

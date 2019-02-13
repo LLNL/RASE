@@ -41,31 +41,34 @@ from PyQt5.QtWidgets import QDialog, QTableWidgetItem, QHBoxLayout, QHeaderView,
 
 from .plotting import LinePlot
 from .table_def import Session, Scenario, Detector, IdentificationSet
-from .table_def import reportScores
 from .ui_generated import ui_results_dialog
 from src.detailed_results_dialog import DetailedResultsDialog
+from src.correspondence_table_dialog import CorrespondenceTableDialog
+from src.rase_settings import RaseSettings
 
 NUM_COL = 9
 INST_REPL, SCEN_ID, SCEN_DESC, ACQ_TIME, REPL, INFL, PRECISION, RECALL, FSCORE  = range(NUM_COL)
 
 class ViewResultsDialog(ui_results_dialog.Ui_dlgResults, QDialog):
-    def __init__(self, parent, scenIds, detNames, scenario_stats, result_super_map):
+    def __init__(self, parent, scenIds, detNames):
+
         QDialog.__init__(self, parent)
         self.setupUi(self)
-        self.stats = scenario_stats
-        self.result_super_map = result_super_map
-        columnLabelList = [None]*NUM_COL
-        columnLabelList[INST_REPL] = 'Instrument/Replay'
-        columnLabelList[SCEN_ID] = 'Scen Id'
-        columnLabelList[SCEN_DESC] = 'Scen Desc'
-        columnLabelList[ACQ_TIME] = 'Instrument/Replay'
-        columnLabelList[REPL] = 'Scen Id'
-        columnLabelList[INFL] = 'Scen Desc'
-        columnLabelList[PRECISION] = 'Precision'
-        columnLabelList[RECALL] = 'Recall'
-        columnLabelList[FSCORE] = 'Fscore'
-        self.tblResults.setColumnCount(len(columnLabelList))
-        self.tblResults.setHorizontalHeaderLabels(columnLabelList)
+        self.parent = parent
+#        self.stats = scenario_stats
+#        self.result_super_map = result_super_map
+        self.columnLabelList = [None]*NUM_COL
+        self.columnLabelList[INST_REPL] = 'Instrument/Replay'
+        self.columnLabelList[SCEN_ID] = 'Scen Id'
+        self.columnLabelList[SCEN_DESC] = 'Scen Desc'
+        self.columnLabelList[ACQ_TIME] = 'Acq. time (s)'
+        self.columnLabelList[REPL] = 'Replications'
+        self.columnLabelList[INFL] = 'Influences'
+        self.columnLabelList[PRECISION] = 'Precision'
+        self.columnLabelList[RECALL] = 'Recall'
+        self.columnLabelList[FSCORE] = 'Fscore'
+        self.tblResults.setColumnCount(len(self.columnLabelList))
+        self.tblResults.setHorizontalHeaderLabels(self.columnLabelList)
         self.tableData = self.getResultsTable(scenIds, detNames)
         comboList = ['','Detector', 'Replay', 'Dose', 'Time', 'Influence',
                      'IC', 'IM', 'IR', 'IMR', 'CCC',
@@ -86,16 +89,27 @@ class ViewResultsDialog(ui_results_dialog.Ui_dlgResults, QDialog):
         self.tblResults.doubleClicked.connect(self.showDetails)
         self.btnClose.clicked.connect(self.closeSelected)
         self.buttonExport.clicked.connect(self.handleExport)
+        self.buttonCorrTable.clicked.connect(self.openCorrTable)
+#        self.buttonCorrTable.setDisabled(True)
 
+    def openCorrTable(self):
+        """
+        Launches Correspondence Table Dialog
+        """
+        CorrespondenceTableDialog().exec_()
+        self.parent.calculateScenarioStats()
+        self.populateResultsTable(self.tableData)
+        self.parent.settings.setIsAfterCorrespondenceTableCall(True)
 
     def handleExport(self):
         """
         Exports to CSV
         """
-        path = QFileDialog.getSaveFileName(self, 'Save File', '', 'CSV (*.csv)')
+        path = QFileDialog.getSaveFileName(self, 'Save File', RaseSettings().getDataDirectory(), 'CSV (*.csv)')
         if path[0]:
             with open(path[0], mode='w', newline='') as stream:
                 writer = csv.writer(stream)
+                writer.writerow(self.columnLabelList)
                 for row in range(self.tblResults.rowCount()):
                     rowdata = []
                     for column in range(self.tblResults.columnCount()):
@@ -118,12 +132,11 @@ class ViewResultsDialog(ui_results_dialog.Ui_dlgResults, QDialog):
         """
         detName = self.tblResults.item(self.tblResults.currentRow(),0).text().split("/")[0]
         scenId = self.tblResults.item(self.tblResults.currentRow(),1).text()
-        for key in self.result_super_map:
+        for key in self.parent.result_super_map:
             print("key="+key)
-        resultMap = self.result_super_map[scenId+"*"+detName]
+        resultMap = self.parent.result_super_map[scenId+"*"+detName]
         DetailedResultsDialog(resultMap).exec_()
         print(self.tblResults.item(self.tblResults.currentRow(),2).text())
-
 
     def populateResultsTable(self, tableData):
         """
@@ -139,9 +152,9 @@ class ViewResultsDialog(ui_results_dialog.Ui_dlgResults, QDialog):
             self.tblResults.setItem(row, INFL,      QTableWidgetItem(', '.join(infl for infl in dataRow['influences'])))
             self.tblResults.setItem(row, ACQ_TIME,  QTableWidgetItem(str(dataRow['acqTime'])))
             self.tblResults.setItem(row, REPL,      QTableWidgetItem(str(dataRow['replication'])))
-            self.tblResults.setItem(row, PRECISION, QTableWidgetItem(self.stats[dataRow['scenId']][0]))
-            self.tblResults.setItem(row, RECALL,    QTableWidgetItem(self.stats[dataRow['scenId']][1]))
-            self.tblResults.setItem(row, FSCORE,    QTableWidgetItem(self.stats[dataRow['scenId']][2]))
+            self.tblResults.setItem(row, PRECISION, QTableWidgetItem(self.parent.scenario_stats[dataRow['scenId']][0]))
+            self.tblResults.setItem(row, RECALL,    QTableWidgetItem(self.parent.scenario_stats[dataRow['scenId']][1]))
+            self.tblResults.setItem(row, FSCORE,    QTableWidgetItem(self.parent.scenario_stats[dataRow['scenId']][2]))
         self.tblResults.resizeColumnsToContents()
         self.tblResults.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
 
@@ -167,9 +180,7 @@ class ViewResultsDialog(ui_results_dialog.Ui_dlgResults, QDialog):
                     dataRow['replayName']      = detector.replay.name
                     dataRow['scenId']          = scenario.id
                     dataRow['materialAndExposure'] = {scen_mat.material.name: scen_mat.dose for scen_mat in scenario.scen_materials}
-                    compileResults = idSet.compileResults()
-                    dataRow['compiledResults'] = compileResults
-                    dataRow['reportScores']    = reportScores(compileResults)
+                    dataRow['materialAndExposure'].update({scen_mat.material.name: scen_mat.dose for scen_mat in scenario.scen_bckg_materials})
                     dataRow['influences']      = [infl.name for infl in scenario.influences]
                     dataRow['acqTime']         = scenario.acq_time
                     dataRow['replication']     = scenario.replication

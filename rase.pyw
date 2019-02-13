@@ -1,8 +1,8 @@
 ###############################################################################
-# Copyright (c) 2018 Lawrence Livermore National Security, LLC.
+# Copyright (c) 2018-2019 Lawrence Livermore National Security, LLC.
 # Produced at the Lawrence Livermore National Laboratory
 #
-# Written by J. Chavez, G. Kosinovsky, V. Mozin, S. Sangiorgio.
+# Written by J. Brodsky, J. Chavez, G. Kosinovsky, V. Mozin, S. Sangiorgio.
 # RASE-support@llnl.gov.
 #
 # LLNL-CODE-750919
@@ -42,9 +42,15 @@ from src.rase_settings import RaseSettings
 
 RASE_VERSION = 'v1.0b2'
 
+if getattr(sys, 'frozen', False):
+    # we are in a pyinstaller bundle
+    application_path = os.path.dirname(sys.executable)
+else:
+    application_path = os.path.dirname(os.path.abspath(__file__))
+
 # configure the logger
 # TODO: Remember to update the version number at each release!
-logFile = os.path.expanduser(os.path.join("~", "rase.log"))
+logFile = os.path.join(application_path, "rase.log")
 FORMAT = '%(asctime)-15s' + RASE_VERSION + '%(levelname)s %(message)s'
 logging.basicConfig(filename=logFile, level=logging.DEBUG, format=FORMAT)
 

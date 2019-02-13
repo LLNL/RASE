@@ -1,0 +1,412 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Event xmlns:sym="urn:symetrica.icd1"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="urn:symetrica.icd1 http://www.symetrica.com/schemas/HPRID-ICD1-0.1.xsd"     xsi:noNamespaceSchemaLocation="http://www.symetrica.com/schemas/ICD1-4.3_052510.xsd">
+    <ThisDataFormat>ICD1/HPRDS</ThisDataFormat>
+    <Remark>Orig_ICD1_Filename_RadSeeker_CS_75851_D20180522_T093242_E0591_U.n42</Remark>
+    <OnsetDateTime>2018-05-22T09:52:54Z</OnsetDateTime>
+    <EventCategory>CBRNE</EventCategory>
+    <EventType>rad/nuc</EventType>
+    <EventCode></EventCode>
+    <EventNumber>591</EventNumber>
+    <N42InstrumentData>
+        <InstrumentInformation>
+            <InstrumentType>RadionuclideIdentifier</InstrumentType>
+            <Manufacturer>Smiths Detection</Manufacturer>
+            <InstrumentModel>RadSeeker_CS</InstrumentModel>
+            <InstrumentVersion>4822500COM-J</InstrumentVersion>
+            <InstrumentID>75851</InstrumentID>
+            <InstrumentMode>Measure</InstrumentMode>
+            <QualityControl>
+                <InspectionDate>2016-10-07</InspectionDate>
+                <InService>true</InService>
+                <Remark>No Remark</Remark>
+            </QualityControl>
+            <HealthStatus SubSystem="Version" Operational="true" Alarmed="false" ErrorCode="">
+                <HealthParameter Name="IsotopeLibrary" Acceptable="true" Units="" LastUpdated="2018-05-21T11:59:09Z" Type="String" ErrorCode="0">23187</HealthParameter>
+                <HealthParameter Name="DSS" Acceptable="true" Units="" LastUpdated="2018-05-21T11:59:09Z" Type="String" ErrorCode="0">2.1.2.770</HealthParameter>
+                <HealthParameter Name="DSP" Acceptable="true" Units="" LastUpdated="2018-05-21T11:59:29Z" Type="String" ErrorCode="0">2.0.2.15</HealthParameter>
+                <HealthParameter Name="Algorithm" Acceptable="true" Units="" LastUpdated="2018-05-21T11:59:29Z" Type="String" ErrorCode="0">2.7.3.770</HealthParameter>
+                <HealthParameter Name="InstrumentVersion" Acceptable="true" Units="" LastUpdated="2018-05-21T11:59:38Z" Type="String" ErrorCode="0">4822500COM-J</HealthParameter>
+                <HealthParameter Name="Software" Acceptable="true" Units="" LastUpdated="2018-05-21T11:59:38Z" Type="String" ErrorCode="0">2.09.016</HealthParameter>
+                <HealthParameter Name="OS" Acceptable="true" Units="" LastUpdated="2018-05-21T11:59:38Z" Type="String" ErrorCode="0">2.03.002_S_V11X</HealthParameter>
+                <HealthParameter Name="Software/API" Acceptable="true" Units="" LastUpdated="2018-05-21T11:59:38Z" Type="String" ErrorCode="0">2.09.016(39,15)</HealthParameter>
+                <HealthParameter Name="MainBoard" Acceptable="true" Units="" LastUpdated="2018-05-21T11:59:38Z" Type="String" ErrorCode="0">2.09.016.14119(39)</HealthParameter>
+                <HealthParameter Name="Boot(MB)" Acceptable="true" Units="" LastUpdated="2018-05-21T11:59:38Z" Type="String" ErrorCode="0">1.01.001(2)</HealthParameter>
+                <HealthParameter Name="Display Board" Acceptable="true" Units="" LastUpdated="2018-05-21T11:59:38Z" Type="String" ErrorCode="0">2.10.001.16270(15)</HealthParameter>
+                <HealthParameter Name="Boot(DB)" Acceptable="true" Units="" LastUpdated="2018-05-21T11:59:38Z" Type="String" ErrorCode="0">N/A</HealthParameter>
+                <HealthParameter Name="Neutron" Acceptable="true" Units="" LastUpdated="2018-05-21T11:59:28Z" Type="String" ErrorCode="0">2.0.0.39</HealthParameter>
+            </HealthStatus>
+            <HealthStatus SubSystem="Gamma" Operational="true" Alarmed="false" ErrorCode="">
+                <HealthParameter Name="Uptime" Acceptable="true" Units="ms" LastUpdated="2018-05-22T09:52:54Z" Type="Int" ErrorCode="0">85981310</HealthParameter>
+                <HealthParameter Name="HighVoltage" Acceptable="true" Units="V" LastUpdated="2018-05-22T09:52:54Z" Type="Int" ErrorCode="0">646</HealthParameter>
+                <HealthParameter Name="CountRate" Acceptable="true" Units="cps" LastUpdated="2018-05-22T09:52:54Z" Type="Double" ErrorCode="0">260.000000</HealthParameter>
+                <HealthParameter Name="DoseRate" Acceptable="true" Units="mRem/hr" LastUpdated="2018-05-22T09:52:54Z" Type="Float" ErrorCode="0">0.007402</HealthParameter>
+                <HealthParameter Name="FineGain" Acceptable="true" Units="unitless" LastUpdated="2018-05-22T09:52:04Z" Type="Float" ErrorCode="0">0.815765</HealthParameter>
+                <HealthParameter Name="TimeSinceLastTick" Acceptable="true" Units="ms" LastUpdated="2018-05-22T09:52:54Z" Type="Int" ErrorCode="0">501</HealthParameter>
+                <HealthParameter Name="Communications" Acceptable="true" Units="" LastUpdated="2018-05-21T11:59:06Z" Type="Null" ErrorCode="0" />
+                <HealthParameter Name="SerialNumber" Acceptable="true" Units="" LastUpdated="2018-05-21T11:59:38Z" Type="String" ErrorCode="0">6E-F0-55-07-00-00</HealthParameter>
+                <HealthParameter Name="Resolution" Acceptable="true" Units="" LastUpdated="2018-05-21T11:59:06Z" Type="Null" ErrorCode="0" />
+            </HealthStatus>
+            <HealthStatus SubSystem="Device" Operational="true" Alarmed="false" ErrorCode="">
+                <HealthParameter Name="StorageCardCapacity" Acceptable="true" Units="bytes" LastUpdated="2018-05-22T09:52:54Z" Type="Int" ErrorCode="0">1835171840</HealthParameter>
+                <HealthParameter Name="RootCapacity" Acceptable="true" Units="bytes" LastUpdated="2018-05-22T09:52:54Z" Type="Int" ErrorCode="0">23633920</HealthParameter>
+                <HealthParameter Name="AvailableMemory" Acceptable="true" Units="bytes" LastUpdated="2018-05-22T09:52:54Z" Type="Int" ErrorCode="0">19349504</HealthParameter>
+            </HealthStatus>
+            <HealthStatus SubSystem="temperature" Operational="true" Alarmed="false" ErrorCode="">
+                <HealthParameter Name="gammaTemperature" Acceptable="true" Units="C" LastUpdated="2018-05-22T09:52:52Z" Type="Float" ErrorCode="0">24.500000</HealthParameter>
+                <HealthParameter Name="batteryTemp" Acceptable="true" Units="C" LastUpdated="2018-05-22T09:52:52Z" Type="Float" ErrorCode="0">25.650000</HealthParameter>
+                <HealthParameter Name="displayTemperature" Acceptable="true" Units="C" LastUpdated="2018-05-22T09:52:52Z" Type="Float" ErrorCode="0">22.430000</HealthParameter>
+                <HealthParameter Name="processorTemperature" Acceptable="true" Units="C" LastUpdated="2018-05-22T09:52:52Z" Type="Float" ErrorCode="0">33.869999</HealthParameter>
+                <HealthParameter Name="dspTemperature" Acceptable="true" Units="C" LastUpdated="2018-05-22T09:52:52Z" Type="Float" ErrorCode="0">28.870001</HealthParameter>
+            </HealthStatus>
+            <HealthStatus SubSystem="Neutron" Operational="true" Alarmed="true" ErrorCode="">
+                <HealthParameter Name="HighVoltage" Acceptable="true" Units="V" LastUpdated="2018-05-22T09:52:54Z" Type="Int" ErrorCode="0">865</HealthParameter>
+                <HealthParameter Name="Temperature" Acceptable="true" Units="C" LastUpdated="2018-05-22T09:52:54Z" Type="Float" ErrorCode="0">28.500000</HealthParameter>
+                <HealthParameter Name="CountRate" Acceptable="true" Units="cps" LastUpdated="2018-05-22T09:52:54Z" Type="Double" ErrorCode="0">0.000000</HealthParameter>
+                <HealthParameter Name="TimeSinceLastNeutron" Acceptable="false" Units="s" LastUpdated="2018-05-22T09:52:54Z" Type="Double" ErrorCode="300">2106.093750</HealthParameter>
+                <HealthParameter Name="Uptime" Acceptable="true" Units="ms" LastUpdated="2018-05-22T09:52:54Z" Type="Int" ErrorCode="0">85983651</HealthParameter>
+                <HealthParameter Name="Saturated" Acceptable="true" Units="" LastUpdated="2018-05-21T11:59:06Z" Type="Null" ErrorCode="0" />
+                <HealthParameter Name="Communications" Acceptable="true" Units="" LastUpdated="2018-05-21T11:59:06Z" Type="Null" ErrorCode="0" />
+                <HealthParameter Name="SerialNumber" Acceptable="true" Units="" LastUpdated="2018-05-21T11:59:28Z" Type="String" ErrorCode="0">160174</HealthParameter>
+            </HealthStatus>
+            <HealthStatus SubSystem="Stabilization" Operational="true" Alarmed="false" ErrorCode="">
+                <HealthParameter Name="BiasVoltage" Acceptable="true" Units="V" LastUpdated="2018-05-22T09:52:54Z" Type="Float" ErrorCode="0">39.206299</HealthParameter>
+                <HealthParameter Name="Peak511Intensity" Acceptable="true" Units="cps" LastUpdated="2018-05-22T09:45:41Z" Type="Float" ErrorCode="0">25.457285</HealthParameter>
+                <HealthParameter Name="Peak511FWHM" Acceptable="true" Units="keV" LastUpdated="2018-05-22T09:45:41Z" Type="Float" ErrorCode="0">37.466461</HealthParameter>
+                <HealthParameter Name="Peak511Energy" Acceptable="true" Units="keV" LastUpdated="2018-05-22T09:45:41Z" Type="Float" ErrorCode="0">511.224335</HealthParameter>
+                <HealthParameter Name="TaggedCountRate" Acceptable="true" Units="cps" LastUpdated="2018-05-22T09:52:54Z" Type="Double" ErrorCode="0">83.333309</HealthParameter>
+                <HealthParameter Name="IsStable" Acceptable="true" Units="" LastUpdated="2018-05-21T12:00:03Z" Type="Bool" ErrorCode="0">true</HealthParameter>
+                <HealthParameter Name="StabSourceDate" Acceptable="true" Units="" LastUpdated="2018-05-21T11:59:09Z" Type="String" ErrorCode="0">2016-05-18</HealthParameter>
+                <HealthParameter Name="BetaRate" Acceptable="true" Units="cps" LastUpdated="2018-05-22T09:52:54Z" Type="Int" ErrorCode="0">259</HealthParameter>
+                <HealthParameter Name="Peak1274Intensity" Acceptable="true" Units="cps" LastUpdated="2018-05-22T09:45:41Z" Type="Float" ErrorCode="0">3.893614</HealthParameter>
+                <HealthParameter Name="Peak1274FWHM" Acceptable="true" Units="keV" LastUpdated="2018-05-22T09:45:41Z" Type="Float" ErrorCode="0">58.481934</HealthParameter>
+                <HealthParameter Name="Peak1274Energy" Acceptable="true" Units="keV" LastUpdated="2018-05-22T09:45:41Z" Type="Float" ErrorCode="0">1277.961914</HealthParameter>
+                <HealthParameter Name="Channel" Acceptable="true" Units="channel" LastUpdated="2018-05-22T09:52:04Z" Type="Int" ErrorCode="0">189</HealthParameter>
+                <HealthParameter Name="CountRate" Acceptable="true" Units="" LastUpdated="2018-05-21T11:59:06Z" Type="Null" ErrorCode="0" />
+                <HealthParameter Name="BetaCounts" Acceptable="true" Units="" LastUpdated="2018-05-21T11:59:06Z" Type="Null" ErrorCode="0" />
+                <HealthParameter Name="Peak511Channel" Acceptable="true" Units="" LastUpdated="2018-05-21T11:59:06Z" Type="Null" ErrorCode="0" />
+                <HealthParameter Name="Peak1274Channel" Acceptable="true" Units="" LastUpdated="2018-05-21T11:59:06Z" Type="Null" ErrorCode="0" />
+            </HealthStatus>
+            <HealthStatus SubSystem="MDA" Operational="true" Alarmed="false" ErrorCode="">
+                <HealthParameter Name="SNMDegradedID" Acceptable="true" Units="" LastUpdated="2018-05-22T09:52:52Z" Type="Null" ErrorCode="0" />
+                <HealthParameter Name="PossibleSNM" Acceptable="true" Units="" LastUpdated="2018-05-22T09:52:52Z" Type="Null" ErrorCode="0" />
+            </HealthStatus>
+            <HealthStatus SubSystem="DataAnalysis" Operational="true" Alarmed="false" ErrorCode="">
+                <HealthParameter Name="Model" Acceptable="true" Units="" LastUpdated="2018-05-21T11:59:29Z" Type="String" ErrorCode="0">NaI-2x2-021307A</HealthParameter>
+                <HealthParameter Name="ModelCRC" Acceptable="true" Units="" LastUpdated="2018-05-21T11:59:29Z" Type="String" ErrorCode="0">69a994f7814002ebe5aff621a0b04f0f</HealthParameter>
+                <HealthParameter Name="POST" Acceptable="true" Units="" LastUpdated="2018-05-21T11:59:38Z" Type="String" ErrorCode="0">DSP POST completed successfully.</HealthParameter>
+            </HealthStatus>
+            <HealthStatus SubSystem="battery" Operational="true" Alarmed="false" ErrorCode="">
+                <HealthParameter Name="batteryCurrent" Acceptable="true" Units="A" LastUpdated="2018-05-22T09:52:52Z" Type="Float" ErrorCode="0">0.000000</HealthParameter>
+                <HealthParameter Name="batteryPercentLeft" Acceptable="true" Units="%" LastUpdated="2018-05-22T09:52:52Z" Type="Float" ErrorCode="0">100.000000</HealthParameter>
+            </HealthStatus>
+            <HealthStatus SubSystem="storage" Operational="true" Alarmed="false" ErrorCode="">
+                <HealthParameter Name="remainingDataStorage" Acceptable="true" Units="Events" LastUpdated="2018-05-22T09:52:52Z" Type="Float" ErrorCode="0">3997.000000</HealthParameter>
+            </HealthStatus>
+            <HealthStatus SubSystem="system" Operational="true" Alarmed="false" ErrorCode="">
+                <HealthParameter Name="systemVoltage" Acceptable="true" Units="V" LastUpdated="2018-05-22T09:52:52Z" Type="Float" ErrorCode="0">12.473762</HealthParameter>
+            </HealthStatus>
+            <sym:DetectorSetup version="2.0">
+                <Configuration>
+                    <ProductInfo ModelName="RadSeeker_CS" SerialNumber="75851" />
+                    <Service InService="true" CalibrationInterval="365" LastCalibration="2009-05-29T11:51:38Z" UISTPlan="Test Files\Automation\uist.xml" />
+                    <DSPComms Type="RadSeeker" SerialNumber="3" ClockPolarity="0" ClockPhase="0" ClockSpeed="6" PowerPort="0" PowerDelay="150" CSPort="3" ActiveHigh="true" ByteReordered="false" Priority="0" BitsPerWord="8" OnCommand="-" OffCommand="1" />
+                    <OutputDirectory>\Temp</OutputDirectory>
+                    <ICD EventNum="591" Output="true" />
+                    <ActivityDistance>0.250000</ActivityDistance>
+                    <FAT32DirectoryWorkaround Enabled="false" EventsPerDirectory="100" />
+                    <MaxLogFileSize>52428800</MaxLogFileSize>
+                    <MaxUistLogCount>20</MaxUistLogCount>
+                    <DebugSettings LoggingEnabled="true" OutputPath="\Storage Card\Data\Debug">
+                        <DSS LogFile="DSS.log" LogLevel="5" />
+                        <Calibration LogFile="DSS.log" LogLevel="2" />
+                        <Stabilization LogFile="DSS.log" LogLevel="2" />
+                        <Instrument LogFile="DSS.log" LogLevel="5" />
+                        <BreakdownSpectra LogFile="BreakdownSpectra.log" LogLevel="1" />
+                        <SSI LogFile="SSI.log" LogLevel="0" />
+                    </DebugSettings>
+                    <TickDuration>500</TickDuration>
+                    <UserSettings>
+                        <DoseRateAlarm>20.000000</DoseRateAlarm>
+                        <NeutronSSIAlarmRate>0.000000</NeutronSSIAlarmRate>
+                        <GammaSSIAlarmRate>0.000000</GammaSSIAlarmRate>
+                        <DwellTime>30.000000</DwellTime>
+                        <NeutronSSIWindowSize>10</NeutronSSIWindowSize>
+                        <NeutronSSIAlertThreshold>0.999987423</NeutronSSIAlertThreshold>
+                        <NeutronSSIAlertLevel>38</NeutronSSIAlertLevel>
+                        <NeutronSSIEnableValue>true</NeutronSSIEnableValue>
+                        <NeutronSSIEnableAlert>true</NeutronSSIEnableAlert>
+                        <NeutronSSIWarmupPeriod>30</NeutronSSIWarmupPeriod>
+                        <GammaSSIWindowSize>1</GammaSSIWindowSize>
+                        <GammaSSIAlertThreshold>0.000000000</GammaSSIAlertThreshold>
+                        <GammaSSIAlertLevel>-1</GammaSSIAlertLevel>
+                        <GammaSSIAlertRecoveryTime>0</GammaSSIAlertRecoveryTime>
+                        <GammaSSIDummyBackgroundCounts>55137.000000</GammaSSIDummyBackgroundCounts>
+                        <GammaSSIDummyBackgroundLiveTime>900.180420</GammaSSIDummyBackgroundLiveTime>
+                        <GammaSSIEnableValue>false</GammaSSIEnableValue>
+                        <GammaSSIEnableAlert>false</GammaSSIEnableAlert>
+                        <GammaSSIWarmupPeriod>30</GammaSSIWarmupPeriod>
+                        <NeutronBackoffTime>10</NeutronBackoffTime>
+                    </UserSettings>
+                    <HealthMonitor>
+                        <CountRateSaturationCutoff>500000.000000</CountRateSaturationCutoff>
+                        <SaturationRestartCountRate>150000.000000</SaturationRestartCountRate>
+                        <SaturationTurnOffCountRate>1000000.000000</SaturationTurnOffCountRate>
+                        <SaturationVoltage>450</SaturationVoltage>
+                        <SaturationFilterLength>10</SaturationFilterLength>
+                        <Thresholds>
+                            <Entry Minimum="1e+007" Maximum="1e+036" Key="Device.StorageCardCapacity" />
+                            <Entry Minimum="500000" Maximum="1e+036" Key="Device.AvailableMemory" />
+                            <Entry Minimum="500" Maximum="1300" Key="Gamma.HighVoltage" />
+                            <Entry Minimum="-25" Maximum="50" Key="temperature.gammaTemperature" />
+                            <Entry Minimum="5" Maximum="1e+036" Key="Gamma.CountRate" />
+                            <Entry Minimum="-1" Maximum="1000" Key="Gamma.DoseRate" />
+                            <Entry Minimum="0.4" Maximum="1.4" Key="Gamma.FineGain" />
+                            <Entry Minimum="-1" Maximum="10000" Key="Gamma.TimeSinceLastTick" />
+                            <Entry Minimum="100" Maximum="2000" Key="Neutron.HighVoltage" />
+                            <Entry Minimum="-25" Maximum="65" Key="Neutron.Temperature" />
+                            <Entry Minimum="-1" Maximum="3e+006" Key="Neutron.CountRate" />
+                            <Entry Minimum="0" Maximum="1800" Key="Neutron.TimeSinceLastNeutron" />
+                            <Entry Minimum="30" Maximum="80" Key="Stabilization.BiasVoltage" />
+                            <Entry Minimum="0" Maximum="1e+036" Key="Stabilization.Peak511Intensity" />
+                            <Entry Minimum="0" Maximum="49.41" Key="Stabilization.Peak511FWHM" />
+                            <Entry Minimum="497" Maximum="525" Key="Stabilization.Peak511Energy" />
+                            <Entry Minimum="3" Maximum="1e+036" Key="Stabilization.TaggedCountRate" />
+                            <Entry Minimum="0" Maximum="0" Key="MDA.SNMDegradedID" />
+                        </Thresholds>
+                    </HealthMonitor>
+                    <BackgroundBreakdown LogFile="\%t Background Breakdown.csv" Interval="5" Active="false" />
+                    <Temperatures />
+                    <DetectorLayout Description="SymMCA Detector System">
+                        <DetectorGroup Name="None">
+                            <AutoMode Type="SimpleThreshold">
+                                <Parameters SigmaHigh="4" SigmaLow="0.5" ThresholdHigh="430" ThresholdLow="400" />
+                            </AutoMode>
+                            <Detector SerialNumber="SymMCA1" Name="Gamma Detector" />
+                            <Detector SerialNumber="09014" Name="Neutron Detector" />
+                            <Detector SerialNumber="SymMCA1_Tags" Name="Stab Spectrum" />
+                        </DetectorGroup>
+                    </DetectorLayout>
+                    <BackgroundSettings LogLevel="0" Type="3" BackgroundsLocation="\Backgrounds" ChunkSize="30.100000" BackgroundInterval="300.000000" SameStats_ChannelsOverThreshold="5" SameStats_SigmaThreshold="5.000000" Validation_CountIncreaseSigmaThreshold="5.000000" Oversubtraction_SigmaThreshold="5.000000" Oversubtraction_MaximumNumberOfChannels="5" Substraction_SigmaThreshold="1.000000" Subtraction_MinimumPassWidth="0.000000" ScaleChangeReportingThreshold="0.300000" UseBackgroundSubtraction="True" ManualCollectionCountChangeSigmaThreshold="1000000000.000000" GrossCountsOversubtractionSigmaThreshold="3.000000">
+                        <ShapeTest>
+                            <TestPoint SigmaValue="1.000000" NumberOfSegments="208" />
+                            <TestPoint SigmaValue="2.000000" NumberOfSegments="44" />
+                            <TestPoint SigmaValue="3.000000" NumberOfSegments="8" />
+                            <TestPoint SigmaValue="5.310000" NumberOfSegments="1" />
+                        </ShapeTest>
+                        <MinimumCountsPerSegment>30</MinimumCountsPerSegment>
+                        <ExclusionRegions />
+                    </BackgroundSettings>
+                    <DSPBITInfo Enabled="true" Spectrum="Test Files\Radiation Data\NaI DSP Check.icd1" Results="Test Files\Radiation Data\NaI DSP Check.icd2" QFNEpsilon="0.05" />
+                </Configuration>
+                <Detector SerialNumber="SymMCA1" Type="MCA" TempSource="Unknown,0">
+                    <MCA ListMode="false" LLD="10" MCAType="SymMCA">
+                        <Gain GainChangePerChannel="0.0016129" CaliGain="0.8" />
+                        <ScintillatorProtection On="6" Off="8" />
+                        <Counters Input1="None" Input2="None" />
+                        <CalLimits MinCounts="500" MaxDeadTime="0.7" />
+                    </MCA>
+                    <Stabilization LongAcqWindowCount="2" LongAcqWindowDuration="450.000000" LongAcqAlarmLivetime="900.000000" LongAcqSkippedSettleTime="300.000000" Type="Na-22">
+                        <Window Tight="5" Mid="15" Wide="80" />
+                        <Peak Energy="511" Min="100" Max="3333" />
+                        <Peak Energy="1274" Min="16" Max="3333" />
+                        <Source HalfLife="8.21071e+007" ReferenceActivity="200" BaseStabilizationTime="30" />
+                        <Parameters StabThreshold="0.06" StabWidth="0.2" StabDelay="2.3" StabBias="38" HighDeadTime="1.2" LostSearchWidth="120" />
+                    </Stabilization>
+                    <CommsSettings Type="RadSeeker" SerialNumber="1" ClockPolarity="1" ClockPhase="0" ClockSpeed="5" PowerPort="0" PowerDelay="300" CSPort="1" ActiveHigh="true" ByteReordered="false" Priority="3" BitsPerWord="32" OnCommand="&#x1C;" OffCommand="*" />
+                    <Calibration ID="CS1" Mode="4">
+                        <CalibrationInput Source="Eu-152" Interval="365" CoarseHVSetCount="9" FineHVSetCount="9" MidChannel="384" MidChannelCountRatio="0.95" MidChannelTolerance="10" StartingHV="550" Counts="100000" Mode3UseZeroUntilNPeaksFound="4">
+                            <CaliPoints Energy="1408" Error="37.5" MinIntensity="0.01" MinRatioToFirstPeak="0.1" ChannelMove="1" ScanWidth="10" Skipped="0" />
+                            <CaliPoints Energy="1100" Error="0" MinIntensity="0.01" MinRatioToFirstPeak="0.1" ChannelMove="5" ScanWidth="10" Skipped="1" />
+                            <CaliPoints Energy="964" Error="0" MinIntensity="0.01" MinRatioToFirstPeak="0.1" ChannelMove="5" ScanWidth="10" Skipped="1" />
+                            <CaliPoints Energy="778.9" Error="27.9" MinIntensity="0.01" MinRatioToFirstPeak="0.1" ChannelMove="1" ScanWidth="10" Skipped="0" />
+                            <CaliPoints Energy="344.3" Error="18.5" MinIntensity="0.01" MinRatioToFirstPeak="0.1" ChannelMove="1" ScanWidth="10" Skipped="0" />
+                            <CaliPoints Energy="244.65" Error="0" MinIntensity="0.01" MinRatioToFirstPeak="0.1" ChannelMove="5" ScanWidth="10" Skipped="1" />
+                            <CaliPoints Energy="121.78" Error="11" MinIntensity="0.01" MinRatioToFirstPeak="0.1" ChannelMove="1" ScanWidth="10" Skipped="0" />
+                            <CaliPoints Energy="42.44" Error="15" MinIntensity="0.01" MinRatioToFirstPeak="0.1" ChannelMove="1" ScanWidth="10" Skipped="0" />
+                            <CaliPoints Energy="511" Error="5" MinIntensity="0.01" MinRatioToFirstPeak="0.1" ChannelMove="1" ScanWidth="10" Skipped="0" />
+                            <SanityCheck HVMin="500" HVMax="1200" GainMin="0.4" GainMax="1.2" Coeff0Min="-50" Coeff0Max="50" Coeff1Min="2" Coeff1Max="5" Coeff2Min="-0.001" Coeff2Max="0.001" />
+                        </CalibrationInput>
+                    </Calibration>
+                    <CountSmootherParameters Type="0" NumberOfWindows="3" LastValueWeight="0.005000">
+                        <WindowList>
+                            <Window WindowSize="5" WindowWeight="0.020000" ResetThreshold="0.005000" />
+                            <Window WindowSize="5" WindowWeight="0.100000" ResetThreshold="0.001000" />
+                            <Window WindowSize="5" WindowWeight="1.000000" ResetThreshold="0.000000" />
+                        </WindowList>
+                    </CountSmootherParameters>
+                    <Dose>
+                        <EstimationParameters>
+                            <PureGammaThresholds PrimaryPureGammaGammaCountThreshold="6.00000000e+004" SecondaryPureGammaGammaCountThreshold="5.81175430e+004" PureGammaGMCountThreshold="5.00000000e-001" />
+                            <PureLowGMThresholds PureLowGMDoseGammaThreshold="7.87445313e+005" PureLowGMDoseGMThreshold="5.47258711e+000" />
+                            <PureHighGMThresholds PureHighGMDoseThreshold="1.20000000e+004" />
+                            <GammaToLowGMThresholds FirstGammaToLowGMGammaThreshold="3.74667594e+005" SecondGammaToLowGMGammaThreshold="3.70779219e+005" ThirdGammaToLowGMGammaThreshold="2.49337016e+005" />
+                            <LowGMToHighGMThresholds FirstLowGMToHighGMGMCountThreshold="1.10000000e+004" SecondLowGMToHighGMGMCountThreshold="1.00000000e+004" ThirdLowGMToHighGMGMCountThreshold="9.00000000e+003" />
+                            <GammaParameters GammaLiveTimeCorrectionScalar="5.83999991e-001" GammaLiveTimeCorrectionPower="6.31554186e-001" GammaDoseSubtractiveConstant="0.002690" ZeroLiveTimeLiveTime="9.99999978e-003" GammaMovingAverageWindowSize="1" />
+                            <GMParameters LowGMDoseScalar="3.01140261e+000" HighGMDoseScalar="7.50000030e-002" HighGMDosePower="1.39999998e+000" ZeroRealTimeGMCountValue="0.00000000e+000" GMMovingAverageWindowSize="28" ZeroRealTimeNeutronCountValue="0.00000000e+000" NeutronMovingAverageWindowSize="2" />
+                        </EstimationParameters>
+                        <GammaDoseSmootherParameters Type="1" NumberOfWindows="3" LastValueWeight="0.005000" VarianceAdjustmentFactor="18000.000000">
+                            <WindowList>
+                                <Window WindowSize="5" WindowWeight="0.020000" ResetThreshold="0.000500" />
+                                <Window WindowSize="5" WindowWeight="0.100000" ResetThreshold="0.000100" />
+                                <Window WindowSize="5" WindowWeight="1.000000" ResetThreshold="0.000000" />
+                            </WindowList>
+                        </GammaDoseSmootherParameters>
+                    </Dose>
+                    <IdentificationSettings BinWidth="6" Material="NaI" Size="2x2" Name="021307A" />
+                </Detector>
+                <Detector SerialNumber="09014" Type="Neutron" TempSource="Unknown,0">
+                    <Parameters Type="SymNeutron" HV="900" Firmware="Neutron_2.0.0.39_Gemini" Source="" SourceInput="1" />
+                    <CommsSettings Type="RadSeeker" SerialNumber="2" ClockPolarity="0" ClockPhase="1" ClockSpeed="6" PowerPort="0" PowerDelay="2000" CSPort="2" ActiveHigh="true" ByteReordered="false" Priority="2" BitsPerWord="8" OnCommand="&#x07;" OffCommand="&#x1B;" />
+                    <Calibration ID="CS2" Mode="0" />
+                    <CountSmootherParameters Type="0" NumberOfWindows="3" LastValueWeight="0.005000">
+                        <WindowList>
+                            <Window WindowSize="5" WindowWeight="0.020000" ResetThreshold="0.005000" />
+                            <Window WindowSize="5" WindowWeight="0.100000" ResetThreshold="0.001000" />
+                            <Window WindowSize="5" WindowWeight="1.000000" ResetThreshold="0.000000" />
+                        </WindowList>
+                    </CountSmootherParameters>
+                    <IdentificationSettings BinWidth="6" Material="NaI" Size="2x2" Name="021307A" />
+                </Detector>
+                <Detector SerialNumber="SymMCA1_Tags" Type="Tags" Source="SymMCA1" TempSource="Unknown,0" />
+            </sym:DetectorSetup>
+        </InstrumentInformation>
+        <Measurement UUID="831eb73b-e5aa-48e1-8619-9519cc63ca35">
+            <Remark>Measured Data</Remark>
+            <InstrumentLocation>
+                <InstrumentLocationName>Unnamed</InstrumentLocationName>
+            </InstrumentLocation>
+            <DetectorData>
+                <StartTime>2018-05-22T09:32:42Z</StartTime>
+                <Spectrum Detector="Aa1_000" Quality="Good" SpectrumID="Spectrum_1" CalibrationIDs="CS1" BackgroundSpectrumID="Spectrum_11" SampleNumber="1">
+                    <RealTime>PT${scenario.acq_time}S</RealTime>
+                    <LiveTime>PT${scenario.acq_time}S</LiveTime>
+                    <SourceType>Item</SourceType>
+                    <DetectorType>2x2 inch NaI</DetectorType>
+                    <ChannelData Compression="None" Start="1" ListMode="Spectrum">
+                        <Data>${sample_counts} </Data>
+                    </ChannelData>
+                    <sym:MaxInstantaneousCountRate Value="334.453400" />
+                </Spectrum>
+                <Spectrum Detector="Aa1_000N" Quality="Good" SpectrumID="Spectrum_2" CalibrationIDs="CS2" BackgroundSpectrumID="Spectrum_12" SampleNumber="1">
+                    <RealTime>PT${scenario.acq_time}S</RealTime>
+                    <LiveTime>PT${scenario.acq_time}S</LiveTime>
+                    <SourceType>Item</SourceType>
+                    <DetectorType>Neutron</DetectorType>
+                    <ChannelData Compression="None" Start="1" ListMode="Spectrum">
+                        <Data>0 </Data>
+                    </ChannelData>
+                    <sym:MaxInstantaneousCountRate Value="0.000000" />
+                </Spectrum>
+                <Spectrum Detector="Aa1_000" Quality="Good" SpectrumID="Spectrum_3" CalibrationIDs="CS1" SampleNumber="1">
+                    <RealTime>PT1203.390747S</RealTime>
+                    <LiveTime>PT1201.670044S</LiveTime>
+                    <SourceType>Stabilization</SourceType>
+                    <DetectorType>2x2 inch NaI</DetectorType>
+                    <ChannelData Compression="None" Start="1" ListMode="Spectrum">
+                        <Data>0 </Data>
+                    </ChannelData>
+                    <sym:MaxInstantaneousCountRate Value="0.000000" />
+                </Spectrum>
+                <CountDoseData Detector="Aa1_000" Quality="Good" CalibrationIDs="CS3">
+                    <CountRate Units="CPS">${sum(map(float,sample_counts.split()))/scenario.acq_time}</CountRate>
+                    <DoseRate Units="mrem">0</DoseRate>
+                    <DetectorType>Gamma</DetectorType>
+                </CountDoseData>
+            </DetectorData>
+            <DetectorData>
+                <StartTime>2018-05-21T12:29:30Z</StartTime>
+                <Spectrum Detector="Aa1_000" Quality="Good" SpectrumID="Spectrum_11" CalibrationIDs="CS1" SampleNumber="2">
+                    <RealTime>PT300.399963S</RealTime>
+                    <LiveTime>PT300.059998S</LiveTime>
+                    <SourceType>Background</SourceType>
+                    <DetectorType>2x2 inch NaI</DetectorType>
+                    <ChannelData Compression="None" Start="1" ListMode="Spectrum">
+                        <Data>0 0 0 0 0 33 143 133 116 126 154 148 138 162 141 169 190 149 174 188 197 205 221 250 290 291 348 351 356 389 432 454 460 445 476 439 503 480 481 480 515 514 509 515 557 502 546 512 521 540 487 493 499 489 495 458 468 465 449 462 402 413 391 405 388 423 424 402 403 394 346 383 326 355 352 348 335 355 317 351 297 308 309 323 313 315 295 306 297 267 283 262 239 228 244 224 231 205 212 176 212 200 191 196 207 195 183 186 190 161 167 186 154 164 162 165 163 140 149 127 139 139 137 112 140 109 137 135 111 116 129 137 102 96 102 95 83 102 79 89 92 99 65 82 67 72 81 61 60 97 69 60 79 68 66 79 73 68 61 69 77 67 62 60 76 70 75 75 66 84 92 90 99 115 145 196 195 236 268 290 287 293 340 310 305 312 326 275 225 205 161 149 108 78 78 83 78 41 42 40 44 42 45 50 47 46 48 67 44 46 49 55 58 40 37 46 46 55 38 38 36 50 50 43 38 37 34 36 34 31 37 22 39 38 26 23 36 38 28 30 38 37 32 24 21 26 37 22 25 27 33 28 30 40 26 30 36 23 27 30 26 31 24 33 32 24 39 33 28 30 21 30 23 25 24 28 27 34 26 21 38 33 25 22 29 21 30 27 20 24 31 32 27 27 32 31 24 26 30 31 24 20 22 31 18 24 26 25 19 23 24 17 27 28 35 20 27 20 24 34 30 24 22 22 38 32 27 27 23 28 23 26 30 36 21 28 27 21 30 24 29 27 25 25 24 23 23 31 18 26 24 30 26 24 19 13 19 16 16 14 17 10 16 20 15 9 21 18 24 14 17 11 12 12 11 13 10 13 23 15 8 19 14 11 18 10 13 13 16 15 16 22 14 22 17 15 10 16 13 17 13 17 12 12 13 9 13 10 10 10 15 17 11 17 14 13 12 20 13 10 12 9 13 19 16 17 10 14 25 23 21 28 23 37 29 44 25 37 45 44 44 61 45 46 40 43 54 47 44 32 38 26 33 26 25 30 12 19 13 20 19 14 9 4 10 9 9 4 9 8 11 4 7 7 8 7 2 7 5 5 7 3 7 5 9 12 3 16 12 8 15 16 6 15 14 19 9 10 20 24 13 24 27 16 18 22 24 22 21 16 20 19 22 19 9 15 18 9 12 6 13 8 11 10 2 6 9 4 7 2 1 5 6 6 4 4 6 4 9 5 4 5 3 5 5 2 4 6 3 7 5 6 4 1 3 7 3 6 4 5 4 2 4 3 2 4 2 1 2 3 3 3 0 4 3 1 0 5 4 1 1 3 1 0 2 4 3 1 2 1 1 4 3 3 1 2 3 4 6 2 5 5 5 3 2 4 2 3 7 1 4 6 3 4 3 10 11 6 7 6 7 6 3 10 10 7 7 5 4 3 4 2 2 3 5 3 0 0 0 3 4 7 1 6 2 2 5 2 2 0 1 4 3 1 1 0 1 1 0 0 3 0 0 1 2 0 0 0 0 0 0 0 3 0 1 1 1 2 3 2 0 1 0 1 2 1 2 0 0 0 1 1 0 0 0 2 1 1 4 0 0 0 2 1 2 1 0 1 1 2 2 0 1 1 0 1 1 1 1 3 2 0 0 2 0 2 1 1 3 0 0 0 4 1 1 2 0 3 1 1 1 1 0 1 1 2 1 3 0 2 0 0 1 2 0 1 1 1 2 2 2 1 2 0 1 1 2 2 0 0 2 1 0 0 0 1 2 1 2 2 1 1 2 2 1 0 1 0 1 0 1 0 0 1 0 0 0 1 0 1 0 2 1 0 1 0 1 0 0 0 0 0 0 0 5 0 1 0 0 0 0 3 0 0 1 0 1 0 0 0 1 0 0 0 1 0 1 2 1 0 0 3 1 0 0 0 0 0 1 0 0 0 1 0 0 0 0 2 1 0 1 0 0 1 0 0 2 1 0 1 0 0 1 0 1 0 0 0 0 2 0 3 0 3 1 0 2 1 0 5 3 2 2 3 2 2 1 2 0 1 1 4 3 3 2 0 1 2 0 1 1 1 2 0 0 1 1 0 1 1 2 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 </Data>
+                    </ChannelData>
+                </Spectrum>
+                <Spectrum Detector="Aa1_000N" Quality="Good" SpectrumID="Spectrum_12" CalibrationIDs="CS2" SampleNumber="2">
+                    <RealTime>PT300.348999S</RealTime>
+                    <LiveTime>PT300.348999S</LiveTime>
+                    <SourceType>Background</SourceType>
+                    <DetectorType>Neutron</DetectorType>
+                    <ChannelData Compression="None" Start="1" ListMode="Spectrum">
+                        <Data>0 </Data>
+                    </ChannelData>
+                </Spectrum>
+            </DetectorData>
+            <sym:MaxDoseRates>
+                <sym:Group sym:Index="0" sym:Rate="8.135928" />
+            </sym:MaxDoseRates>
+            <sym:BackgroundState Invalid="false" Scalar="1.000000" Type="3" />
+            <sym:ProximityFlags MoveAway="false" MoveCloser="true" />
+            <sym:RequiredCountingTime>0.000000</sym:RequiredCountingTime>
+            <sym:NotEnoughCounts>false</sym:NotEnoughCounts>
+        </Measurement>
+        <Calibration ID="CS1" Type="Energy" EnergyUnits="keV" FWHMUnits="Energy" CountRateUnits="CPS" DoseUnits="urem" AbsorbedDoseUnits="Gy" ExposureUnits="uR">
+            <CalibrationCreationDate>2016-10-07</CalibrationCreationDate>
+            <CalibrationIsotope ItemID="1">Eu-152</CalibrationIsotope>
+            <CalibrationMeasurementUUID>CS1</CalibrationMeasurementUUID>
+            <Equation>
+                <Coefficients Subequation="1">${detector.ecal0} ${detector.ecal1} ${detector.ecal2}</Coefficients>
+            </Equation>
+            <ArrayXY X="Channel" Y="Energy">
+                <PointXY>
+                    <X>503.000000 0</X>
+                    <Y>1408.000000 0</Y>
+                </PointXY>
+                <PointXY>
+                    <X>282.000000 0</X>
+                    <Y>778.900024 0</Y>
+                </PointXY>
+                <PointXY>
+                    <X>128.000000 0</X>
+                    <Y>344.299988 0</Y>
+                </PointXY>
+                <PointXY>
+                    <X>47.000000 0</X>
+                    <Y>121.779999 0</Y>
+                </PointXY>
+                <PointXY>
+                    <X>16.000000 0</X>
+                    <Y>42.439999 0</Y>
+                </PointXY>
+                <PointXY>
+                    <X>189.000000 0</X>
+                    <Y>511.000000 0</Y>
+                </PointXY>
+            </ArrayXY>
+            <sym:Info HV="645" Gain="0.815765" Temperature="21.809999" />
+        </Calibration>
+        <Calibration ID="CS2" Type="Other" EnergyUnits="keV" FWHMUnits="Energy" CountRateUnits="CPS" DoseUnits="urem" AbsorbedDoseUnits="Gy" ExposureUnits="uR">
+            <CalibrationCreationDate>2016-05-18</CalibrationCreationDate>
+            <CalibrationIsotope ItemID="1">Cf-252</CalibrationIsotope>
+            <CalibrationMeasurementUUID>CS2</CalibrationMeasurementUUID>
+            <Equation>
+                <Coefficients Subequation="1">1</Coefficients>
+            </Equation>
+            <ArrayXY X="Activity" Y="CountRate">
+                <PointXY>
+                    <X>3145.601074 0</X>
+                    <Y>8.625620 0</Y>
+                </PointXY>
+            </ArrayXY>
+        </Calibration>
+        <Calibration ID="CS3" Type="CountsToExposure" EnergyUnits="keV" FWHMUnits="Energy" CountRateUnits="CPS" DoseUnits="urem" AbsorbedDoseUnits="Gy" ExposureUnits="uR">
+            <CalibrationCreationDate>2016-10-07</CalibrationCreationDate>
+            <CalibrationIsotope ItemID="1">Cs-137</CalibrationIsotope>
+            <CalibrationMeasurementUUID>CS3</CalibrationMeasurementUUID>
+            <Equation>
+                <Coefficients Subequation="1">1</Coefficients>
+            </Equation>
+            <ArrayXY X="Dose" Y="CountRate">
+                <PointXY>
+                    <X>50.000000 0</X>
+                    <Y>8000.000000 0</Y>
+                </PointXY>
+            </ArrayXY>
+        </Calibration>
+    </N42InstrumentData>
+    <sym:SourceGroup>Manual</sym:SourceGroup>
+</Event>

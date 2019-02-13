@@ -44,7 +44,7 @@ import numpy as np
 from sqlalchemy.engine import create_engine
 
 from .table_def import BaseSpectrum, BackgroundSpectrum, Detector, Scenario, IdentificationSet, IdentificationReport, \
-    IdentificationResult, Session, Base, DetectorInfluence, SampleSpectraSeed, ScenarioMaterial
+    IdentificationResult, Session, Base, DetectorInfluence, SampleSpectraSeed, ScenarioMaterial, ScenarioBackgroundMaterial
 
 from .utils import compress_counts
 
@@ -95,7 +95,7 @@ def importResultsDirectory(directory, scenarioId, detectorName):
 
     for filename in os.listdir(directory):
         if filename.endswith('.res'):
-            filenum = int(filename.split('___')[2].replace('.res',''))
+            filenum = int(filename.split('___')[2].split('.')[0])
             idReport = IdentificationReport(filenum=filenum)
             idSet.id_reports.append(idReport)
 
@@ -112,24 +112,244 @@ def importResultsDirectory(directory, scenarioId, detectorName):
     session.commit()
 
 
+def ConvertDurationToSeconds(inTime):
+    """
+
+    """
+    inTimePat = re.compile('PT(\d+D)?(\d+H)?(\d+M)?(\d+(.\d+)?S)?')  # ('PT?:((\d+)H)?:((\d+)M)(\d+?:(.d+))S')
+    time = inTimePat.findall(inTime)
+
+    if 'D' in inTime:
+        outTime = int(time[0][0].strip('D')) * 86400 + int(time[0][1].strip('H')) * 3600 + int(
+            time[0][2].strip('M')) * 60 + float(time[0][3].strip('S'))
+    elif 'H' in inTime:
+        outTime = int(time[0][1].strip('H')) * 3600 + int(time[0][2].strip('M')) * 60 + float(time[0][3].strip('S'))
+    elif 'M' in inTime and time[0][3] != '':
+        outTime = int(time[0][2].strip('M')) * 60 + float(time[0][3].strip('S'))
+    elif 'M' in inTime and time[0][3] == '':
+        outTime = int(time[0][2].strip('M')) * 60
+    else:
+        outTime = float(time[0][3].strip('S'))
+
+    return outTime
+
+class ResultsFileFormatException(Exception):
+    pass
+
+
 def readTranslatedResultFile(filename):
     """
-    Reads translated results file
-    :param filename: path of valid influence file
-    :return: array of results
+    Reads translated results file from either of two formats:
+
+    Format 1:
+    //IdentificationResults
+		/Isotopes (single)
+			/text(): \n-separated list of identification labels
+		/ConfidenceIndex (single)
+			/text(): \n-separated list of confidence indices
+
+	Format 2:
+	//IdentificationResults
+	    /Identification (multiple)
+    	    /IDName
+	            /text(): nuclide label
+	        /IDConfidence
+	            /text(): confidence level
+
+
+    :param filename: path of valid results file
+    :return: list of identification results
     """
+    # TODO: confidence level of the identification is neglected for now
+
     root = ET.parse(filename).getroot()
-    results = []
-    for identification in root.findall('Identification'):
-        idname = identification.find('IDName')
-        # TODO: confidence level of the identification is neglected for now
-        confidence = identification.find('IDConfidence')
-        if idname.text:
-            results.append(idname.text.strip())
-    return results
+    if root.tag != "IdentificationResults":
+        raise ResultsFileFormatException(f'{filename}: bad file format')
+
+    # Read format 1
+    if len(root.findall('Isotopes')) > 0:
+       isotopes = root.find('Isotopes').text
+       if isotopes:
+            return list(filter(lambda x: x.strip() not in ['-',''],isotopes.split('\n')))
+       else:
+           return []
+    # Read Format 2
+    elif len(root.findall('Identification')) > 0:
+        results = []
+        for identification in root.findall('Identification'):
+            idname = identification.find('IDName')
+            # confidence = identification.find('IDConfidence')
+            if idname.text:
+                results.append(idname.text.strip())
+        return results
+    else:
+        raise ResultsFileFormatException(f'{filename}: bad file format')
 
 
-def readSpectrumFile(filepath, sharedObject, tstatus):
+class BaseSpectraFormatException(Exception):
+    pass
+
+def requiredElement(element, source, extratext=''):
+    if isinstance(element, str):
+        el = source.find(element)
+    else:
+        for thiselement in element:
+            el = source.find(thiselement)
+            if el is not None: return el
+    if extratext: extratext = f'({extratext})'
+    if el is None:
+        raise BaseSpectraFormatException(f'No {element} in element {source.tag} {extratext}')
+    return el
+
+
+def parseRadMeasurement(root, filepath, sharedObject, tstatus, requireRASESens):
+    try:
+        radElement = requiredElement('RadMeasurement',root,)
+        allRad = root.findall("RadMeasurement")
+        if len(allRad) == 2:
+            sharedObject.bkgndSpectrumInFile = True
+            radElementBckg = allRad[1]
+        elif len(allRad) > 2:
+            raise BaseSpectraFormatException(f'Too many RadMeasurement elements, expected 1 or 2')
+        specElement = requiredElement('Spectrum',radElement)
+        chanData = requiredElement('ChannelData',specElement)
+        countsChar = chanData.text.strip("'").strip().split()
+        counts = [float(count) for count in countsChar]
+        if not counts: raise BaseSpectraFormatException('Could not parse ChannelData')
+        if ("." in countsChar[0]):
+            sharedObject.chanDataType = "float"
+        else:
+            sharedObject.chanDataType = "int"
+        counts = ','.join(map(str, counts))
+        chanDataBckg = None
+        countsBckg = None
+        if sharedObject.isBckgrndSave and sharedObject.bkgndSpectrumInFile:
+            specElementBckg = requiredElement('Spectrum',radElementBckg,'secondary spectrum')
+            chanDataBckg = requiredElement('ChannelData', specElementBckg, 'secondary spectrum')
+            countsChar = chanDataBckg.text.strip("'").strip().split()
+            countsBckg = [float(count) for count in countsChar]
+            if not counts: raise BaseSpectraFormatException('Could not parse ChannelData in secondary spectrum')
+            countsBckg = ','.join(map(str, countsBckg))
+        realtimeBckg = None
+        livetimeBckg = None
+        ecalBckg = None
+        sensitivity = None
+        calibration = requiredElement('EnergyCalibration',root)
+        calElement = requiredElement('CoefficientValues',calibration)
+        ecal = [float(value) for value in calElement.text.split()]
+        realtimeElement = requiredElement(('RealTime','RealTimeDuration'),radElement)
+        realtime = getSeconds(realtimeElement.text.strip())
+        livetimeElement = requiredElement(('LiveTimeDuration','LiveTime'),specElement)
+        livetime = getSeconds(livetimeElement.text.strip())
+        if requireRASESens:
+            RASEsensElement = requiredElement('RASE_Sensitivity',specElement)
+        else:
+            RASEsensElement= specElement.find('Calibration')
+        if RASEsensElement is not None:
+            sensitivity = float(RASEsensElement.text.strip())
+        if chanDataBckg is not None:
+            ecalBckg = ecal
+            realtimeElementBckg = requiredElement(('RealTime','RealTimeDuration'),radElementBckg,'secondary spectrum')
+            realtimeBckg = getSeconds(realtimeElementBckg.text.strip())
+            livetimeElementBckg = requiredElement(('LiveTimeDuration','LiveTime'), specElementBckg, 'secondary spectrum')
+            livetimeBckg = getSeconds(livetimeElementBckg.text.strip())
+        return counts, ecal, realtime, livetime, sensitivity, countsBckg, ecalBckg, realtimeBckg, livetimeBckg
+    except BaseSpectraFormatException as ex:
+        message = f"{str(ex)} in file {ntpath.basename(filepath)}"
+        tstatus.append(message)
+        return None
+
+def parseMeasurement(measurement, filepath, sharedObject, tstatus):
+    try:
+        specElement = requiredElement('Spectrum',measurement)
+        allSpectra = measurement.findall("Spectrum")
+        if len(allSpectra) == 2:
+            sharedObject.bkgndSpectrumInFile = True
+            specElementBckg = allSpectra[1]
+        elif len(allSpectra) > 2:
+            raise BaseSpectraFormatException(f'Too many Spectrum elements, expected 1 or 2')
+
+        chanData = requiredElement('ChannelData',specElement)
+        countsChar = chanData.text.strip("'").strip().split()
+        if ("." in countsChar[0]):
+            sharedObject.chanDataType = "float"
+        else:
+            sharedObject.chanDataType = "int"
+        counts = [float(count) for count in countsChar]
+        if not counts: raise BaseSpectraFormatException('Could not parse ChannelData')
+        chanDataBckg = None
+        countsBckg = None
+        if sharedObject.isBckgrndSave and sharedObject.bkgndSpectrumInFile:
+            chanDataBckg = requiredElement('ChannelData',specElementBckg,'secondary spectrum')
+            countsChar = chanDataBckg.text.strip("'").strip().split()
+            countsBckg = [float(count) for count in countsChar]
+            if not countsBckg: raise BaseSpectraFormatException('Could not parse ChannelData (secondary spectrum)')
+        # uncompress if needed
+        counts = uncompressCountedZeroes(chanData,counts)
+        if chanDataBckg is not None:
+            countsBckg = uncompressCountedZeroes(chanDataBckg,countsBckg)
+
+        realtimeBckg = None
+        livetimeBckg = None
+        ecalBckg = None
+        calibration = specElement.find('Calibration')
+        if calibration is None:
+            calibration = requiredElement('Calibration',root,'or in Spectrum element')
+
+        calElement = requiredElement('Coefficients',requiredElement('Equation',calibration))
+        ecal = [float(value) for value in calElement.text.split()]
+        realtimeElement = requiredElement(('RealTime','RealTimeDuration'),specElement)
+        realtime = getSeconds(realtimeElement.text.strip())
+        livetimeElement = requiredElement(('LiveTimeDuration','LiveTime'), specElement)
+        livetime = getSeconds(livetimeElement.text.strip())
+        RASEsensElement = requiredElement('RASE_Sensitivity', specElement)
+        sensitivity = float(RASEsensElement.text.strip())
+        if chanDataBckg is not None:
+            ecalBckg = []
+            calibrationBckg = specElementBckg.find('Calibration')
+            if calibrationBckg is not None:
+                calElement = requiredElement('Coefficients',requiredElement('Equation',calibrationBckg))
+                ecalBckg = [float(value) for value in calElement.text.split()]
+            else:
+                message = "no Background Calibration in file " + ntpath.basename(filepath)
+                tstatus.append(message)
+            realtimeElementBckg = requiredElement(('RealTime','RealTimeDuration'), specElementBckg, 'secondary spectrum')
+            realtimeBckg = getSeconds(realtimeElementBckg.text.strip())
+            livetimeElementBckg = requiredElement(('LiveTimeDuration','LiveTime'), specElementBckg, 'secondary spectrum')
+            livetimeBckg = getSeconds(livetimeElementBckg.text.strip())
+
+        return counts, ecal, realtime, livetime, sensitivity, countsBckg, ecalBckg, realtimeBckg, livetimeBckg
+    except BaseSpectraFormatException as ex:
+        message = f"{str(ex)} in file {ntpath.basename(filepath)}"
+        tstatus.append(message)
+        return None
+
+
+def uncompressCountedZeroes(chanData,counts):
+    if chanData.attrib.get('Compression') == 'CountedZeroes':
+        uncompressedCounts = []
+        countsIter = iter(counts)
+        for count in countsIter:
+            if count == float(0):
+                uncompressedCounts.extend([0] * int(next(countsIter)))
+            else:
+                uncompressedCounts.append(count)
+        counts = ','.join(map(str, uncompressedCounts))
+    else:
+        counts = ','.join(map(str, counts))
+    return counts
+
+
+def strip_namespaces(ET):
+    try:
+        for el in ET.getroot().iter():
+            el.tag = el.tag.split('}', 1)[-1]
+    except AttributeError:
+        for _, el in ET:
+            el.tag = el.tag.split('}', 1)[-1]
+
+
+def readSpectrumFile(filepath, sharedObject, tstatus, requireRASESen = True):
     """
     Reads in the Spectrum File
     :param filepath: path to spectrum file
@@ -143,205 +363,20 @@ def readSpectrumFile(filepath, sharedObject, tstatus):
         # First strip all namespaces if any
         # TODO: make this a general utility method as it can be useful elsewhere
         it = ET.iterparse(filepath)
-        for _, el in it:
-            el.tag = el.tag.split('}', 1)[-1]
+        strip_namespaces(it)
 
         root = it.root
         # Now extract the relevant details from the file
         measurement = root.find('Measurement')
         rad_measurement = root.find('RadMeasurement')
         if measurement is not None:
-            allSpectra = measurement.findall("Spectrum")
-            if len(allSpectra) == 2:
-                sharedObject.bcgndSpectrumInFile = True
-                specElement = allSpectra[0]
-                specElementBckg = allSpectra[1]
-            else:
-                specElement = allSpectra[0]
-            if not specElement:
-                message = "no Spectrum in file " + ntpath.basename(filepath)
-                tstatus.append(message)
-                return None
-            chanData = specElement.find('ChannelData')
-            if chanData is None:
-                message = "no ChannelData in file " + ntpath.basename(filepath)
-                tstatus.append(message)
-                return None
-            countsChar = chanData.text.strip("'").strip().split()
-            if( "." in countsChar[0]):
-                sharedObject.chanDataType = "float"
-            else:
-                sharedObject.chanDataType = "int"
-            counts = [float(count) for count in countsChar]
-            chanDataBckg = None
-            countsBckg = None
-            if sharedObject.isBckgrndSave and sharedObject.bcgndSpectrumInFile:
-                chanDataBckg = specElementBckg.find('ChannelData')
-                countsChar = chanDataBckg.text.strip("'").strip().split()
-                countsBckg = [float(count) for count in countsChar]
-            # uncompress if needed
-            if chanData.attrib.get('Compression') == 'CountedZeroes':
-                uncompressedCounts = []
-                countsIter = iter(counts)
-                for count in countsIter:
-                    if count == float(0):
-                        uncompressedCounts.extend([0] * int(next(countsIter)))
-                    else: uncompressedCounts.append(count)
-                counts =  ','.join(map(str, uncompressedCounts))
-            else:
-                counts = ','.join(map(str, counts))
-            if chanDataBckg is not None:
-                if chanDataBckg.attrib.get('Compression') == 'CountedZeroes':
-                    uncompressedCounts = []
-                    countsIter = iter(countsBckg)
-
-                    for count in countsIter:
-                        if count == float(0):
-                            uncompressedCounts.extend([0] * int(next(countsIter)))
-                        else:
-                            uncompressedCounts.append(count)
-                    countsBckg =  ','.join(map(str, uncompressedCounts))
-                else:
-                    countsBckg = ','.join(map(str, countsBckg))
-
-            realtimeBckg    = None
-            livetimeBckg    = None
-            ecalBckg = None
-            calibration = specElement.find('Calibration')
-            if calibration is None:
-                calibration = root.find('Calibration')
-            ecal = []
-            if calibration is not None:
-                calElement = calibration.find('Equation').find('Coefficients')
-                ecal        = [float(value) for value in calElement.text.split()]
-            else:
-                message = "no Calibration in file " + ntpath.basename(filepath)
-                tstatus.append(message)
-                return None
-            if specElement.find('RealTime') is None:
-                message = "no RealTime in file " + ntpath.basename(filepath)
-                tstatus.append(message)
-                return None
-            else:
-                realtime = getSeconds(specElement.find('RealTime').text.strip())
-            if specElement.find('LiveTime') is None:
-                message = "no LiveTime in file " + ntpath.basename(filepath)
-                tstatus.append(message)
-                return None
-            else:
-                livetime = getSeconds(specElement.find('LiveTime').text.strip())
-            if specElement.find('RASE_Sensitivity') is None:
-                message = "no RASE_Sensitivity in file " + ntpath.basename(filepath)
-                tstatus.append(message)
-                return None
-            else:
-                sensitivity = float(specElement.find('RASE_Sensitivity').text.strip())
-
-            if chanDataBckg is not None:
-                ecalBckg = []
-                calibrationBckg = specElementBckg.find('Calibration')
-                if calibrationBckg is not None:
-                    calElement = calibrationBckg.find('Equation').find('Coefficients')
-                    ecalBckg        = [float(value) for value in calElement.text.split()]
-                else:
-                    message = "no Background Calibration in file " + ntpath.basename(filepath)
-                    tstatus.append(message)
-                if specElementBckg.find('RealTime') is None:
-                    message = "no Background RealTime in file " + ntpath.basename(filepath)
-                    tstatus.append(message)
-                else:
-                    realtimeBckg = getSeconds(specElementBckg.find('RealTime').text.strip())
-                if specElementBckg.find('LiveTime') is None:
-                    message = "no Background LiveTime in file " + ntpath.basename(filepath)
-                    tstatus.append(message)
-                else:
-                    livetimeBckg = getSeconds(specElementBckg.find('LiveTime').text.strip())
-
-            return counts, ecal, realtime, livetime, sensitivity, countsBckg, ecalBckg, realtimeBckg, livetimeBckg
+            return parseMeasurement(measurement,filepath,sharedObject,tstatus)
         elif rad_measurement is not None:
-            allRad = root.findall("RadMeasurement")
-            if len(allRad) == 2:
-                sharedObject.bcgndSpectrumInFile = True
-                radElement = allRad[0]
-                radElementBckg = allRad[1]
-            else:
-                radElement = allRad[0]
-            if radElement is None:
-                message = "no RadMeasurement in file " + ntpath.basename(filepath)
-                tstatus.append(message)
-                return None
-            specElement = radElement.find('Spectrum')
-            if specElement is None:
-                message = "no Spectrum in file " + ntpath.basename(filepath)
-                tstatus.append(message)
-                return None
-            chanData = specElement.find('ChannelData')
-            if chanData is None:
-                message = "no ChannelData in file " + ntpath.basename(filepath)
-                tstatus.append(message)
-                return None
-            countsChar = chanData.text.strip("'").strip().split()
-            counts = [float(count) for count in countsChar]
-            if( "." in countsChar[0]):
-                sharedObject.chanDataType = "float"
-            else:
-                sharedObject.chanDataType = "int"
-            counts = ','.join(map(str, counts))
-            chanDataBckg = None
-            countsBckg = None
-            if sharedObject.isBckgrndSave and sharedObject.bcgndSpectrumInFile:
-                specElementBckg = radElementBckg.find('Spectrum')
-                chanDataBckg = specElementBckg.find('ChannelData')
-                countsChar = chanDataBckg.text.strip("'").strip().split()
-                countsBckg = [float(count) for count in countsChar]
-                countsBckg = ','.join(map(str, countsBckg))
-            realtimeBckg    = None
-            livetimeBckg    = None
-            ecalBckg = None
-            calibration = root.find('EnergyCalibration')
-            ecal = []
-            if calibration is not None:
-                calElement = root.find('EnergyCalibration').find('CoefficientValues')
-                ecal = [float(value) for value in calElement.text.split()]
-            else:
-                message = "no Calibration in file " + ntpath.basename(filepath)
-                tstatus.append(message)
-                return None
-            if radElement.find('RealTimeDuration') is None:
-                message = "no RealTime in file " + ntpath.basename(filepath)
-                tstatus.append(message)
-                return None
-            else:
-                realtime = getSeconds(radElement.find('RealTimeDuration').text.strip())
-            if specElement.find('LiveTimeDuration') is None:
-                message = "no LiveTime in file " + ntpath.basename(filepath)
-                tstatus.append(message)
-                return None
-            else:
-                livetime = getSeconds(specElement.find('LiveTimeDuration').text.strip())
-            if specElement.find('RASE_Sensitivity') is None:
-                message = "no RASE_Sensitivity in file " + ntpath.basename(filepath)
-                tstatus.append(message)
-                raise ValueError('sensitivity is missing')
-                return None
-            else:
-                sensitivity = float(specElement.find('RASE_Sensitivity').text.strip())
-
-            if chanDataBckg is not None:
-                ecalBckg = ecal
-                if radElementBckg.find('RealTimeDuration') is None:
-                    message = "no Background RealTime in file " + ntpath.basename(filepath)
-                    tstatus.append(message)
-                else:
-                    realtimeBckg = getSeconds(radElementBckg.find('RealTimeDuration').text.strip())
-                if specElementBckg.find('LiveTimeDuration') is None:
-                    message = "no Background LiveTime in file " + ntpath.basename(filepath)
-                    tstatus.append(message)
-                else:
-                    livetimeBckg = getSeconds(specElementBckg.find('LiveTimeDuration').text.strip())
-
-            return counts, ecal, realtime, livetime, sensitivity, countsBckg, ecalBckg, realtimeBckg, livetimeBckg
-
+            return parseRadMeasurement(root,filepath,sharedObject,tstatus, requireRASESen)
+    except BaseSpectraFormatException as ex:
+        message = f"{str(ex)} in file {ntpath.basename(filepath)}"
+        tstatus.append(message)
+        return None
     except :
         print(sys.exc_info())
     #except : return None
@@ -449,6 +484,23 @@ def _getCountsDoseAndSensitivity(scenario, detector):
             counts = rebin(np.array(counts), energies, ecal)
 
         countsDoseAndSensitivity.append((counts, scenMaterial.dose, baseSpectrum.sensitivity))
+
+    for scenBckMaterial in scenario.scen_bckg_materials:
+
+        baseSpectrum = (session.query(BaseSpectrum)
+                        .filter_by(detector_name = detector.name,
+                                   material_name = scenBckMaterial.material_name)
+                        ).first()
+        counts = np.array([int(float(c)) for c in baseSpectrum.baseCounts.split(",")])
+
+#        counts = np.array([baseCount.count for baseCount in baseSpectrum.baseCounts])
+
+        # apply distortion on counts
+        if scenario.influences:
+            counts = rebin(np.array(counts), energies, ecal)
+
+        countsDoseAndSensitivity.append((counts, scenBckMaterial.dose, baseSpectrum.sensitivity))
+
 
     # if the detector has an internal calibration source, it needs to be added with special treatment
     if detector.includeSecondarySpectrum and detector.secondary_type == 2:
@@ -570,7 +622,7 @@ def get_replay_output_dir(sample_root_dir, detector, scenario_id):
     """
     Returns the name of the folder where the output of the replay tool is placed
     """
-    return os.path.join(get_replay_input_dir(sample_root_dir, detector, scenario_id) + "_results")
+    return os.path.join(get_replay_input_dir(sample_root_dir, detector, scenario_id) + "_results", "")
 
 
 def get_results_dir(sample_root_dir, detector, scenario_id):
@@ -580,7 +632,26 @@ def get_results_dir(sample_root_dir, detector, scenario_id):
     if not (detector.resultsTranslator and detector.resultsTranslator.exe_path):
         return get_replay_output_dir(sample_root_dir, detector, scenario_id)
     else:
-        return os.path.join(get_replay_input_dir(sample_root_dir, detector, scenario_id) + "_translatedResults")
+        return os.path.join(get_replay_input_dir(sample_root_dir, detector, scenario_id) + "_translatedResults","")
+
+
+def get_sample_spectra_filename(detector_name, scenario_id, filenum, suffix=".n42"):
+    return f"{detector_name}___{scenario_id}___{filenum}{suffix}"
+
+
+def files_endswith_exists(dir, endswith_filters):
+    """
+    Search if at least one file exists in 'dir' that ends with one of the specified filters
+    :param dir: search path (folder)
+    :param endswith_filters: tuple of file endings to filter e.g. (".n42",".res")
+    :return: True if at least one file exists in path that match filter
+    """
+    if not os.path.exists(dir):
+        return False
+    for f in os.listdir(dir):
+        if f.endswith(endswith_filters):
+            return True
+    return False
 
 
 def delete_scenario(scenario_ids, sample_root_dir):
@@ -591,6 +662,7 @@ def delete_scenario(scenario_ids, sample_root_dir):
     for id in scenario_ids:
         scenDelete = session.query(Scenario).filter(Scenario.id == id)
         matDelete = session.query(ScenarioMaterial).filter(ScenarioMaterial.scenario_id == id)
+        backgMatDelete = session.query(ScenarioBackgroundMaterial).filter(ScenarioBackgroundMaterial.scenario_id == id)
 
         # folders
         folders = [name for name in glob.glob(os.path.join(sample_root_dir, "*" + id + "*"))]
@@ -599,6 +671,7 @@ def delete_scenario(scenario_ids, sample_root_dir):
 
         # database
         matDelete.delete()
+        backgMatDelete.delete()
         scenDelete.delete()
         session.commit()
 

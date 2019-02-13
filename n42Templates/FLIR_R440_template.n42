@@ -1,0 +1,53 @@
+<?xml version="1.0"?>
+<?xml-model href="http://physics.nist.gov/N42/2011/schematron/n42.sch" type="application/xml" schematypens="http://purl.oclc.org/dsdl/schematron"?>
+<RadInstrumentData xmlns="http://physics.nist.gov/N42/2011/N42"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xmlns:target="http://target-sg.com/XML/ANSI-N42.42-Extensions/2016"
+                   xsi:schemaLocation="http://physics.nist.gov/N42/2011/N42 http://physics.nist.gov/N42/2011/n42.xsd
+                                        http://target-sg.com/XML/ANSI-N42.42-Extensions/2016 http://target-sg.com/XML/ANSI-N42.42-Extensions/2016/target-extensions.xsd"
+                   n42DocUUID="027228f0-f6c5-4e09-a039-ee19b03d845a">
+  <RadInstrumentInformation id="RadInstrumentInformation">
+    <RadInstrumentManufacturerName>FLIR Radiation Inc.</RadInstrumentManufacturerName>
+    <RadInstrumentIdentifier>420987700008</RadInstrumentIdentifier>
+    <RadInstrumentModelName>R440</RadInstrumentModelName>
+    <RadInstrumentClassCode>Radionuclide Identifier</RadInstrumentClassCode>
+    <RadInstrumentVersion>
+      <RadInstrumentComponentName>Software</RadInstrumentComponentName>
+      <RadInstrumentComponentVersion>20.18.3-beta.2</RadInstrumentComponentVersion>
+    </RadInstrumentVersion>
+    <RadInstrumentVersion>
+      <RadInstrumentComponentName>Hardware</RadInstrumentComponentName>
+      <RadInstrumentComponentVersion>1</RadInstrumentComponentVersion>
+    </RadInstrumentVersion>
+    <RadInstrumentVersion>
+      <RadInstrumentComponentName>Firmware</RadInstrumentComponentName>
+      <RadInstrumentComponentVersion>20.18.3-beta.2</RadInstrumentComponentVersion>
+    </RadInstrumentVersion>
+  </RadInstrumentInformation>
+  <RadDetectorInformation id="RadDetectorInformation">
+    <RadDetectorCategoryCode>Gamma</RadDetectorCategoryCode>
+    <RadDetectorKindCode>NaI</RadDetectorKindCode>
+    <RadDetectorDepthValue>5.08</RadDetectorDepthValue>
+    <RadDetectorDiameterValue>5.08</RadDetectorDiameterValue>
+  </RadDetectorInformation>
+  <EnergyCalibration id="EnergyCalibration">
+    <Remark>
+      This spectrum covers 3072 keV with 3keV per channel.
+      It is stabilized and linearized.
+    </Remark>
+    <CoefficientValues>${detector.ecal0} ${detector.ecal1} ${detector.ecal2}</CoefficientValues>
+  </EnergyCalibration>
+  <RadMeasurement id="M-1">
+    <MeasurementClassCode>Foreground</MeasurementClassCode>
+    <StartDateTime>2018-04-17T16:32:50.841026Z</StartDateTime>
+    <RealTimeDuration>PT${scenario.acq_time}S</RealTimeDuration>
+    <Spectrum id="S-2"
+              radDetectorInformationReference="RadDetectorInformation"
+              energyCalibrationReference="EnergyCalibration">
+      <LiveTimeDuration>PT${scenario.acq_time}S</LiveTimeDuration>
+      <ChannelData compressionCode="None">
+        ${sample_counts}
+      </ChannelData>
+    </Spectrum>
+  </RadMeasurement>
+</RadInstrumentData>

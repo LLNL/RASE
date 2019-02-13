@@ -42,7 +42,7 @@ from PyQt5.QtWidgets import QDialog, QFileDialog, QTableWidgetItem, QMessageBox,
 
 from .rase_functions import readSpectrumFile
 from .scenario_dialog import MaterialDoseDelegate
-from .table_def import Session, MaterialNameTranslation, Material, CccList, CccName, BaseSpectrum, BackgroundSpectrum
+from .table_def import Session, MaterialNameTranslation, Material, BaseSpectrum, BackgroundSpectrum
 from .ui_generated import ui_import_base_spectra_dialog
 from .utils import profileit
 
@@ -156,16 +156,16 @@ class BaseSpectraDialog(ui_import_base_spectra_dialog.Ui_Dialog, QDialog):
             if self.sharedObject:
                 if self.sharedObject.chanDataType:
                     self.txtStatus.append("Channel data type is " + self.sharedObject.chanDataType)
-                if self.sharedObject.bcgndSpectrumInFile:
+                if self.sharedObject.bkgndSpectrumInFile:
                     self.txtStatus.append("Secondary spectrum found in file")
             self.initializingTable = False
             self.tblSpectra.resizeColumnsToContents()
             self.tblSpectra.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
 
             # Check with the user about the type of the secondary spectrum
-            if self.sharedObject.bcgndSpectrumInFile:
+            if self.sharedObject.bkgndSpectrumInFile:
                 secondary_types = ["Background Spectrum", "Internal Calibration Spectrum"]
-                if secType != None:
+                if secType is not None:
                     self.backgroundSpectraType = secondary_types.index(secType) + 1
                     self.txtStatus.append("Secondary spectrum identified as " + secType)
                 else:
@@ -211,15 +211,10 @@ class BaseSpectraDialog(ui_import_base_spectra_dialog.Ui_Dialog, QDialog):
         backgroundSpectrum = None
         for row in range(self.tblSpectra.rowCount()):
             # initialize a BaseSpectrum
-            # each material gets a default cccList with a single list of a single material name
             materialName = self.tblSpectra.item(row, 0).text()
             material = self.session.query(Material).get(materialName)
             if not material:
                 material = Material(name=materialName, associated_spectrum_counter = 0)
-                cccList = CccList()
-                cccName = CccName(name=materialName)
-                cccList.ccc_names.append(cccName)
-                material.cccLists.append(cccList)
             material.increment_associated_spectrum_counter()
             baseSpectraFilename = self.tblSpectra.item(row, 1).text()
             baseSpectraFilepath = self.dir + os.sep + baseSpectraFilename
@@ -228,7 +223,7 @@ class BaseSpectraDialog(ui_import_base_spectra_dialog.Ui_Dialog, QDialog):
 
             rfo = self.specMap[baseSpectraFilename]
 
-            if self.sharedObject.bcgndSpectrumInFile:
+            if self.sharedObject.bkgndSpectrumInFile:
                 if row == 0:
                     if rfo.realtimeBckg is None or rfo.livetimeBckg is None or rfo.livetimeBckg is None:
                         self.bckgrndCorrupted = True
@@ -275,7 +270,7 @@ class BaseSpectraDialog(ui_import_base_spectra_dialog.Ui_Dialog, QDialog):
         def __init__(self, isBckgrndSave):
             self.isBckgrndSave = isBckgrndSave
             self.chanDataType = None
-            self.bcgndSpectrumInFile = False
+            self.bkgndSpectrumInFile = False
 
     class ReadFileObject() :
         def __init__(self,counts,ecal,realtime,livetime,sensitivity,countsBckg=None,ecalBckg=None,realtimeBckg=None,livetimeBckg=None):

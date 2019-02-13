@@ -34,7 +34,7 @@ and sampling algorithm
 """
 
 from PyQt5.QtCore import pyqtSlot
-from PyQt5.QtWidgets import QDialog, QFileDialog
+from PyQt5.QtWidgets import QDialog, QFileDialog, QMessageBox
 
 from src import sampling_algos
 from .ui_generated import ui_prefs_dialog
@@ -76,7 +76,7 @@ class SettingsDialog(ui_prefs_dialog.Ui_Dialog, QDialog):
         """
         options = QFileDialog.ShowDirsOnly
         if sys.platform.startswith('win'): options = QFileDialog.DontUseNativeDialog
-        dir = QFileDialog.getExistingDirectory(self, 'Choose Rase Data Directory', self.settings.getDataDirectory(),
+        dir = QFileDialog.getExistingDirectory(self, 'Choose RASE Data Directory', self.settings.getDataDirectory(),
                                                options)
         if dir:
             self.txtDataDir.setText(dir)
@@ -90,7 +90,9 @@ class SettingsDialog(ui_prefs_dialog.Ui_Dialog, QDialog):
 
     @pyqtSlot()
     def accept(self):
-        self.settings.setDataDirectory(os.path.normpath(self.txtDataDir.text()))
+        if self.dataDirectoryChanged:
+            self.settings.setDataDirectory(os.path.normpath(self.txtDataDir.text()))
+            QMessageBox.warning(self,"Restart Needed", "Please restart RASE in order for the changes to take effect")
         idx = self.downSapmplingAlgoComboBox.currentIndex()
         if self.algorithmSelected: self.settings.setSamplingAlgo(self.algoDictionary[idx])
         super().accept()

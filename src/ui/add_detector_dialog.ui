@@ -11,7 +11,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>Add Detector</string>
+   <string>Add Instrument</string>
   </property>
   <layout class="QGridLayout" name="gridLayout_6">
    <item row="0" column="0" rowspan="2">
@@ -121,7 +121,7 @@
            </size>
           </property>
           <property name="text">
-           <string>Detector Description:</string>
+           <string>Instrument Description:</string>
           </property>
           <property name="alignment">
            <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
@@ -412,7 +412,7 @@
         <bool>false</bool>
        </property>
        <property name="text">
-        <string>Export Detector...</string>
+        <string>Export Instrument...</string>
        </property>
       </widget>
      </item>
@@ -422,7 +422,7 @@
         <bool>false</bool>
        </property>
        <property name="text">
-        <string>Import Detector...</string>
+        <string>Import Instrument...</string>
        </property>
       </widget>
      </item>

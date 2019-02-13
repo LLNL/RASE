@@ -2,7 +2,6 @@
 <N42InstrumentData xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:ORTEC="http://www.ortec-online.com/ortec-xml-schema" xsi:schemaLocation="http://physics.nist.gov/Divisions/Div846/Gp4/ANSIN4242/2005/ANSIN4242 http://physics.nist.gov/Divisions/Div846/Gp4/ANSIN4242/2005/ANSIN4242.xsd http://www.ortec-online.com/ortec-xml-schema http://www.ortec-online.com/ortec-xml-schema/spectrum.xsd">
   <Measurement>
     <Spectrum Detector="gamma" Type="PHA" ID="item" BackgroundSpectrumID="bkg-g">
-      <Remark>VORTE_M001_Am241_HX-2_2015_11_04_13_44_520</Remark>
       <StartTime>2016-01-15T16:44:34</StartTime>
       <RealTime>PT${scenario.acq_time}S</RealTime>
       <LiveTime>PT${scenario.acq_time}S</LiveTime>
@@ -21,7 +20,6 @@
       <ChannelData Compression="CountedZeroes">${compressed_sample_counts}</ChannelData>
     </Spectrum>
     <Spectrum Detector="gamma" Type="PHA" ID="bkg-g">
-      <Remark>VORTE_M001_Bgnd_Lab_HX-2_2015_11_04_13_11_160</Remark>
       <StartTime>2016-01-15T16:44:34</StartTime>
       <RealTime>PT${secondary_spectrum.realtime}S</RealTime>
       <LiveTime>PT${secondary_spectrum.livetime}S</LiveTime>

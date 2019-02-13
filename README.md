@@ -61,6 +61,7 @@ Contributors
 - Vladimir Mozin, LLNL
 - Greg Kosinovsky, LLNL
 - Joe Chavez, LLNL
+- Jason Brodsky, LLNL
 
 
 Acknowledgements

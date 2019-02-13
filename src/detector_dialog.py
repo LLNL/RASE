@@ -48,10 +48,10 @@ from .plotting import SpectraViewerDialog
 
 
 class DetectorDialog(ui_add_detector_dialog.Ui_Dialog, QDialog):
-    def __init__(self, parent, settings, detectorName=None, testDetectorName=None):
+    def __init__(self, parent, settings, detectorName=None):
         QDialog.__init__(self, parent)
         self.setupUi(self)
-        self.txtDetector.setText(testDetectorName)
+        self.txtDetector.setText(detectorName)
         self.detector = None
         self.settings = settings
         self.newBaseSpectra = []
@@ -106,9 +106,7 @@ class DetectorDialog(ui_add_detector_dialog.Ui_Dialog, QDialog):
                                     (1, str(detInfluence.infl_0)),
                                     (2, str(detInfluence.infl_1)),
                                     (3, str(detInfluence.infl_2))]:
-                    item = self.tblInfluences.item(row, col)
-                    item.setText(text)
-                    item.setFlags(item.flags() & ~Qt.ItemIsEditable)
+                    self.tblInfluences.item(row, col).setText(text)
 
             # populate ecal
             self.txtEcal0.setText('%E' % Decimal(detector.ecal0) if detector.ecal0 else '0')
@@ -175,7 +173,7 @@ class DetectorDialog(ui_add_detector_dialog.Ui_Dialog, QDialog):
 
         """
         dialog = dlg
-        if dialog == None:
+        if dialog is None:
             dialog = BaseSpectraDialog(self.session, self.settings)
             dialog.exec_()
         if dialog.baseSpectra:
@@ -361,7 +359,7 @@ class DetectorDialog(ui_add_detector_dialog.Ui_Dialog, QDialog):
 
             comboBox = QComboBox(parent)
             comboBox.setEditable(True)
-            comboBox.setValidator(QRegExpValidator(QRegExp('[A-Za-z]+')))
+            comboBox.setValidator(QRegExpValidator(QRegExp('[a-zA-Z0-9_.-]+')))
             session = Session()
             for influence in session.query(Influence):
                 if influence.name not in takenInfluences:

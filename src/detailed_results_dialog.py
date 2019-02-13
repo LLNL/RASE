@@ -36,7 +36,11 @@ instrument/scenario combination
 import csv
 
 from PyQt5.QtWidgets import QTableWidgetItem, QDialog, QFileDialog, \
-    QHeaderView
+    QHeaderView, QAction, QMenu, QApplication
+from PyQt5.QtCore import QPoint, Qt, pyqtSlot
+from PyQt5.QtGui import QKeySequence
+
+
 
 from .table_def import Session
 from .ui_generated import ui_detailed_results_dialog
@@ -51,6 +55,7 @@ class DetailedResultsDialog(ui_detailed_results_dialog.Ui_dlgDetailedResults, QD
         self.headerLabels = ['File', 'Tp', 'Fn', 'Fp', 'Precision', 'Recall', 'Fscore', 'IDs']
         self.NUM_COLS = len(self.headerLabels)
         self.session = Session()
+        self.tblDetailedResults.setContextMenuPolicy(Qt.CustomContextMenu)
         self.tblDetailedResults.setColumnCount(self.NUM_COLS)
         self.tblDetailedResults.setHorizontalHeaderLabels(self.headerLabels)
         self.tblDetailedResults.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
@@ -73,10 +78,11 @@ class DetailedResultsDialog(ui_detailed_results_dialog.Ui_dlgDetailedResults, QD
         """
         exports to CSV
         """
-        path = QFileDialog.getSaveFileName(self, 'Save File', '', 'CSV (*.csv)')
+        path = QFileDialog.getSaveFileName(self, 'Save File', self.settings.getDataDirectory(), 'CSV (*.csv)')
         if path[0]:
             with open(path[0], mode='w', newline='') as stream:
                 writer = csv.writer(stream)
+                writer.writerow(self.headerLabels)
                 for row in range(self.tblDetailedResults.rowCount()):
                     rowdata = []
                     for column in range(self.tblDetailedResults.columnCount()):
@@ -87,6 +93,35 @@ class DetailedResultsDialog(ui_detailed_results_dialog.Ui_dlgDetailedResults, QD
                             rowdata.append('')
                     writer.writerow(rowdata)
 
+    def get_selected_cells_as_text(self):
+        """
+        Returns the selected cells of the table as plain text
+        """
+        selected_rows =  self.tblDetailedResults.selectedIndexes()
+        text = ""
+        # show the context menu only if on an a valid part of the table
+        if selected_rows:
+            cols = set(index.column() for index in self.tblDetailedResults.selectedIndexes())
+            for row in set(index.row() for index in self.tblDetailedResults.selectedIndexes()):
+                text += "\t".join([self.tblDetailedResults.item(row, col).text() for col in cols])
+                text += '\n'
+        return text
+
+    def keyPressEvent(self, e):
+        if e.key() == Qt.Key_Copy or e.key == QKeySequence(QKeySequence.Copy) or e.key() == 67:
+            QApplication.clipboard().setText(self.get_selected_cells_as_text())
+
+    @pyqtSlot(QPoint)
+    def on_tblDetailedResults_customContextMenuRequested(self, point):
+        """
+        Handles "Copy" right click selections on the table
+        """
+        copy_action = QAction('Copy', self)
+        menu = QMenu(self.tblDetailedResults)
+        menu.addAction(copy_action)
+        action = menu.exec_(self.tblDetailedResults.mapToGlobal(point))
+        if action == copy_action:
+            QApplication.clipboard().setText(self.get_selected_cells_as_text())
 
     def closeSelected(self):
         """

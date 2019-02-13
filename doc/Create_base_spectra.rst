@@ -19,7 +19,7 @@ Obtain high-statistics source spectra
 
 A measurement should be performed usually in well-controlled laboratory conditions with one or more radioactive sources. Adherence to the following recommendation will result in high-quality base spectra:
 
-- The measurement scenario (source strength, source-detector distance, shielding) should be chosen such as to ensure that a significant fraction of the count rate in the instrument arises from the source term alone. If possible, the dose rate from the source should be at least 5 times above background.
+- The measurement scenario (source strength, source-instrument distance, shielding) should be chosen such as to ensure that a significant fraction of the count rate in the instrument arises from the source term alone. If possible, the dose rate from the source should be at least 5 times above background.
 - Verify that no significant pile-up or dead time is present in the instrument. Ideally dead time should be limited to no more than 2%.
 - The instrument’s orientation with respect to the source shall be the same as how it is intended to be used in the field.
 - Collect sufficient statistics so that the relevant source peaks are known to high confidence. Acquisition times for raw spectra shall be adjusted such that the base spectra they are processed into contain at least ten times the number of counts contained in any individual sample spectrum expected to be generated from them. This should be done according to the formula: :math:`D_0 \cdot T_0 > 10 \cdot D_S \cdot T_s` where :math:`D_0` is the dose rate produced by the base material at the distance at which the base spectrum was collected, :math:`T_0`	is the live time of the base spectrum, :math:`D_s`	is the maximum dose rate to be simulated in the sample spectra, and :math:`T_S` is the maximum live time to be simulated in the sample spectra
@@ -50,7 +50,7 @@ The RASE sensitivity factor :math:`S_{\text{RASE}}` encodes all information nece
    S_{\text{RASE}} = \frac{\text{net count rate [cps]}}{\text{gamma dose equivalent rate [}\mu\text{Sv/h]}}
 
 The net count rate is obtained by integrating the background-subtracted measured spectrum and dividing it by the measured live time. The gamma dose equivalent rate comes from the value obtained during measurement with the calibrated ionization chamber, again after the dose equivalent rate for background has been subtracted.
-
+IMPORTANT NOTE. When creating base spectra for the background (from the measured background), use the raw spectra and the actual dose rates to calculate the RASE Sensitivity factor.
 
 Base spectra naming convention
 ==============================

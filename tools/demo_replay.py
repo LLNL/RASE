@@ -36,7 +36,7 @@ on a random selection within a list of possible results
 """
 
 # To generate a windows executable version:
-# python -m PyInstaller -a -y -F --clean --noupx --distpath ..\dist --workpath ..\build dummy_replay.py
+# python -m PyInstaller -a -y -F --clean --noupx --distpath ..\dist --workpath ..\build demo_replay.py
 
 import sys
 

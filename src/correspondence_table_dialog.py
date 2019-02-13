@@ -64,7 +64,8 @@ class CorrespondenceTableDialog(ui_correspondence_table_dialog.Ui_dlgCorrTable, 
         self.tblCCCLists.setItemDelegate(Delegate(self.tblCCCLists, isotopeCol=0))
         self.tblCCCLists.setRowCount(self.NUM_ROWS)
         self.tblCCCLists.setColumnCount(self.NUM_COLS)
-        self.tblCCCLists.setHorizontalHeaderLabels(['Source', 'Correct ID', 'Allowed ID'])
+        self.columnLabels = ['Source', 'Correct ID', 'Allowed ID']
+        self.tblCCCLists.setHorizontalHeaderLabels(self.columnLabels)
         self.tblCCCLists.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
         self.tblCCCLists.horizontalHeader().setSectionResizeMode(2, QHeaderView.Stretch)
         self.tblCCCLists.setContextMenuPolicy(Qt.CustomContextMenu)
@@ -90,11 +91,8 @@ class CorrespondenceTableDialog(ui_correspondence_table_dialog.Ui_dlgCorrTable, 
         self.buttonBox.rejected.connect(self.reject)
         # self.pushButton.clicked.connect(self.addLines)
         self.btnAddRow.clicked.connect(self.addRow)
-        self.setDefaultComboBox.addItem("")
         self.populateDefaultComboBox()
-        self.overwriteExistingComboBox.addItem("")
-        self.populateOverwriteComboBox()
-        self.selectedCorrespondenceTableName = None
+        self.setSaveAsTableName()
 
         self.buttonImport.clicked.connect(self.handleImport)
         self.buttonExport.clicked.connect(self.handleExport)
@@ -123,11 +121,19 @@ class CorrespondenceTableDialog(ui_correspondence_table_dialog.Ui_dlgCorrTable, 
             self.tblCCCLists.removeRow(index)
         self.NUM_ROWS =self.NUM_ROWS - len(indices)
 
-    def applySettings(self):
+    def setDefaultCorrTable(self, tableName):
         """
         Sets selected table as default
         """
-        self.settings.setCorrespondenceTable(self.setDefaultComboBox.currentText())
+        corrTable = self.session.query(CorrespondenceTable).filter_by(name=tableName).first()
+        corrTable.is_default = True
+        self.session.commit()
+
+    def applySettings(self):
+        """
+        Sets selected table as default and loads it for edit
+        """
+        self.setDefaultCorrTable(self.setDefaultComboBox.currentText())
         self.tblCCCLists.setRowCount(0)
         if not self.readCorrTableRows():
             return
@@ -143,6 +149,7 @@ class CorrespondenceTableDialog(ui_correspondence_table_dialog.Ui_dlgCorrTable, 
             self.tblCCCLists.setItem(row, 1, QTableWidgetItem(line.corrList1))
             self.tblCCCLists.setItem(row, 2, QTableWidgetItem(line.corrList2))
             row = row + 1
+        self.setSaveAsTableName()
 
     def populateDefaultComboBox(self):
         """
@@ -151,31 +158,25 @@ class CorrespondenceTableDialog(ui_correspondence_table_dialog.Ui_dlgCorrTable, 
         corrTables = list(self.session.query(CorrespondenceTable))
         for i, table in enumerate(corrTables):
             self.setDefaultComboBox.addItem(table.name)
-            if table.name == self.settings.getCorrespondenceTable():
-                self.setDefaultComboBox.setCurrentIndex(i+1)
+            if table.is_default:
+                self.setDefaultComboBox.setCurrentIndex(i)
 
-    def populateOverwriteComboBox(self):
-        """
-        Populates selection box with existing corr tables for possible overwrite with
-        displayed data
-        """
-        corrTables = list(self.session.query(CorrespondenceTable))
-        for table in corrTables:
-            self.overwriteExistingComboBox.addItem(table.name)
+    def setSaveAsTableName(self):
+        corrTable = self.session.query(CorrespondenceTable).filter_by(is_default=True).one_or_none()
+        if corrTable is not None:
+            self.txtCorrespondenceTable.setText(corrTable.name)
+            self.txtCorrespondenceTable.repaint()
 
     def readCorrTableRows(self):
         """
-        Quesries elements of the Correspondence Table
+        Queries elements of the Default Correspondence Table
         :return: row elements of the correspondence table from DB
         """
-        if self.settings.getCorrespondenceTable() is None:
+        corrTable = self.session.query(CorrespondenceTable).filter_by(is_default=True).one_or_none()
+        if corrTable is None:
             return None
         else:
-            corrTables = list(self.session.query(CorrespondenceTable))
-            for table in corrTables:
-                if table.name == self.settings.getCorrespondenceTable():
-                    return (self.session.query(CorrespondenceTableElement).filter_by(corr_table_name=table.name))
-            return None
+            return self.session.query(CorrespondenceTableElement).filter_by(corr_table_name=corrTable.name)
 
     def addRow(self):
         """
@@ -187,23 +188,21 @@ class CorrespondenceTableDialog(ui_correspondence_table_dialog.Ui_dlgCorrTable, 
             self.tblCCCLists.setItem(self.NUM_ROWS-1, col, QTableWidgetItem())
 
     def accept(self):
-        overridingExitingTable = False
-        if self.txtCorrespondenceTable.text() != "":
-            self.selectedCorrespondenceTableName = self.txtCorrespondenceTable.text()
-        elif self.overwriteExistingComboBox.currentText() != "":
-            self.selectedCorrespondenceTableName = self.overwriteExistingComboBox.currentText()
-            overridingExitingTable = True
-        else:
+        table_name = self.txtCorrespondenceTable.text()
+        if table_name == "":
             QMessageBox.information(self, 'Correspondence Table Name Needed',
-                                    'Must Specify New Table Name or Select Existing')
+                                    'Please Specify New Table Name')
             return
 
-        if overridingExitingTable == True:
+        corrTable = self.session.query(CorrespondenceTable).filter_by(name=table_name).one_or_none()
+        if corrTable is not None:
+            # table already exists, so delete first before overwriting
             self.session.query(CorrespondenceTableElement).filter_by(
-                corr_table_name=self.selectedCorrespondenceTableName).delete()
-            self.session.query(CorrespondenceTable).filter_by(name=self.selectedCorrespondenceTableName).delete()
+                corr_table_name=self.txtCorrespondenceTable.text()).delete()
+            self.session.delete(corrTable)
             self.session.commit()
-        table = CorrespondenceTable(name=self.selectedCorrespondenceTableName)
+
+        table = CorrespondenceTable(name=table_name, is_default=True)
         self.session.add(table)
         for row in range(self.NUM_ROWS):
             iso = self.tblCCCLists.item(row, 0).text()
@@ -221,10 +220,11 @@ class CorrespondenceTableDialog(ui_correspondence_table_dialog.Ui_dlgCorrTable, 
         """
         exports to CSV
         """
-        path = QFileDialog.getSaveFileName(self, 'Save File', '', 'CSV (*.csv)')
+        path = QFileDialog.getSaveFileName(self, 'Save File', self.settings.getDataDirectory(), 'CSV (*.csv)')
         if path[0]:
             with open(path[0], mode='w', newline='') as stream:
                 writer = csv.writer(stream)
+                writer.writerow(self.columnLabels)
                 for row in range(self.tblCCCLists.rowCount()):
                     rowdata = []
                     for column in range(self.tblCCCLists.columnCount()):
@@ -247,12 +247,14 @@ class CorrespondenceTableDialog(ui_correspondence_table_dialog.Ui_dlgCorrTable, 
                 self.tblCCCLists.setColumnCount(0)
                 for rowdata in csv.reader(stream):
                     row = self.tblCCCLists.rowCount()
+                    if 'Correct ID' in str(rowdata):
+                        continue
                     self.tblCCCLists.insertRow(row)
                     self.tblCCCLists.setColumnCount(len(rowdata))
                     for column, data in enumerate(rowdata):
                         item = QTableWidgetItem(data)
                         self.tblCCCLists.setItem(row, column, item)
-            self.tblCCCLists.setHorizontalHeaderLabels(['Source', 'Correct IDs', 'Allowed IDs'])
+            self.tblCCCLists.setHorizontalHeaderLabels(self.columnLabels)
             self.tblCCCLists.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
             self.tblCCCLists.horizontalHeader().setSectionResizeMode(2, QHeaderView.Stretch)
             self.NUM_ROWS = self.tblCCCLists.rowCount()

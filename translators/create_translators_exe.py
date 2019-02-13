@@ -9,15 +9,14 @@ distpath = os.path.join(dirname,"dist","translators")
 if not os.path.exists(distpath):
      os.makedirs(distpath)
 
-translators = [('ORTEC-CmdLineReplayTool-ResultsTranslator.py',''),
-               ('ORTEC-StndAloneGUIReplayTool-ResultsTranslator.py',''),
-               ('FLIR-IdentiFinder-ResultsTranslator.py','')]
+translators = ['ORTEC-CmdLineReplayTool-ResultsTranslator.py',
+               'ORTEC-StndAloneGUIReplayTool-ResultsTranslator.py',
+               'FLIR-IdentiFinder-ResultsTranslator.py',
+               'Smith_RadSeeker_ResultsTranslator.py']
 
-for translator, template in translators:
+for translator in translators:
     os.system(sys.executable + " -m PyInstaller -a -y -F -c --clean --noupx" +
           " --distpath " + distpath +
           " --workpath " + buildpath +
           " " + translator)
-    if template:
-        copy2(template, distpath)
     print("\n\n")

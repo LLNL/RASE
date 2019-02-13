@@ -43,6 +43,7 @@ from .ui_generated import ui_new_replay_dialog
 class ReplayDialog(ui_new_replay_dialog.Ui_ReplayDialog, QDialog):
     def __init__(self, parent, settings, replay=None, resultsTranslator=None):
         QDialog.__init__(self, parent)
+        self.parent = parent
         self.setupUi(self)
         self.settings = settings
         self.replay = replay
@@ -56,6 +57,7 @@ class ReplayDialog(ui_new_replay_dialog.Ui_ReplayDialog, QDialog):
             self.txtSettings.setText(replay.settings)
             self.cbCmdLine.setChecked(bool(replay.is_cmd_line))
             self.txtTemplatePath.setText(replay.n42_template_path)
+            self.txtFilenameSuffix.setText(replay.input_filename_suffix)
         if resultsTranslator:
             self.txtResultsTranslator.setText(resultsTranslator.exe_path)
             self.txtSettings_3.setText(resultsTranslator.settings)
@@ -101,10 +103,12 @@ class ReplayDialog(ui_new_replay_dialog.Ui_ReplayDialog, QDialog):
                 QMessageBox.warning(self, 'Bad Replay Name', 'Replay with this name exists. Specify Different Replay Name')
                 return
             self.replay = Replay(name = name)
+            self.parent.new_replay = self.replay
         self.replay.exe_path    = self.txtCmdLine.text()
         self.replay.is_cmd_line = self.cbCmdLine.isChecked()
         self.replay.settings    = self.txtSettings.text().strip()
         self.replay.n42_template_path = self.txtTemplatePath.text()
+        self.replay.input_filename_suffix = self.txtFilenameSuffix.text()
 
         existingResultsTranslator = session.query(ResultsTranslator).filter(ResultsTranslator.name == name)
         existingResultsTranslator.delete()

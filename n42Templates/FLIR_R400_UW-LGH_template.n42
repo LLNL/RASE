@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RadInstrumentData n42DocUUID="161f438d-ddd5-452f-a8c7-19db2c1b6e00" xmlns:flir="https://www.detectionsupport.com/radiation/xml" xmlns="http://physics.nist.gov/N42/2011/N42">
+  <RadInstrumentInformation id="instrumentInformation">
+    <RadInstrumentManufacturerName>FLIR Systems</RadInstrumentManufacturerName>
+    <RadInstrumentIdentifier>104466-2061</RadInstrumentIdentifier>
+    <RadInstrumentModelName>identiFINDER R400 UW-LGH </RadInstrumentModelName>
+    <RadInstrumentClassCode>Radionuclide Identifier</RadInstrumentClassCode>
+    <RadInstrumentVersion>
+      <RadInstrumentComponentName>Software</RadInstrumentComponentName>
+      <RadInstrumentComponentVersion>2017.1</RadInstrumentComponentVersion>
+    </RadInstrumentVersion>
+    <RadInstrumentCharacteristics>
+      <Characteristic>
+        <CharacteristicName>Source of intrinsic activity</CharacteristicName>
+        <CharacteristicValue>Cesium137</CharacteristicValue>
+        <CharacteristicValueUnits>unit-less</CharacteristicValueUnits>
+        <CharacteristicValueDataClassCode>string</CharacteristicValueDataClassCode>
+      </Characteristic>
+    </RadInstrumentCharacteristics>
+  </RadInstrumentInformation>
+  <RadDetectorInformation id="spectra">
+    <RadDetectorCategoryCode>Gamma</RadDetectorCategoryCode>
+    <RadDetectorKindCode>LaBr3</RadDetectorKindCode>
+    <RadDetectorLengthValue>0.030</RadDetectorLengthValue>
+    <RadDetectorDiameterValue>0.030</RadDetectorDiameterValue>
+  </RadDetectorInformation>
+  <EnergyCalibration id="energyCalibration">
+    <CoefficientValues>${detector.ecal0} ${detector.ecal1} ${detector.ecal2}</CoefficientValues>
+  </EnergyCalibration>
+  <RadMeasurementGroup id="measurementGroup1" />
+  <RadMeasurement id="measurementGroup1ForegroundMeasurement" radMeasurementGroupReferences="measurementGroup1">
+    <MeasurementClassCode>Foreground</MeasurementClassCode>
+    <StartDateTime>2018-01-01T12:00:00-00:00</StartDateTime>
+    <RealTimeDuration>PT${scenario.acq_time}S</RealTimeDuration>
+    <Spectrum id="measurementGroup1ForegroundMeasurementSpectrum" radDetectorInformationReference="spectra" energyCalibrationReference="energyCalibration">
+      <LiveTimeDuration>PT${scenario.acq_time}S</LiveTimeDuration>
+      <ChannelData>${sample_counts}</ChannelData>
+      <RASE_Sensitivity>${rase_sensitivity}</RASE_Sensitivity>
+    </Spectrum>
+  </RadMeasurement>
+  <RadMeasurement id="measurementGroup1IntrinsicActivityMeasurement" radMeasurementGroupReferences="measurementGroup1">
+    <Remark>This measurement was done in a factory-controlled environment.</Remark>
+    <MeasurementClassCode>IntrinsicActivity</MeasurementClassCode>
+    <StartDateTime>2017-06-28T14:35:52-04:00</StartDateTime>
+    <RealTimeDuration>PT${secondary_spectrum.realtime}S</RealTimeDuration>
+    <Spectrum id="measurementGroup1IntrinsicActivityMeasurementSpectrum" radDetectorInformationReference="spectra" energyCalibrationReference="energyCalibration">
+      <LiveTimeDuration>PT${secondary_spectrum.livetime}S</LiveTimeDuration>
+      <ChannelData>${secondary_spectrum.get_counts_as_str()}</ChannelData>
+    </Spectrum>
+  </RadMeasurement>
+</RadInstrumentData>

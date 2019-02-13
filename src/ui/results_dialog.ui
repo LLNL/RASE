@@ -13,8 +13,8 @@
   <property name="windowTitle">
    <string>View Results</string>
   </property>
-  <layout class="QVBoxLayout" name="verticalLayout">
-   <item>
+  <layout class="QGridLayout" name="gridLayout_2">
+   <item row="0" column="0">
     <widget class="QTableWidget" name="tblResults">
      <property name="editTriggers">
       <set>QAbstractItemView::NoEditTriggers</set>
@@ -24,7 +24,7 @@
      </property>
     </widget>
    </item>
-   <item>
+   <item row="1" column="0">
     <widget class="QGroupBox" name="Plotting">
      <property name="title">
       <string>Plotting</string>
@@ -142,12 +142,19 @@
      </layout>
     </widget>
    </item>
-   <item>
+   <item row="2" column="0">
     <layout class="QHBoxLayout" name="horizontalLayout">
      <item>
       <widget class="QPushButton" name="buttonExport">
        <property name="text">
         <string>Export as csv</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="buttonCorrTable">
+       <property name="text">
+        <string>Correspondence Table</string>
        </property>
       </widget>
      </item>

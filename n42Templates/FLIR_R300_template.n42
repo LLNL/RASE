@@ -1,0 +1,39 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<RadInstrumentData n42DocUUID="975792aa-2746-4bd5-84bd-7583bacaa669" xmlns:flir="https://www.detectionsupport.com/radiation/xml" xmlns="http://physics.nist.gov/N42/2011/N42">
+  <RadInstrumentInformation id="instrumentInformation">
+    <RadInstrumentManufacturerName>FLIR Systems</RadInstrumentManufacturerName>
+    <RadInstrumentIdentifier>103156003372</RadInstrumentIdentifier>
+    <RadInstrumentModelName>nanoRaider ZH</RadInstrumentModelName>
+    <RadInstrumentClassCode>Spectroscopic Personal Radiation Detector</RadInstrumentClassCode>
+    <RadInstrumentVersion>
+      <RadInstrumentComponentName>Software</RadInstrumentComponentName>
+      <RadInstrumentComponentVersion>2017.2</RadInstrumentComponentVersion>
+    </RadInstrumentVersion>
+	<RadInstrumentCharacteristics>
+      <CharacteristicGroup>
+        <CharacteristicGroupName>Reachback Information</CharacteristicGroupName>
+      </CharacteristicGroup>
+    </RadInstrumentCharacteristics>
+  </RadInstrumentInformation>
+  <RadDetectorInformation id="spectra">
+    <RadDetectorCategoryCode>Gamma</RadDetectorCategoryCode>
+    <RadDetectorKindCode>CZT</RadDetectorKindCode>
+    <RadDetectorLengthValue>0.013</RadDetectorLengthValue>
+    <RadDetectorWidthValue>0.013</RadDetectorWidthValue>
+    <RadDetectorDepthValue>0.005</RadDetectorDepthValue>
+  </RadDetectorInformation>
+  <EnergyCalibration id="energyCalibration">
+    <CoefficientValues>${detector.ecal0} ${detector.ecal1} ${detector.ecal2} </CoefficientValues>
+  </EnergyCalibration>
+  <RadMeasurementGroup id="measurementGroup433" />
+  <RadMeasurement id="measurementGroup433ForegroundMeasurement" radMeasurementGroupReferences="measurementGroup433">
+    <Remark>This spectrum was measured by a single, dedicated crystal.</Remark>
+    <MeasurementClassCode>Foreground</MeasurementClassCode>
+    <StartDateTime>2018-05-15T10:49:02-04:00</StartDateTime>
+    <RealTimeDuration>PT${scenario.acq_time}S</RealTimeDuration>
+    <Spectrum id="measurementGroup433ForegroundMeasurementSpectrum" radDetectorInformationReference="spectra" energyCalibrationReference="energyCalibration">
+      <LiveTimeDuration>PT${scenario.acq_time}S</LiveTimeDuration>
+      <ChannelData>${sample_counts}</ChannelData>
+    </Spectrum>
+  </RadMeasurement>
+</RadInstrumentData>

@@ -44,11 +44,17 @@ DEFAULT_DATA_DIR = os.path.expanduser(os.path.join('~', 'RaseData'))
 RASE_SAMPLING_ALGO_KEY = "sampling algorithm"
 DEFAULT_SAMPLING_ALGO = sampling_algos.generate_sample_counts_inversion
 
-CORRESPONDENCE_TABLE_KEY = "correspondence table"
-
 LAST_SCENARIO_GRPNAME_KEY = 'last_scenario_grpname'
 DEFAULT_SCENARIO_GRPNAME = 'default_group'
 
+RANDOM_SEED_KEY = "Random Seed"
+RANDOM_SEED_DEFAULT = 1
+
+RANDOM_SEED_FIXED_KEY = "Random Seed Fixed"
+RANDOM_SEED_FIXED_DEFAULT = False
+
+IS_AFTER_CORRESPONDENCE_TABLE_CALL_KEY = "Is After Correspondence Table Call"
+IS_AFTER_CORRESPONDENCE_TABLE_CALL_DEFAULT = False
 
 class RaseSettings:
     def __init__(self):
@@ -68,19 +74,22 @@ class RaseSettings:
         if not self.settings.value(RASE_SAMPLING_ALGO_KEY):
             self.settings.setValue(RASE_SAMPLING_ALGO_KEY, DEFAULT_SAMPLING_ALGO)
 
-        if not self.settings.value(CORRESPONDENCE_TABLE_KEY):
-            self.settings.setValue(CORRESPONDENCE_TABLE_KEY, None)
-
         # Last scenario group used
         if not self.settings.value(LAST_SCENARIO_GRPNAME_KEY):
             self.settings.setValue(LAST_SCENARIO_GRPNAME_KEY, DEFAULT_SCENARIO_GRPNAME)
+
+        if not self.settings.value(RANDOM_SEED_KEY):
+            self.settings.setValue(RANDOM_SEED_KEY, RANDOM_SEED_DEFAULT)
+
+        if not self.settings.value(RANDOM_SEED_FIXED_KEY):
+            self.settings.setValue(RANDOM_SEED_FIXED_KEY, RANDOM_SEED_FIXED_DEFAULT)
 
     # Sample Directory
     def getSampleDirectory(self):
         """
         Returns full path of the SampleSpectra directory
         """
-        return os.path.join(self.settings.value(RASE_DATA_DIR_KEY), 'SampleSpectra')
+        return os.path.join(self.settings.value(RASE_DATA_DIR_KEY), 'SampledSpectra')
 
     # Database File
     def getDatabaseFilepath(self):
@@ -100,18 +109,6 @@ class RaseSettings:
         Sets Rase Data directory
         """
         self.settings.setValue(RASE_DATA_DIR_KEY, dir)
-
-    def getCorrespondenceTable(self):
-        """
-        Returns default Correspondence Table name
-        """
-        return self.settings.value(CORRESPONDENCE_TABLE_KEY)
-
-    def setCorrespondenceTable(self, table):
-        """
-        Sets default Correspondence Table name
-        """
-        self.settings.setValue(CORRESPONDENCE_TABLE_KEY, table)
 
     def getSamplingAlgo(self):
         """
@@ -136,6 +133,61 @@ class RaseSettings:
         sets last Scenario Group name
         """
         self.settings.setValue(LAST_SCENARIO_GRPNAME_KEY, grp_name)
+
+    def getRandomSeed(self):
+        """
+        Returns Random Seed
+        """
+        return int(self.settings.value(RANDOM_SEED_KEY))
+
+    def setRandomSeed(self, seed):
+        """
+        Sets Random Seed
+        """
+        self.settings.setValue(RANDOM_SEED_KEY, seed)
+
+    def getRandomSeedDefault(self):
+        """
+        Returns Random Seed default value
+        """
+        return RANDOM_SEED_DEFAULT
+
+
+    def getRandomSeedFixed(self):
+        """
+        Returns Random Seed Fixed boolean
+        """
+        return (self.settings.value(RANDOM_SEED_FIXED_KEY))
+
+    def setRandomSeedFixed(self, isFixed):
+        """
+        Sets Random Seed Fixed boolean
+        """
+        self.settings.setValue(RANDOM_SEED_FIXED_KEY, isFixed)
+
+    def getIsAfterCorrespondenceTableCall(self):
+        """
+        Returns Is After Correspondence Table Call boolean
+        """
+        return (self.settings.value(IS_AFTER_CORRESPONDENCE_TABLE_CALL_KEY))
+
+    def setIsAfterCorrespondenceTableCall(self, isAfterCorrespondenceTableCall):
+        """
+        Sets Is After Correspondence Table Call boolean
+        """
+        self.settings.setValue(IS_AFTER_CORRESPONDENCE_TABLE_CALL_KEY, isAfterCorrespondenceTableCall)
+
+    def getRandomSeedFixedDefault(self):
+        """
+        Returns Random Seed Fixed default boolean value
+        """
+        return RANDOM_SEED_FIXED_DEFAULT
+
+    def getIsAfterCorrespondenceTableCalldDefault(self):
+        """
+        Returns Is After Correspondence Table Call default boolean value
+        """
+        return IS_AFTER_CORRESPONDENCE_TABLE_CALL_DEFAULT
 
     def getAllSettingsAsText(self):
         """

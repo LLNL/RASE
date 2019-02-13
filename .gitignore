@@ -1,10 +1,10 @@
 __pycache__
 *.db
+src/BaseSpectra
 .DS_Store
 rase.sqlite
 .idea/
 /build/
 /dist/
+/setup_cx.py
 doc/_build/
-src/ui_generated/ui_*.py
-tests/

@@ -13,6 +13,7 @@ Welcome to RASE documentation!
    RASE_introduction
    RASE_Requirements
    Using_RASE
+   ReplayToolSettings
    Advanced_topics
    References
    disclaimer
