@@ -45,28 +45,6 @@
             </widget>
            </item>
            <item>
-            <widget class="QPushButton" name="btnAddScenarioAdv">
-             <property name="enabled">
-              <bool>false</bool>
-             </property>
-             <property name="sizePolicy">
-              <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
-               <horstretch>0</horstretch>
-               <verstretch>0</verstretch>
-              </sizepolicy>
-             </property>
-             <property name="maximumSize">
-              <size>
-               <width>16777215</width>
-               <height>16777215</height>
-              </size>
-             </property>
-             <property name="text">
-              <string>Create Advanced Scenario...</string>
-             </property>
-            </widget>
-           </item>
-           <item>
             <spacer name="horizontalSpacer_5">
              <property name="orientation">
               <enum>Qt::Horizontal</enum>
@@ -391,8 +369,8 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>990</width>
-     <height>22</height>
+     <width>1000</width>
+     <height>21</height>
     </rect>
    </property>
    <property name="nativeMenuBar">
@@ -425,7 +403,6 @@
     </property>
     <addaction name="actionInput_Random_Seed"/>
     <addaction name="actionBase_Spectra_Creation_Tool"/>
-    <addaction name="actionMDA_Studies_under_development"/>
     <addaction name="actionDynamic_Scenarios_under_development"/>
    </widget>
    <addaction name="menuFile"/>
