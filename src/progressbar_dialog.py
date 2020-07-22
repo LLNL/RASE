@@ -2,7 +2,7 @@
 # Copyright (c) 2018 Lawrence Livermore National Security, LLC.
 # Produced at the Lawrence Livermore National Laboratory
 #
-# Written by J. Chavez, G. Kosinovsky, V. Mozin, S. Sangiorgio.
+# Written by J. Chavez, S. Czyz, G. Kosinovsky, V. Mozin, S. Sangiorgio.
 # RASE-support@llnl.gov.
 #
 # LLNL-CODE-750919
@@ -79,6 +79,7 @@ class ProgressBar(QDialog):
         self.show()
 
         self.t = 0
+        self.deltaT = []
         # self.button_stop.setDisabled(True)
 
     def run(self, worker, ):
@@ -102,9 +103,14 @@ class ProgressBar(QDialog):
     @pyqtSlot(int)
     def onCountChanged(self, value):
         self.progress.setValue(value)
-        deltaT = (time.time() - self.t) / float(value)
-        # self.t = curr_time
-        time_str = str(int(deltaT * (self.progress.maximum() - value)) + 1)
+        iterator = value % 50 - 1
+        if len(self.deltaT) < 50:
+            self.deltaT.append(time.time() - self.t)
+        else:
+            self.deltaT[iterator] = time.time() - self.t
+        dT = sum(self.deltaT)/len(self.deltaT)
+        self.t = time.time()
+        time_str = str(int(dT * (self.progress.maximum() - value)) + 1)
         self.label.setText("Time Remaining: " + time_str + " seconds")
 
     @pyqtSlot(bool)

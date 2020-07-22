@@ -2,7 +2,7 @@
 # Copyright (c) 2018 Lawrence Livermore National Security, LLC.
 # Produced at the Lawrence Livermore National Laboratory
 #
-# Written by J. Chavez, G. Kosinovsky, V. Mozin, S. Sangiorgio.
+# Written by J. Chavez, S. Czyz, G. Kosinovsky, V. Mozin, S. Sangiorgio.
 # RASE-support@llnl.gov.
 #
 # LLNL-CODE-750919
@@ -45,16 +45,16 @@ from .scenario_dialog import MaterialDoseDelegate
 from .table_def import Session, MaterialNameTranslation, Material, BaseSpectrum, BackgroundSpectrum
 from .ui_generated import ui_import_base_spectra_dialog
 from .utils import profileit
-
+from .rase_settings import RaseSettings
 
 class BaseSpectraDialog(ui_import_base_spectra_dialog.Ui_Dialog, QDialog):
-    def __init__(self, session, settings):
+    def __init__(self, session):
         QDialog.__init__(self)
         self.setupUi(self)
-        self.settings = settings
+        self.settings = RaseSettings()
         self.tblSpectra.setColumnCount(2)
         self.tblSpectra.setHorizontalHeaderLabels(['Material Name', 'File Name'])
-        self.tblSpectra.setItemDelegateForColumn(0, MaterialDoseDelegate(self.tblSpectra, materialCol=0, editable=True))
+        # self.tblSpectra.setItemDelegateForColumn(0, MaterialDoseDelegate(self.tblSpectra, materialCol=0, editable=True))
         self.tblSpectra.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
         self.txtStatus.setText('')
         self.baseSpectra = []
@@ -69,6 +69,7 @@ class BaseSpectraDialog(ui_import_base_spectra_dialog.Ui_Dialog, QDialog):
         self.bckgrndCorrupted = False
         self.redColor = QColor(255, 0, 0)
         self.blackColor = QColor(0, 0, 0)
+
     @pyqtSlot(bool)
     def on_btnBrowse_clicked(self, checked, directoryPath = None, secType = None):
         """
@@ -96,7 +97,7 @@ class BaseSpectraDialog(ui_import_base_spectra_dialog.Ui_Dialog, QDialog):
               for filename in filenames:
                   v = readSpectrumFile(dir + os.sep + filename, self.sharedObject, self.txtStatus)
                   if v:
-                      self.specMap[filename] = self.ReadFileObject(v[0],v[1],v[2],v[3],v[4],v[5],v[6],v[7],v[8])
+                      self.specMap[filename] = self.ReadFileObject(v[0],v[1],v[2],v[3],v[4],v[5],v[6],v[7],v[8],v[9])
             # get ecal, counts, and bckg spetrum parameters for one spectrum
               for filename in self.specMap.keys():
                   rfo = self.specMap[filename]
@@ -214,7 +215,7 @@ class BaseSpectraDialog(ui_import_base_spectra_dialog.Ui_Dialog, QDialog):
             materialName = self.tblSpectra.item(row, 0).text()
             material = self.session.query(Material).get(materialName)
             if not material:
-                material = Material(name=materialName, associated_spectrum_counter = 0)
+                material = Material(name=materialName, associated_spectrum_counter=0)
             material.increment_associated_spectrum_counter()
             baseSpectraFilename = self.tblSpectra.item(row, 1).text()
             baseSpectraFilepath = self.dir + os.sep + baseSpectraFilename
@@ -229,10 +230,10 @@ class BaseSpectraDialog(ui_import_base_spectra_dialog.Ui_Dialog, QDialog):
                         self.bckgrndCorrupted = True
                     else:
                         backgroundSpectrum = BackgroundSpectrum(material=material,
-                                                            filename=baseSpectraFilepath,
-                                                            realtime=rfo.realtimeBckg,
-                                                            livetime=rfo.livetimeBckg,
-                                                            baseCounts=rfo.countsBckg)
+                                                                filename=baseSpectraFilepath,
+                                                                realtime=rfo.realtimeBckg,
+                                                                livetime=rfo.livetimeBckg,
+                                                                baseCounts=rfo.countsBckg)
                 else:
                     if(self.bckgrndCorrupted == True):
                         backgroundSpectrum = None
@@ -241,20 +242,21 @@ class BaseSpectraDialog(ui_import_base_spectra_dialog.Ui_Dialog, QDialog):
                     if backgroundSpectrum.livetime != rfo.livetimeBckg:
                         if rfo.livetimeBckg > backgroundSpectrum.livetime:
                             backgroundSpectrum = BackgroundSpectrum(material=material,
-                                                            filename=baseSpectraFilepath,
-                                                            realtime=rfo.realtimeBckg,
-                                                            livetime=rfo.livetimeBckg,
-                                                            baseCounts=rfo.countsBckg)
+                                                                    filename=baseSpectraFilepath,
+                                                                    realtime=rfo.realtimeBckg,
+                                                                    livetime=rfo.livetimeBckg,
+                                                                    baseCounts=rfo.countsBckg)
                         #backgroundSpectrum = None
                     #if backgroundSpectrum.baseCounts != rfo.countsBckg:
                         #backgroundSpectrum = None
 
             baseSpectrum = BaseSpectrum(material=material,
-                                                    filename=baseSpectraFilepath,
-                                                    realtime=rfo.realtime,
-                                                    livetime=rfo.livetime,
-                                                    sensitivity=rfo.sensitivity,
-                                                    baseCounts=rfo.counts)
+                                        filename=baseSpectraFilepath,
+                                        realtime=rfo.realtime,
+                                        livetime=rfo.livetime,
+                                        rase_sensitivity=rfo.rase_sensitivity,
+                                        flux_sensitivity=rfo.flux_sensitivity,
+                                        baseCounts=rfo.counts)
             self.baseSpectra.append(baseSpectrum)
 
         self.backgroundSpectra.append(backgroundSpectrum)
@@ -273,12 +275,14 @@ class BaseSpectraDialog(ui_import_base_spectra_dialog.Ui_Dialog, QDialog):
             self.bkgndSpectrumInFile = False
 
     class ReadFileObject() :
-        def __init__(self,counts,ecal,realtime,livetime,sensitivity,countsBckg=None,ecalBckg=None,realtimeBckg=None,livetimeBckg=None):
+        def __init__(self, counts, ecal, realtime, livetime, rase_sensitivity, flux_sensitivity, countsBckg=None,
+                        ecalBckg=None, realtimeBckg=None, livetimeBckg=None):
             self.counts = counts
             self.ecal = ecal
             self.realtime = realtime
             self.livetime = livetime
-            self.sensitivity = sensitivity
+            self.rase_sensitivity = rase_sensitivity
+            self.flux_sensitivity = flux_sensitivity
             self.countsBckg = countsBckg
             self.ecalBckg = ecalBckg
             self.realtimeBckg = realtimeBckg

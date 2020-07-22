@@ -2,7 +2,7 @@
 # Copyright (c) 2018 Lawrence Livermore National Security, LLC.
 # Produced at the Lawrence Livermore National Laboratory
 #
-# Written by J. Chavez, G. Kosinovsky, V. Mozin, S. Sangiorgio.
+# Written by J. Chavez, S. Czyz, G. Kosinovsky, V. Mozin, S. Sangiorgio.
 # RASE-support@llnl.gov.
 #
 # LLNL-CODE-750919
@@ -35,13 +35,13 @@ This module defines persistable objects in sqlalchemy framework
 from sqlalchemy import ForeignKey, Column, Integer, String, Float, Boolean
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm             import relationship, sessionmaker, scoped_session
-from sqlalchemy.sql.schema      import Table
+from sqlalchemy.sql.schema import Table, CheckConstraint
 from sqlalchemy import event
 import numpy as np
 from typing import Set
 from .utils import compress_counts
 
-DB_VERSION_NAME = 'rase_db_v1_0_7'
+DB_VERSION_NAME = 'rase_db_v1_0_8'
 
 Base    = declarative_base()
 # Session = sessionmaker()
@@ -129,7 +129,6 @@ class IdentificationResult(Base):
     id            = Column(Integer, primary_key=True)
     name          = Column(String)
     confidence    = Column(Float)
-    reported      = Column(Boolean)
     id_rept_id    = Column(Integer, ForeignKey('identification_reports.id'))
 
 
@@ -138,18 +137,19 @@ class Scenario(Base):
     id                  = Column(String, primary_key=True)
     acq_time            = Column(Float)
     replication         = Column(Integer)
-    scen_materials      = relationship('ScenarioMaterial', cascade='save-update, merge, delete')
-    scen_bckg_materials = relationship('ScenarioBackgroundMaterial', cascade='save-update, merge, delete')
-    influences          = relationship('Influence', secondary=scen_infl_assoc_tbl)
+    # eager loading required by the import/export scenario functions in scenarios_io module
+    scen_materials      = relationship('ScenarioMaterial', cascade='save-update, merge, delete', lazy='joined')
+    scen_bckg_materials = relationship('ScenarioBackgroundMaterial', cascade='save-update, merge, delete', lazy='joined')
+    influences          = relationship('Influence', secondary=scen_infl_assoc_tbl, lazy='joined')
     scen_group_id       = Column(Integer, ForeignKey('scenario_groups.id'))
 
     def __init__(self, acq_time, replication, scen_materials, scen_bckg_materials, influences, description = '', ):
         # id: a hash of scenario parameters, truncated to a 6-digit hex string
-        self.id = hex(0xffffff & hash('{}{}{}{}'.format( acq_time,
-                    ''.join(sorted('{}{:9.12f}'.format(
-                        scenMat.material.name, scenMat.dose) for scenMat in scen_materials)),
-                    ''.join(sorted('{}{:9.12f}'.format(
-                        scenMat.material.name, scenMat.dose) for scenMat in scen_bckg_materials)),
+        self.id = hex(0xffffff & hash('{}{}{}{}'.format(acq_time,
+                    ''.join(sorted('{}{:9.12f}{}'.format(
+                        scenMat.material.name, scenMat.dose, scenMat.fd_mode) for scenMat in scen_materials)),
+                    ''.join(sorted('{}{:9.12f}{}'.format(
+                        scenMat.material.name, scenMat.dose, scenMat.fd_mode) for scenMat in scen_bckg_materials)),
                     ''.join(sorted(infl.name for infl in influences))
                   ))).upper()[2:]
         self.acq_time       = acq_time
@@ -164,8 +164,26 @@ class Scenario(Base):
     def get_bckg_material_names_no_shielding(self) -> Set[str]:
         return set(name for scenMat in self.scen_bckg_materials for name in scenMat.material.name_no_shielding())
 
-    def exportScenarioToFile(self):
-        pass
+    def dump_xml(self, _indent=0):
+        xml = [f'<Scenario ScenarioGroup="{self.scen_group_id}" ID="{self.id}>']
+        xml.append(f'  <SourceMaterials>')
+        for scenMat in self.scen_materials:
+            xml.append(f"    <BaseMaterialName>{scenMat.material_name}</BaseMaterialName>")
+            xml.append(f"    <BaseMaterialExposure>{scenMat.dose}</BaseMaterialExposure>")
+        xml.append('  </SourceMaterials>')
+        xml.append('  <BackgroundMaterials>')
+        for scenMat in self.scen_bckg_materials:
+            xml.append(f"    <BaseMaterialName>{scenMat.material_name}</BaseMaterialName>")
+            xml.append(f"    <BaseMaterialExposure>{scenMat.dose}</BaseMaterialExposure>")
+        xml.append('  </BackgroundMaterials>')
+        xml.append(f'  <Replications>{self.replication}</Replications>')
+        xml.append(f'  <AcquisitionTime>{self.acq_time}</AcquisitionTime>')
+        for influence in self.influences:
+            xml.append(f'  <Influence>{influence.name}</Influence>')
+        xml.append('</Scenario>')
+        indent = "  " * _indent
+        return "".join([f'{indent}{l}\n' for l in xml])
+
 
 class SampleSpectraSeed(Base):
     __tablename__='sample_spectra_seeds'
@@ -176,20 +194,30 @@ class SampleSpectraSeed(Base):
     scen_id  = Column(String, ForeignKey('scenarios.id'))
     det_name = Column(String, ForeignKey('detectors.name'))
 
+
 class ScenarioGroup(Base):
     __tablename__= 'scenario_groups'
     id          = Column(Integer, primary_key=True)
     name        = Column(String, unique=True)
     description = Column(String)
-    scenarios   = relationship('Scenario', backref='group')
+    scenarios   = relationship('Scenario', backref='scenario_groups')
 
+    def dump_xml(self, _indent=0):
+        indent = "  " * _indent
+        return(
+                f'{indent}<ScenarioGroup id="{self.id}">\n'
+                f'{indent}  <ScenarioGroupID>{self.name}</ScenarioGroupID>\n'
+                f'{indent}  <ScenarioGroupDescription>{self.description}s</ScenarioGroupDescription>\n'
+                f'{indent}</ScenarioGroup>\n'
+                 )
 
 class ScenarioMaterial(Base):
     """many-to-many table between scenario and material"""
     __tablename__ = 'scenario_materials'
     id            = Column(Integer, primary_key=True)
     dose          = Column(Float)
-    material      = relationship('Material')
+    fd_mode       = Column(String, CheckConstraint("fd_mode IN ('DOSE','FLUX')"))
+    material      = relationship('Material', lazy='joined')
     scenario_id   = Column(String, ForeignKey('scenarios.id'))
     material_name = Column(String, ForeignKey('materials.name'))
 
@@ -198,7 +226,8 @@ class ScenarioBackgroundMaterial(Base):
     __tablename__ = 'scenario_background_materials'
     id            = Column(Integer, primary_key=True)
     dose          = Column(Float)
-    material      = relationship('Material')
+    fd_mode       = Column(String, CheckConstraint("fd_mode IN ('DOSE','FLUX')"))
+    material      = relationship('Material', lazy='joined')
     scenario_id   = Column(String, ForeignKey('scenarios.id'))
     material_name = Column(String, ForeignKey('materials.name'))
 
@@ -263,7 +292,8 @@ class BaseSpectrum(Base):
     baseCounts    = Column(String)
     realtime      = Column(Float)
     livetime      = Column(Float)
-    sensitivity   = Column(Float)  # aka static efficiency
+    rase_sensitivity   = Column(Float)  # aka static efficiency
+    flux_sensitivity   = Column(Float)
     detector_name = Column(String, ForeignKey('detectors.name'))
     material_name = Column(String, ForeignKey('materials.name'))
 
@@ -271,7 +301,8 @@ class BaseSpectrum(Base):
         # FIXME: forced casting to int. What if there are spectra with floats?
         return np.array([int(float(c)) for c in self.baseCounts.split(",")])
 
-
+# TODO: Secondary background currently does not have flux/dose sensitivity parameters, it is a direct copy/paste from
+#  the base spectra
 class BackgroundSpectrum(Base):
     __tablename__ = 'background_spectra'
     id            = Column(Integer, primary_key=True)
@@ -300,4 +331,3 @@ class MaterialNameTranslation(Base):
     __tablename__ = 'material_translations'
     name          = Column(String, primary_key=True)
     toName        = Column(String)
-

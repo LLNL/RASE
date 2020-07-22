@@ -24,6 +24,6 @@ All other entries in the “Add Instrument” dialog can be modified later in th
 .. _rase-WorkflowStep1:
 
 .. figure:: _static/rase_WorkflowStep1.png
-    :scale: 75 %
+    :scale: 20 %
 
     “Add Instrument” dialog.

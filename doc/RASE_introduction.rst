@@ -14,9 +14,9 @@ Because of the semi-empirical nature of the analysis, the RASE approach allows f
 spectrometer response, such as the detector package construction, and various influences (temperature, EMT, count rate,
 etc.). This is achieved by acquiring a set of high-accuracy Base Spectra from individual isotopic sources with an actual
 instrument. These spectra can be subsequently down-sampled and combined to generate large sets of synthetic spectra (called Sampled Spectra) simulating data
-acquisition at a variety of dose rates and dwelling times.
+acquisition at a variety of dose rates/fluxes and dwelling times.
 
 The RASE methodology is described in detail in [RASE_IEEE]_. Some validation of the methodology is reported in [RASE_validation]_. Additional validation work is ongoing. The RASE software described in this manual implements the RASE methodology in an intuitive and user-friendly interface.
 
-With any feedback, bug reports, observations and recommendations,
-please contact the LLNL development team at rase-support@llnl.gov
+Please contact the LLNL development team at rase-support@llnl.gov
+with any feedback, bug reports, observations and recommendations.

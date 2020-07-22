@@ -12,9 +12,11 @@ For more information on RASE see:
 Required Libraries
 ----------------------------------
 * QT5
-* PyQt5
+* PyQt5 and PyQTWebEngine
+* declxml
 * SQLAlchemy
-* Matplotlib and Numpy
+* Matplotlib, Numpy, Pandas, Seaborn
+* Uncertainties, LmFit
 * Mako
 
 
@@ -59,6 +61,7 @@ Contributors
 
 - Samuele Sangiorgio, LLNL
 - Vladimir Mozin, LLNL
+- Steven Czyz, LLNL
 - Greg Kosinovsky, LLNL
 - Joe Chavez, LLNL
 - Jason Brodsky, LLNL

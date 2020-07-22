@@ -1,37 +1,50 @@
 .. _workflowStep3:
 
-**********************************************
-RASE Workflow Step 4: Generate Sampled Spectra
-**********************************************
+************************************************************
+RASE Workflow Step 3: Define the Replay Tool and Translators
+************************************************************
+
+NOTE. This step is not required to generate populations of sampled spectra with the RASE code. The user can skip this step, generate scenarios and sampled spectra, and define the replay tool later.
+
+Before the "Run Replay Tool" button on the main window can be activated, the instrument must have its replay tool specified.
+
+Two types of replay tools can be implemented in the RASE workflow:
+
+*  Command line-based tools can be executed directly from the RASE main window
+
+*  Stand-alone replay tools that should be manipulated outside of the RASE software
+
+In addition to the replay tool, the user must specify an instrument specific n42 template and a identification results translator in order to ensure compatibility of the RASE file formats with instrument-specific spectral and replay tool output files.
+See :ref:`requirements` for more details on these.
+The user should be aware of the instrument manufacturer's instructions on replay tool operation and the command line syntax requirements. For convenience, some example of configuration settings for replay tools are provided in :ref:`replayToolSettings`.
+If necessary, these may be provided by the RASE code developers, and may require specific settings.
+
+To define the replay tool:
+
+*  Double-click on an entry in the “Instruments” table
+
+*  In the “Edit Instrument” window, click the “New” button near the “Replay Tool” field.
+
+*  In the “New Replay Software” dialog, use the “Browse” button to navigate to the command line replay tool executable. Make sure that the “Command line” checkbox is selected.
+
+*  In the “Replay Settings:” field, type in the command line parameters (obligatory). The RASE software will automatically substitute the INPUTDIR and OUTPUTDIR entries with the path to the directories where the sampled spectra and replay tool results are located.
+
+*  Similarly, use the "Browse" buttons to identify the path to the “Replay Tool n42 Input Template” and the “Replay Results Translator.”
 
 
-Confirm that the desired instruments and scenarios are present and properly specified in the appropriate tables.
-If necessary, entries in the “Scenarios” and “Instruments” tables can be modified or deleted by the user by double-clicking
-on the corresponding row or using the context menu.
+Once the replay tool is defined, the “Run Replay Tool” and "Run Results Translator" buttons become available in the RASE main window.
+The entry in the “Instruments” table should now list your newly defined replay tool.
 
-At this point, RASE can be used to generate sampled spectra. To do this, execute the following steps:
+Replay tool settings can be edited at any time by double-clicking the replay tool name in the “Instruments” table.
 
-#.  Highlight one or more entries in the “Instruments” table
+Once the replay tool is defined, it can be assigned to any other instrument by using a drop-down menu near the “Replay”
+field in the “Edit Instrument” window.
 
-#.  Highlight one or more entries in the “Scenarios” table
-
-#.  Press the “Gen Sampled Spectra” button that becomes available in order to generate the sampled spectra.
-
-If a selected instrument does not have base spectra for materials present in the scenario, the “Gen Sampled Spectra”
-button remains unavailable. The missing materials for the instrument will be highlighted red in the “Scenarios” table.
-
-The directory containing the resulting sampled spectra can be accessed by pressing the “Sample Spectra Dir” button.
-If an n42 template file was specified in the replay tool settings associated with the current instrument, then a second
-directory will also be present containing the sampled spectra in the format ready for injection in the specified replay
-tool.
-
-The directory containing data associated with the specific scenario can be accessed using the context menu in the
-"Scenarios" table. An instrument must be selected in order for this option to become available.
 
 
 .. _rase-WorkflowStep3:
 
 .. figure:: _static/rase_WorkflowStep3.png
-    :scale: 75 %
+    :scale: 20 %
 
-    Populated main RASE window showing how to generate sample spectra.
+    “Define Replay Tool” dialog.

@@ -2,7 +2,7 @@
 # Copyright (c) 2018 Lawrence Livermore National Security, LLC.
 # Produced at the Lawrence Livermore National Laboratory
 #
-# Written by J. Chavez, G. Kosinovsky, V. Mozin, S. Sangiorgio.
+# Written by J. Chavez, S. Czyz, G. Kosinovsky, V. Mozin, S. Sangiorgio.
 # RASE-support@llnl.gov.
 #
 # LLNL-CODE-750919

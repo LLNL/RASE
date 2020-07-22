@@ -2,7 +2,7 @@
 # Copyright (c) 2018 Lawrence Livermore National Security, LLC.
 # Produced at the Lawrence Livermore National Laboratory
 #
-# Written by J. Chavez, G. Kosinovsky, V. Mozin, S. Sangiorgio.
+# Written by J. Chavez, S. Czyz, G. Kosinovsky, V. Mozin, S. Sangiorgio.
 # RASE-support@llnl.gov.
 #
 # LLNL-CODE-750919
@@ -33,20 +33,24 @@ This module defines key functions used in RASE
 """
 
 import glob
+import logging
 import ntpath
 import os
 import re
 import shutil
 import sys
 import xml.etree.ElementTree as ET
+from pathlib import Path
 
 import numpy as np
+from mako import exceptions
 from sqlalchemy.engine import create_engine
 
+from .scenarios_io import ScenariosIO
 from .table_def import BaseSpectrum, BackgroundSpectrum, Detector, Scenario, IdentificationSet, IdentificationReport, \
-    IdentificationResult, Session, Base, DetectorInfluence, SampleSpectraSeed, ScenarioMaterial, ScenarioBackgroundMaterial
-
+    Session, Base, DetectorInfluence, ScenarioMaterial, ScenarioBackgroundMaterial
 from .utils import compress_counts
+
 
 def initializeDatabase(databaseFilepath):
     """
@@ -99,15 +103,15 @@ def importResultsDirectory(directory, scenarioId, detectorName):
             idReport = IdentificationReport(filenum=filenum)
             idSet.id_reports.append(idReport)
 
-            # parse each .res file and extract id_name, confidence and reported
-            resultElements = ET.parse(os.path.join(directory, filename)).findall('IdentificationResult')
-            for resultElement in resultElements:
-                name = resultElement.find('IDName').text
-                confidence = int(resultElement.find('IDConfidence').text)
-                reported   = True if resultElement.find('Reported').text == 'true' else False
-
-                idResult = IdentificationResult(name=name, confidence=confidence, reported=reported)
-                idReport.results.append(idResult)
+            # # parse each .res file and extract id_name, confidence and reported
+            # root = ET.parse(os.path.join(directory, filename)).getroot()
+            # resultElements = root.findall('Identification')
+            # for resultElement in resultElements:
+            #     name = resultElement.find('IDName').text
+            #     confidence = int(resultElement.find('IDConfidence').text)
+            #
+            #     idResult = IdentificationResult(name=name, confidence=confidence)
+            #     idReport.results.append(idResult)
     idSet.scen_id=scenarioId
     session.commit()
 
@@ -201,6 +205,24 @@ def requiredElement(element, source, extratext=''):
         raise BaseSpectraFormatException(f'No {element} in element {source.tag} {extratext}')
     return el
 
+def requiredSensitivity(element, source):
+    """
+    Checks to see if RASE_Sensitvity and FLUX_Sensitivity terms are in a loaded spectrum.
+    If not, return None for that specific sensitivity value. If it is None, that spectrum
+    will not appear in the list of base spectra for that detector when creating a scenario,
+    and it will show as red in the scenario list
+    """
+    if isinstance(element[0], str):
+        el = [source.find(f".//{element[0]}")]
+    else:
+        el = [None]
+    if isinstance(element[1], str):
+        el.append(source.find(f".//{element[1]}"))
+    else:
+        el.append(None)
+    if el == [None, None]:
+        raise BaseSpectraFormatException(f'No {element[0]} or {element[1]} in element {source.tag}')
+    return el
 
 def parseRadMeasurement(root, filepath, sharedObject, tstatus, requireRASESens):
     try:
@@ -233,7 +255,8 @@ def parseRadMeasurement(root, filepath, sharedObject, tstatus, requireRASESens):
         realtimeBckg = None
         livetimeBckg = None
         ecalBckg = None
-        sensitivity = None
+        rase_sensitivity = None
+        flux_sensitivity = None
         calibration = requiredElement('EnergyCalibration',root)
         calElement = requiredElement('CoefficientValues',calibration)
         ecal = [float(value) for value in calElement.text.split()]
@@ -242,18 +265,26 @@ def parseRadMeasurement(root, filepath, sharedObject, tstatus, requireRASESens):
         livetimeElement = requiredElement(('LiveTimeDuration','LiveTime'),specElement)
         livetime = getSeconds(livetimeElement.text.strip())
         if requireRASESens:
-            RASEsensElement = requiredElement('RASE_Sensitivity',specElement)
+            RASEsensElement = requiredSensitivity(('RASE_Sensitivity', 'FLUX_Sensitivity'), specElement)
         else:
-            RASEsensElement= specElement.find('Calibration')
+            RASEsensElement = specElement.find('Calibration')    # TODO: is this a problem for flux mode?
         if RASEsensElement is not None:
-            sensitivity = float(RASEsensElement.text.strip())
+            if RASEsensElement[0] is None:
+                rase_sensitivity = 'NaN'
+            else:
+                rase_sensitivity = float(RASEsensElement[0].text.strip())
+            if RASEsensElement[1] is None:
+                flux_sensitivity = 'NaN'
+            else:
+                flux_sensitivity = float(RASEsensElement[1].text.strip())
         if chanDataBckg is not None:
             ecalBckg = ecal
             realtimeElementBckg = requiredElement(('RealTime','RealTimeDuration'),radElementBckg,'secondary spectrum')
             realtimeBckg = getSeconds(realtimeElementBckg.text.strip())
             livetimeElementBckg = requiredElement(('LiveTimeDuration','LiveTime'), specElementBckg, 'secondary spectrum')
             livetimeBckg = getSeconds(livetimeElementBckg.text.strip())
-        return counts, ecal, realtime, livetime, sensitivity, countsBckg, ecalBckg, realtimeBckg, livetimeBckg
+        return counts, ecal, realtime, livetime, rase_sensitivity, flux_sensitivity, countsBckg, ecalBckg, \
+               realtimeBckg, livetimeBckg
     except BaseSpectraFormatException as ex:
         message = f"{str(ex)} in file {ntpath.basename(filepath)}"
         tstatus.append(message)
@@ -280,7 +311,7 @@ def parseMeasurement(measurement, filepath, sharedObject, tstatus):
         chanDataBckg = None
         countsBckg = None
         if sharedObject.isBckgrndSave and sharedObject.bkgndSpectrumInFile:
-            chanDataBckg = requiredElement('ChannelData',specElementBckg,'secondary spectrum')
+            chanDataBckg = requiredElement('ChannelData', specElementBckg, 'secondary spectrum')
             countsChar = chanDataBckg.text.strip("'").strip().split()
             countsBckg = [float(count) for count in countsChar]
             if not countsBckg: raise BaseSpectraFormatException('Could not parse ChannelData (secondary spectrum)')
@@ -294,7 +325,7 @@ def parseMeasurement(measurement, filepath, sharedObject, tstatus):
         ecalBckg = None
         calibration = specElement.find('Calibration')
         if calibration is None:
-            calibration = requiredElement('Calibration',root,'or in Spectrum element')
+            calibration = requiredElement('Calibration', root, 'or in Spectrum element')
 
         calElement = requiredElement('Coefficients',requiredElement('Equation',calibration))
         ecal = [float(value) for value in calElement.text.split()]
@@ -302,13 +333,21 @@ def parseMeasurement(measurement, filepath, sharedObject, tstatus):
         realtime = getSeconds(realtimeElement.text.strip())
         livetimeElement = requiredElement(('LiveTimeDuration','LiveTime'), specElement)
         livetime = getSeconds(livetimeElement.text.strip())
-        RASEsensElement = requiredElement('RASE_Sensitivity', specElement)
-        sensitivity = float(RASEsensElement.text.strip())
+        RASEsensElement = requiredSensitivity(('RASE_Sensitivity', 'FLUX_Sensitivity'), specElement)
+        if RASEsensElement[0] is None:
+            rase_sensitivity = 'NaN'
+        else:
+            rase_sensitivity = float(RASEsensElement[0].text.strip())
+        if RASEsensElement[1] is None:
+            flux_sensitivity = 'NaN'
+        else:
+            flux_sensitivity = float(RASEsensElement[1].text.strip())
+
         if chanDataBckg is not None:
             ecalBckg = []
             calibrationBckg = specElementBckg.find('Calibration')
             if calibrationBckg is not None:
-                calElement = requiredElement('Coefficients',requiredElement('Equation',calibrationBckg))
+                calElement = requiredElement('Coefficients', requiredElement('Equation', calibrationBckg))
                 ecalBckg = [float(value) for value in calElement.text.split()]
             else:
                 message = "no Background Calibration in file " + ntpath.basename(filepath)
@@ -318,7 +357,9 @@ def parseMeasurement(measurement, filepath, sharedObject, tstatus):
             livetimeElementBckg = requiredElement(('LiveTimeDuration','LiveTime'), specElementBckg, 'secondary spectrum')
             livetimeBckg = getSeconds(livetimeElementBckg.text.strip())
 
-        return counts, ecal, realtime, livetime, sensitivity, countsBckg, ecalBckg, realtimeBckg, livetimeBckg
+        return counts, ecal, realtime, livetime, rase_sensitivity, flux_sensitivity, \
+                    countsBckg, ecalBckg, realtimeBckg, livetimeBckg
+
     except BaseSpectraFormatException as ex:
         message = f"{str(ex)} in file {ntpath.basename(filepath)}"
         tstatus.append(message)
@@ -349,7 +390,7 @@ def strip_namespaces(ET):
             el.tag = el.tag.split('}', 1)[-1]
 
 
-def readSpectrumFile(filepath, sharedObject, tstatus, requireRASESen = True):
+def readSpectrumFile(filepath, sharedObject, tstatus, requireRASESen=True):
     """
     Reads in the Spectrum File
     :param filepath: path to spectrum file
@@ -370,9 +411,9 @@ def readSpectrumFile(filepath, sharedObject, tstatus, requireRASESen = True):
         measurement = root.find('Measurement')
         rad_measurement = root.find('RadMeasurement')
         if measurement is not None:
-            return parseMeasurement(measurement,filepath,sharedObject,tstatus)
+            return parseMeasurement(measurement, filepath, sharedObject, tstatus)
         elif rad_measurement is not None:
-            return parseRadMeasurement(root,filepath,sharedObject,tstatus, requireRASESen)
+            return parseRadMeasurement(root, filepath, sharedObject, tstatus, requireRASESen)
     except BaseSpectraFormatException as ex:
         message = f"{str(ex)} in file {ntpath.basename(filepath)}"
         tstatus.append(message)
@@ -462,45 +503,28 @@ def _getCountsDoseAndSensitivity(scenario, detector):
     if scenario.influences:
         for infl in scenario.influences:
             detInfl = (session.query(DetectorInfluence)
-                       .filter_by(detector_name = detector.name,
-                                  influence = infl)
+                       .filter_by(detector_name=detector.name,
+                                  influence=infl)
                        ).first()
             energies = np.polyval([detInfl.infl_2, detInfl.infl_1, detInfl.infl_0], energies)
 
     # get dose, counts and sensitivity for each material
     countsDoseAndSensitivity = []
-    for scenMaterial in scenario.scen_materials:
-
+    for scenMaterial in scenario.scen_materials + scenario.scen_bckg_materials:
         baseSpectrum = (session.query(BaseSpectrum)
-                        .filter_by(detector_name = detector.name,
-                                   material_name = scenMaterial.material_name)
+                        .filter_by(detector_name=detector.name,
+                                   material_name=scenMaterial.material_name)
                         ).first()
-        counts = np.array([int(float(c)) for c in baseSpectrum.baseCounts.split(",")])
-
-#        counts = np.array([baseCount.count for baseCount in baseSpectrum.baseCounts])
+        counts = baseSpectrum.get_counts_as_np()
 
         # apply distortion on counts
         if scenario.influences:
             counts = rebin(np.array(counts), energies, ecal)
 
-        countsDoseAndSensitivity.append((counts, scenMaterial.dose, baseSpectrum.sensitivity))
-
-    for scenBckMaterial in scenario.scen_bckg_materials:
-
-        baseSpectrum = (session.query(BaseSpectrum)
-                        .filter_by(detector_name = detector.name,
-                                   material_name = scenBckMaterial.material_name)
-                        ).first()
-        counts = np.array([int(float(c)) for c in baseSpectrum.baseCounts.split(",")])
-
-#        counts = np.array([baseCount.count for baseCount in baseSpectrum.baseCounts])
-
-        # apply distortion on counts
-        if scenario.influences:
-            counts = rebin(np.array(counts), energies, ecal)
-
-        countsDoseAndSensitivity.append((counts, scenBckMaterial.dose, baseSpectrum.sensitivity))
-
+        if scenMaterial.fd_mode == 'FLUX':
+            countsDoseAndSensitivity.append((counts, scenMaterial.dose, baseSpectrum.flux_sensitivity))
+        else:
+            countsDoseAndSensitivity.append((counts, scenMaterial.dose, baseSpectrum.rase_sensitivity))
 
     # if the detector has an internal calibration source, it needs to be added with special treatment
     if detector.includeSecondarySpectrum and detector.secondary_type == 2:
@@ -589,9 +613,17 @@ def create_n42_file_from_template(n42_mako_template, filename, scenario, detecto
     if secondary_spectrum:
         template_data.update(dict(secondary_spectrum=secondary_spectrum))
 
-    f = open(filename, 'w', newline='')
-    f.write(n42_mako_template.render(**template_data))
-    f.close()
+    try:
+        templated_content = n42_mako_template.render(**template_data)
+    except:
+        logging.info("Mako Template exception:")
+        err_msg = exceptions.text_error_template().render()
+        logging.info(err_msg)
+        print(err_msg)
+        raise
+
+    with open(filename, 'w', newline='') as f:
+        f.write(templated_content)
 
 
 def strip_xml_tag(str):
@@ -677,3 +709,51 @@ def delete_scenario(scenario_ids, sample_root_dir):
 
     session.close()
 
+
+def export_scenarios(scenarios_ids, file_path):
+    """
+    Export scenarios from database to xml file
+    """
+    session = Session()
+    scenarios = [session.query(Scenario).filter_by(id=scenid).first() for scenid in scenarios_ids]
+
+    scen_io = ScenariosIO()
+    xml_str = scen_io.scenario_export(scenarios)
+    Path(file_path).write_text(xml_str)
+
+
+def import_scenarios(file_path, group_name="Imported", group_desc=""):
+    """
+    Import scenarios from an xml file into a list of scenarios. Objects are not committed to db here.
+    """
+    session = Session()
+    scen_io = ScenariosIO()
+    xml_str = Path(file_path).read_text()
+    return scen_io.scenario_import(xml_str)
+
+
+def calc_result_uncertainty(p, n, alpha=0.05):
+    """
+    http://en.wikipedia.org/wiki/Binomial_proportion_confidence_interval
+    Alpha confidence intervals for a binomial distribution of p expected successes on n trials using the Wilson Score
+    approach. Wilson Score intervals are biased towards 0.5, and are asymmetric, but have been shown to have a more
+    accurate performance than "exact" methods such as Clopper-Pearson, which tend to be overly conservative (see
+    Newcombe, 1998). z-values are hard-coded for alpha = 0.01 (99%), 0.05 (95%), 0.1 (90%), and 0.32 (68%).
+    """
+    alpha_dict = {
+        0.01: 2.576,
+        0.05: 1.96,
+        0.1: 1.645,
+        0.32: 0.994,
+    }
+
+    # z = norm.ppf(1 - alpha / 2)
+    # TODO: add alpha drop-down selection in some window (correspondence table?) to prevent alphas not in dictionary
+    # from being entered
+    z = alpha_dict[alpha]
+    p_prime = (p + z ** 2 / (2 * n)) / (1 + z ** 2 / n)
+    s_prime = z * np.sqrt(p * (1 - p) / n + z ** 2 / (4 * n ** 2)) / (1 + z ** 2 / n)
+    CI_pos = p_prime + s_prime
+    CI_neg = p_prime - s_prime
+
+    return CI_pos, CI_neg

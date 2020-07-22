@@ -163,7 +163,7 @@
    <item>
     <widget class="QTableWidget" name="sourceTable">
      <property name="columnCount">
-      <number>6</number>
+      <number>7</number>
      </property>
      <attribute name="horizontalHeaderStretchLastSection">
       <bool>true</bool>
@@ -191,6 +191,11 @@
      <column>
       <property name="text">
        <string>Exposure Rate</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>Flux</string>
       </property>
      </column>
      <column>

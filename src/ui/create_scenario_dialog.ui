@@ -9,7 +9,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>672</width>
+    <width>835</width>
     <height>695</height>
    </rect>
   </property>
@@ -133,12 +133,27 @@
        </attribute>
        <column>
         <property name="text">
+         <string>Flux/Dose</string>
+        </property>
+        <property name="font">
+         <font>
+          <italic>false</italic>
+         </font>
+        </property>
+       </column>
+       <column>
+        <property name="text">
          <string>Source Materials</string>
         </property>
        </column>
        <column>
         <property name="text">
-         <string>Dose</string>
+         <string>Intensity</string>
+        </property>
+        <property name="font">
+         <font>
+          <italic>false</italic>
+         </font>
         </property>
        </column>
       </widget>
@@ -162,12 +177,17 @@
        </attribute>
        <column>
         <property name="text">
+         <string>Flux/Dose</string>
+        </property>
+       </column>
+       <column>
+        <property name="text">
          <string>Background Materials</string>
         </property>
        </column>
        <column>
         <property name="text">
-         <string>Dose</string>
+         <string>Intensity</string>
         </property>
        </column>
       </widget>

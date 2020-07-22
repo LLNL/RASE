@@ -2,7 +2,7 @@
 # Copyright (c) 2018 Lawrence Livermore National Security, LLC.
 # Produced at the Lawrence Livermore National Laboratory
 #
-# Written by J. Chavez, G. Kosinovsky, V. Mozin, S. Sangiorgio.
+# Written by J. Chavez, S. Czyz, G. Kosinovsky, V. Mozin, S. Sangiorgio.
 # RASE-support@llnl.gov.
 #
 # LLNL-CODE-750919
@@ -45,15 +45,17 @@ from .ui_generated import ui_add_detector_dialog
 from .utils import profileit
 from .manage_replays_dialog import ManageReplaysDialog
 from .plotting import SpectraViewerDialog
+from src.rase_settings import RaseSettings
 
 
 class DetectorDialog(ui_add_detector_dialog.Ui_Dialog, QDialog):
-    def __init__(self, parent, settings, detectorName=None):
+    def __init__(self, parent, detectorName=None):
         QDialog.__init__(self, parent)
+        self.parent = parent
         self.setupUi(self)
         self.txtDetector.setText(detectorName)
         self.detector = None
-        self.settings = settings
+        self.settings = RaseSettings()
         self.newBaseSpectra = []
         self.newBackgroundSpectra = []
         self.replay = None
@@ -61,7 +63,6 @@ class DetectorDialog(ui_add_detector_dialog.Ui_Dialog, QDialog):
         self.settingProgramatically = False
         self.detectorInfluences = []
         self.session = session = Session()
-
         # set influence table properties
         self.tblInfluences.setItemDelegate(self.FloatLineDelegate(self))
         self.tblInfluences.setItemDelegateForColumn(0, self.InfluenceDelegate(self.tblInfluences))
@@ -174,7 +175,7 @@ class DetectorDialog(ui_add_detector_dialog.Ui_Dialog, QDialog):
         """
         dialog = dlg
         if dialog is None:
-            dialog = BaseSpectraDialog(self.session, self.settings)
+            dialog = BaseSpectraDialog(self.session)
             dialog.exec_()
         if dialog.baseSpectra:
                 # set ecal and counts
@@ -222,7 +223,7 @@ class DetectorDialog(ui_add_detector_dialog.Ui_Dialog, QDialog):
         """
         Adds new replay
         """
-        dialog = ReplayDialog(self, self.settings)
+        dialog = ReplayDialog(self)
         if dialog.exec_():
             # create new replay and change combo box index to it
             self.replay = dialog.replay

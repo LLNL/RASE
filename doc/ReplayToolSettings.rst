@@ -13,9 +13,9 @@ Note also that some templates indicated here may be specific to a given model of
 
 Demo Replay Tool
 ================
-Use this replay tool for demonstration purposes togehter with the ABCD-instrument Base Spectra included with the RASE code Distribution.
-Nothe that the Demo Replay Tool generates random isotope identification resutls, and does not perform the analysis of sampled spectra.
-Otherwise, the spectra geneation and results analysis process is performed as usual.
+Use this replay tool for demonstration purposes together with the ABCD-instrument Base Spectra included with the RASE code Distribution.
+Note that the Demo Replay Tool generates random isotope identification results, and does not perform the analysis of  sampled spectra.
+Otherwise, the spectra generation and results analysis process is performed as usual.
 
 **Settings**
 
@@ -41,7 +41,7 @@ RASE code was successfully tested with 2016, 2017, and 2018 versions of the FLIR
 * Replay Tool:
     *  Executable: replay.exe
     *  Command Line checkbox: checked
-    *  Command Arguments: -r INPUTDIR -o OUTPUTDIR [see the replay tool manual for additional command line paprmeters that can be used here]
+    *  Command Arguments: -r INPUTDIR -o OUTPUTDIR [see the replay tool manual for additional command line parameters that can be used here]
 * Sampled Spectra n42 Template:
     *  n42 Template File: FLIR_ID2_template_spectrum.n42
     *  Suffix of input files: .n42
@@ -61,7 +61,7 @@ R300 base spectra and the RASE analysis routine were tested with the 2018 versio
 * Replay Tool:
     *  Executable: replay.exe
     *  Command Line checkbox: checked
-    *  Command Arguments: -r INPUTDIR -o OUTPUTDIR [see the replay tool manual for additional command line paprmeters that can be used here]
+    *  Command Arguments: -r INPUTDIR -o OUTPUTDIR [see the replay tool manual for additional command line parameters that can be used here]
 * Sampled Spectra n42 Template:
     *  n42 Template File: FLIR_R300_template.n42
     *  Suffix of input files: .n42
@@ -116,7 +116,13 @@ RASE code was tested with the version 9.3.4 of the ORTEC command-line replay too
 generated for ORTEC HX-2 MicroDetective, EX-1, D200, Trans-Spec, and Detective-X instruments.
 Please note that on some Windows machines execution of the replay tool may fail with the following error message:
 "Error reading the XML library. Error message: This implementation is not part of the Windows Platform FIPS validated cryptographic algorithms."
-The user may want to temprary modify the corresponding entry in the Windows registry file to prevent this error from appearing.
+This error may also yield no message, leaving the user with an empty replay folder with no explanation. To resolve this
+issue, the user can go to the following location and disable the relevant Windows registry flag:
+
+**Administrative Tools -> Local Security Policy -> Local Policies -> Security Options -> System Cryptography -> Use
+FIPS compliant algorithms for encryption, hashing, and signing**
+
+This option will automatically return to "enabled" upon logging out.
 
 **Settings**
 
@@ -178,5 +184,27 @@ In the Replay Tool window (HPRID Batch Analysis) enter the "File" menu and click
 In the new "Batch Analysis" window, use the "Add Files" button to add the sampled spectra (use the "Input folder" path in
 the RASE pop-up window to locate the files). Sampled spectral files will be listed in the Replay Tool.
 Specify the Output directory to match the "Output folder" path in the RASE pop-up window (use the "Browse" button).
-Press the "Start" button to make the Replay Tool perform the analyis of sampled spectra. Feel free to close the Replay Tool window once the analysis is completed.
+Press the "Start" button to make the Replay Tool perform the analysis of sampled spectra. Feel free to close the Replay Tool window once the analysis is completed.
 Close the RASE pop-up window and continue with the results analysis within the RASE main window as usual: use the "Run Result Translator" and "View Results" buttons.
+
+
+Symetrica Verifinder SN33-N Backpack Replay Tool
+================================================
+The Symetrica Verifinder backpack utilizes only static spectra for isotope identification, and requires no additional transient data for correct functionality.
+The Symetrica template has been tested and verified for the SN33-N replay tool. This replay tool is compatible with base spectra sourced from backpack models SN31-N, SN32-N, and SN33-N. Installation instructions for this replay tool can be found in the README for the Symetrica Replay Tool.
+Please note that the Symetrica replay tool is sensitive to installation location, and issues may develop if the tool is installed somewhere other than the C: drive. Problems have also been observed when the sample spectra directory is not located on the same drive as the replay tool. To ensure smooth functionality, it is strongly recommended that any sample directory that includes Symetrica backpack sample spectra exist on the C: drive along with the replay tool.
+The current implementation of the template makes use of a fixed background with a dose rate of 0.08 μSv/h. To ensure reliable results, when using the scenario creator tool to define scenarios for the Symetrica backpack a background spectrum of 0.08 μSv/h should be set.
+
+**Settings**
+
+* Replay Tool:
+    *  Executable: Replay.cmd
+    *  Command Line checkbox: checked
+    *  Command Arguments: -r -c SN33-N -i INPUTDIR -o OUTPUTDIR
+* Sampled Spectra n42 Template:
+    *  n42 Template File: Symetrica_SN33N_template.n42
+    *  Suffix of input files: .n42
+* Identification Results Translator:
+    *  Executable: Symetrica-ResultsTranslator.exe
+    *  Command Line checkbox: checked
+    *  Command Arguments: INPUTDIR OUTPUTDIR [this is a default entry]

@@ -11,8 +11,8 @@ Using the RASE Software
    RASE_MainWindowSettings
    RASE_WorkflowStep1
    RASE_WorkflowStep2
-   RASE_WorkflowStep4
    RASE_WorkflowStep3
+   RASE_WorkflowStep4
    RASE_WorkflowStep5
    RASE_WorkflowStep6
    RASE_ExtendedFunctionality

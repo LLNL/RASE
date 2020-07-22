@@ -2,7 +2,7 @@
 # Copyright (c) 2018 Lawrence Livermore National Security, LLC.
 # Produced at the Lawrence Livermore National Laboratory
 #
-# Written by J. Chavez, G. Kosinovsky, V. Mozin, S. Sangiorgio.
+# Written by J. Chavez, S. Czyz, G. Kosinovsky, V. Mozin, S. Sangiorgio.
 # RASE-support@llnl.gov.
 #
 # LLNL-CODE-750919
@@ -56,6 +56,10 @@ RANDOM_SEED_FIXED_DEFAULT = False
 IS_AFTER_CORRESPONDENCE_TABLE_CALL_KEY = "Is After Correspondence Table Call"
 IS_AFTER_CORRESPONDENCE_TABLE_CALL_DEFAULT = False
 
+RESULTS_TBL_COLS_KEY = "Results Table Columns"
+RESULTS_TBL_COLS_DEFAULT = []
+
+
 class RaseSettings:
     def __init__(self):
         self.settings = QtCore.QSettings('dndo', 'rase_software')
@@ -83,6 +87,9 @@ class RaseSettings:
 
         if not self.settings.value(RANDOM_SEED_FIXED_KEY):
             self.settings.setValue(RANDOM_SEED_FIXED_KEY, RANDOM_SEED_FIXED_DEFAULT)
+
+        if not self.settings.value(RESULTS_TBL_COLS_KEY):
+            self.settings.setValue(RESULTS_TBL_COLS_KEY, RESULTS_TBL_COLS_DEFAULT)
 
         # this is qt internal settings store
         self.qtsettings = QtCore.QSettings(QtCore.QSettings.UserScope, "qtproject")
@@ -164,12 +171,11 @@ class RaseSettings:
         """
         return RANDOM_SEED_DEFAULT
 
-
     def getRandomSeedFixed(self):
         """
         Returns Random Seed Fixed boolean
         """
-        return (self.settings.value(RANDOM_SEED_FIXED_KEY))
+        return self.settings.value(RANDOM_SEED_FIXED_KEY, type=bool)
 
     def setRandomSeedFixed(self, isFixed):
         """
@@ -181,7 +187,7 @@ class RaseSettings:
         """
         Returns Is After Correspondence Table Call boolean
         """
-        return (self.settings.value(IS_AFTER_CORRESPONDENCE_TABLE_CALL_KEY))
+        return self.settings.value(IS_AFTER_CORRESPONDENCE_TABLE_CALL_KEY, type=bool)
 
     def setIsAfterCorrespondenceTableCall(self, isAfterCorrespondenceTableCall):
         """
@@ -206,3 +212,15 @@ class RaseSettings:
         Returns all settings as text
         """
         return "\n".join([k+" : "+str(self.settings.value(k)) for k in self.settings.allKeys()])
+
+    def getResultsTableSettings(self):
+        """
+         Returns Results Table Settings
+         """
+        return self.settings.value(RESULTS_TBL_COLS_KEY)
+
+    def setResultsTableSettings(self, col_list):
+        """
+        Sets Results Table Settings
+        """
+        self.settings.setValue(RESULTS_TBL_COLS_KEY, col_list)

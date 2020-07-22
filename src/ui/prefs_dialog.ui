@@ -6,30 +6,23 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>386</width>
-    <height>119</height>
+    <width>452</width>
+    <height>159</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>RASE Preferences</string>
   </property>
   <layout class="QGridLayout" name="gridLayout">
-   <item row="0" column="0">
-    <widget class="QLabel" name="label">
-     <property name="text">
-      <string>RASE Data Directory</string>
+   <item row="2" column="0" colspan="3" alignment="Qt::AlignHCenter">
+    <widget class="QDialogButtonBox" name="buttonBox">
+     <property name="standardButtons">
+      <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
      </property>
     </widget>
    </item>
    <item row="0" column="1">
     <widget class="QLineEdit" name="txtDataDir"/>
-   </item>
-   <item row="0" column="2">
-    <widget class="QPushButton" name="btnBrowseDataDir">
-     <property name="text">
-      <string>Browse...</string>
-     </property>
-    </widget>
    </item>
    <item row="1" column="0">
     <widget class="QLabel" name="samplingAlgoLabel">
@@ -38,15 +31,22 @@
      </property>
     </widget>
    </item>
-   <item row="1" column="1">
-    <widget class="QComboBox" name="downSapmplingAlgoComboBox"/>
-   </item>
-   <item row="2" column="0" colspan="3" alignment="Qt::AlignHCenter">
-    <widget class="QDialogButtonBox" name="buttonBox">
-     <property name="standardButtons">
-      <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
+   <item row="0" column="2">
+    <widget class="QPushButton" name="btnBrowseDataDir">
+     <property name="text">
+      <string>Browse...</string>
      </property>
     </widget>
+   </item>
+   <item row="0" column="0">
+    <widget class="QLabel" name="directoryLabel">
+     <property name="text">
+      <string>RASE Data Directory</string>
+     </property>
+    </widget>
+   </item>
+   <item row="1" column="1">
+    <widget class="QComboBox" name="downSapmplingAlgoComboBox"/>
    </item>
   </layout>
  </widget>
@@ -59,12 +59,12 @@
    <slot>accept()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>342</x>
-     <y>284</y>
+     <x>274</x>
+     <y>129</y>
     </hint>
     <hint type="destinationlabel">
      <x>342</x>
-     <y>152</y>
+     <y>136</y>
     </hint>
    </hints>
   </connection>
@@ -75,12 +75,12 @@
    <slot>reject()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>342</x>
-     <y>284</y>
+     <x>274</x>
+     <y>129</y>
     </hint>
     <hint type="destinationlabel">
      <x>342</x>
-     <y>152</y>
+     <y>136</y>
     </hint>
    </hints>
   </connection>

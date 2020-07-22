@@ -7,9 +7,9 @@ How to create new base spectra for RASE
 
 Four steps are required to produce a new base spectra for a given instrument for use within RASE:
 
-#. Obtain high statistics measurement of the source and background spectra at a known dose rate.
+#. Obtain high statistics measurement of the source and background spectra at a known dose rate/photopeak flux.
 #. Process the measured spectra to extract the source term
-#. Calculate the ``rase_sensitivity`` factor
+#. Calculate the ``rase_sensitivity/flux_sensitivity`` factor
 #. Produce a properly formatted n42 file for ingestion in RASE, either manually or using the :ref:`base_spectra_creation_tool`
 
 For additional details, refer to [RASE_standard]_
@@ -19,15 +19,15 @@ Obtain high-statistics source spectra
 
 A measurement should be performed usually in well-controlled laboratory conditions with one or more radioactive sources. Adherence to the following recommendation will result in high-quality base spectra:
 
-- The measurement scenario (source strength, source-instrument distance, shielding) should be chosen such as to ensure that a significant fraction of the count rate in the instrument arises from the source term alone. If possible, the dose rate from the source should be at least 5 times above background.
+- The measurement scenario (source strength, source-instrument distance, shielding) should be chosen such as to ensure that a significant fraction of the count rate in the instrument arises from the source term alone. If possible, the dose rate from the source should be at least 5 times above background. If measuring the source in units of flux, the net counts in the photopeak of interest should be at least 350-550.
 - Verify that no significant pile-up or dead time is present in the instrument. Ideally dead time should be limited to no more than 2%.
 - The instrument’s orientation with respect to the source shall be the same as how it is intended to be used in the field.
-- Collect sufficient statistics so that the relevant source peaks are known to high confidence. Acquisition times for raw spectra shall be adjusted such that the base spectra they are processed into contain at least ten times the number of counts contained in any individual sample spectrum expected to be generated from them. This should be done according to the formula: :math:`D_0 \cdot T_0 > 10 \cdot D_S \cdot T_s` where :math:`D_0` is the dose rate produced by the base material at the distance at which the base spectrum was collected, :math:`T_0`	is the live time of the base spectrum, :math:`D_s`	is the maximum dose rate to be simulated in the sample spectra, and :math:`T_S` is the maximum live time to be simulated in the sample spectra
+- Collect sufficient statistics so that the relevant source peaks are known to high confidence. Acquisition times for raw spectra shall be adjusted such that the base spectra they are processed into contain at least ten times the number of counts contained in any individual sample spectrum expected to be generated from them. This should be done according to the formula: :math:`R_0 \cdot T_0 > 10 \cdot R_S \cdot T_s` where :math:`R_0` is the dose rate/photopeak flux produced by the base material at the distance at which the base spectrum was collected, :math:`T_0`	is the live time of the base spectrum, :math:`R_s`	is the maximum dose rate/photopeak flux to be simulated in the sample spectra, and :math:`T_S` is the maximum live time to be simulated in the sample spectra
 
 
 A high-statistics long-dwell (at least 1 hour) background spectrum should also be acquired in the same experimental conditions as for the source measurements.
 
-Carefully measure and record the dose rate with a calibrated instrument (usually an ionization chamber) with and without the source.
+Carefully measure and record the dose rate with a calibrated instrument (usually an ionization chamber) or the photopeak flux with and without the source.
 
 If measured spectra cannot be obtained, simulated spectra can also be used with RASE.
 
@@ -41,17 +41,33 @@ The resulting background-subtracted spectrum can be obtained through channel-by-
 
 .. _compute_rase_sensitivity_factor:
 
-Compute ``rase_sensitivity`` factor
-===================================
+Compute ``rase_sensitivity/flux_sensitivity`` factor
+====================================================
 
-The RASE sensitivity factor :math:`S_{\text{RASE}}` encodes all information necessary to properly scale the base spectra for different source dose rates and acquisition times.  It is computed according to the following equations:
+The RASE sensitivity factor :math:`S_{\text{RASE}}` encodes all information necessary to properly scale the base spectra for different source dose rates and acquisition times.  It is computed according to the following equation:
 
 .. math::
 
-   S_{\text{RASE}} = \frac{\text{net count rate [cps]}}{\text{gamma dose equivalent rate [}\mu\text{Sv/h]}}
+   S_{\text{RASE}} = \frac{\text{net count rate [cps]}}{\text{gamma dose equivalent rate }[\mu\text{Sv/h]}}
 
 The net count rate is obtained by integrating the background-subtracted measured spectrum and dividing it by the measured live time. The gamma dose equivalent rate comes from the value obtained during measurement with the calibrated ionization chamber, again after the dose equivalent rate for background has been subtracted.
-IMPORTANT NOTE. When creating base spectra for the background (from the measured background), use the raw spectra and the actual dose rates to calculate the RASE Sensitivity factor.
+
+The flux sensitivity factor :math:`S_{\text{FLUX}}` fulfills the same role as the RASE sensitivity factor for measurements recorded in units of flux instead of dose. It is computed according to the following equation:
+
+.. math::
+
+   S_{\text{FLUX}} = \frac{\text{net count rate [cps]}}{\text{photopeak flux}[\gamma\text{/cm}^2\cdot s]}
+
+The net count rate is obtained in the same manner as above. The photopeak flux is the net flux observed by the detector in a specific photopeak associated with the isotope.
+
+
+IMPORTANT NOTES:
+
+* The user can provide either an exposure rate, or a flux, or both. If neither is provided, the spectrum is assumed to be in dose and the rase_sensitivity factor is set to 1 while the flux_sensitivity factor is not defined.
+
+* Background spectra are always given in units of dose.
+
+* When creating base spectra for the background (from the measured background), use the raw spectra and the actual dose rates to calculate the RASE Sensitivity factor.
 
 .. _base_spectra_naming_convention:
 
@@ -106,7 +122,7 @@ element contains various child elements that describe the instrument and the dat
 
 Notes:
 
-*	The element ``<RASE_Sensitivity>`` provides the gross sensitivity  in cps/(μSv/h) to the radionuclide whose abbreviation appears in the file name.
+*	The element ``<RASE_Sensitivity>`` provides the gross sensitivity  in cps/(μSv/h) to the radionuclide whose abbreviation appears in the file name. Similarly, the element ``<FLUX_Sensitivity>`` provides the gross sensitivity  in :math:`\gamma/cm^2s` in the characteristic photopeak to the radionuclide whose abbreviation appears in the file name.
 *	All base spectra for a given instrument including background must have the same <calibration> element, i.e. be defined in the same energy scale.
 *	If required by the identification algorithm, a secondary spectrum (e.g. a background spectrum or the spectrum of the internal calibration source) can be provided after the measurement spectrum as an additional ``<spectrum></spectrum>`` element.
 * For additional details, refer to IEC Standard, *Radiation instrumentation – semi-empirical method for performance evaluation of detection and radionuclide identification*, 2016

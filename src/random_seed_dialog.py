@@ -2,7 +2,7 @@
 # Copyright (c) 2018 Lawrence Livermore National Security, LLC.
 # Produced at the Lawrence Livermore National Laboratory
 #
-# Written by J. Chavez, G. Kosinovsky, V. Mozin, S. Sangiorgio.
+# Written by J. Chavez, S. Czyz, G. Kosinovsky, V. Mozin, S. Sangiorgio.
 # RASE-support@llnl.gov.
 #
 # LLNL-CODE-750919
@@ -36,14 +36,15 @@ validation results
 from PyQt5.QtCore import pyqtSlot
 from PyQt5.QtWidgets import QDialog, QMessageBox
 
+from src.rase_settings import RaseSettings
 from .ui_generated import ui_input_random_seed
 from math import pow
 
 
 class RandomSeedDialog(ui_input_random_seed.Ui_InputRandomSeedDialog, QDialog):
-    def __init__(self, parent, settings):
+    def __init__(self, parent):
         QDialog.__init__(self, parent)
-        self.settings = settings
+        self.settings = RaseSettings()
         self.setupUi(self)
         self.txtRandomVal.setText(str(self.settings.getRandomSeed()))
         if self.settings.getRandomSeedFixed():
@@ -68,7 +69,7 @@ class RandomSeedDialog(ui_input_random_seed.Ui_InputRandomSeedDialog, QDialog):
             QMessageBox.information(self, 'Invalid Random Seed Value',
                                         'seed value must be numeric between 1 and 1,073,741,824')
             super().accept()
-            dialog = RandomSeedDialog(self, self.settings)
+            dialog = RandomSeedDialog(self)
             dialog.exec_()
     @pyqtSlot()
     def reject(self):

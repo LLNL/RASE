@@ -2,7 +2,7 @@
 # Copyright (c) 2018 Lawrence Livermore National Security, LLC.
 # Produced at the Lawrence Livermore National Laboratory
 #
-# Written by J. Chavez, G. Kosinovsky, V. Mozin, S. Sangiorgio.
+# Written by J. Chavez, S. Czyz, G. Kosinovsky, V. Mozin, S. Sangiorgio.
 # RASE-support@llnl.gov.
 #
 # LLNL-CODE-750919
@@ -95,7 +95,7 @@ class ManageReplaysDialog(ui_manage_replays_dialog.Ui_Dialog, QDialog):
         """
         Adds new replay
         """
-        dialog = ReplayDialog(self, self.settings)
+        dialog = ReplayDialog(self)
         if dialog.exec_():
             self.session.add(dialog.replay)
             self.session.add(dialog.resultsTranslator)
@@ -111,7 +111,7 @@ class ManageReplaysDialog(ui_manage_replays_dialog.Ui_Dialog, QDialog):
             name=self.tblReplays.item(row, NAME).text()).first()
         resultsTranslator = self.session.query(ResultsTranslator).filter_by(
             name=self.tblReplays.item(row, NAME).text()).first()
-        if ReplayDialog(self, self.settings, replay, resultsTranslator).exec_():
+        if ReplayDialog(self, replay, resultsTranslator).exec_():
             self.setReplaysTable()
 
     def handleExport(self):

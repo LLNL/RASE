@@ -2,7 +2,7 @@
 # Copyright (c) 2018 Lawrence Livermore National Security, LLC.
 # Produced at the Lawrence Livermore National Laboratory
 #
-# Written by J. Chavez, G. Kosinovsky, V. Mozin, S. Sangiorgio.
+# Written by J. Chavez, S. Czyz, G. Kosinovsky, V. Mozin, S. Sangiorgio.
 # RASE-support@llnl.gov.
 #
 # LLNL-CODE-750919
@@ -36,16 +36,17 @@ as well as the translator template
 from PyQt5.QtCore import pyqtSlot
 from PyQt5.QtWidgets import QDialog, QFileDialog, QMessageBox
 
+from src.rase_settings import RaseSettings
 from .table_def import Replay, ResultsTranslator, Session
 from .ui_generated import ui_new_replay_dialog
 
 
 class ReplayDialog(ui_new_replay_dialog.Ui_ReplayDialog, QDialog):
-    def __init__(self, parent, settings, replay=None, resultsTranslator=None):
+    def __init__(self, parent, replay=None, resultsTranslator=None):
         QDialog.__init__(self, parent)
         self.parent = parent
         self.setupUi(self)
-        self.settings = settings
+        self.settings = RaseSettings()
         self.replay = replay
         self.resultsTranslator = resultsTranslator
 

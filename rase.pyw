@@ -2,7 +2,7 @@
 # Copyright (c) 2018-2019 Lawrence Livermore National Security, LLC.
 # Produced at the Lawrence Livermore National Laboratory
 #
-# Written by J. Brodsky, J. Chavez, G. Kosinovsky, V. Mozin, S. Sangiorgio.
+# Written by J. Brodsky, J. Chavez, S. Czyz, G. Kosinovsky, V. Mozin, S. Sangiorgio.
 # RASE-support@llnl.gov.
 #
 # LLNL-CODE-750919
@@ -40,7 +40,7 @@ from PyQt5.QtWidgets import QApplication, QMessageBox
 from src.rase import Rase
 from src.rase_settings import RaseSettings
 
-RASE_VERSION = 'v1.1'
+RASE_VERSION = 'v1.2'
 
 if getattr(sys, 'frozen', False):
     # we are in a pyinstaller bundle

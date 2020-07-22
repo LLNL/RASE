@@ -2,7 +2,7 @@
 # Copyright (c) 2018 Lawrence Livermore National Security, LLC.
 # Produced at the Lawrence Livermore National Laboratory
 #
-# Written by J. Chavez, G. Kosinovsky, V. Mozin, S. Sangiorgio.
+# Written by J. Chavez, S. Czyz, G. Kosinovsky, V. Mozin, S. Sangiorgio.
 # RASE-support@llnl.gov.
 #
 # LLNL-CODE-750919
@@ -38,14 +38,16 @@ from itertools import product
 from PyQt5.QtCore import QModelIndex, pyqtSlot, QRegExp, Qt
 from PyQt5.QtWidgets import QDialog, QTableWidgetItem, QLineEdit, QListWidgetItem, QMessageBox, QItemDelegate, QComboBox, QHeaderView
 from sqlalchemy.exc import IntegrityError
-from PyQt5.QtGui import QRegExpValidator, QIntValidator
+from PyQt5.QtGui import QRegExpValidator, QIntValidator, QStandardItemModel, QStandardItem
 
 from .table_def import Session, Influence, ScenarioGroup, Material, ScenarioMaterial, ScenarioBackgroundMaterial, \
     Scenario, Detector
 from .ui_generated import ui_create_scenario_dialog
 from src.rase_settings import RaseSettings, DEFAULT_SCENARIO_GRPNAME
 
-MATERIAL, DOSE = 0, 1
+UNITS, MATERIAL, INTENSITY = 0, 1, 2
+units_labels = {'DOSE': 'DOSE (\u00B5Sv/h)', 'FLUX': 'FLUX (\u03B3/(cm\u00B2s))'}
+
 
 def RegExpSetValidator(parent = None) -> QRegExpValidator:
     """Returns a Validator for the set range format"""
@@ -74,37 +76,39 @@ class ScenarioDialog(ui_create_scenario_dialog.Ui_ScenarioDialog, QDialog):
         self.txtAcqTime.setValidator(RegExpSetValidator())
         self.txtReplication_2.setValidator(int_validator)
 
+        self.tblMaterial.setHorizontalHeaderItem(INTENSITY, QTableWidgetItem('Intensity'))
+        self.tblBackground.setHorizontalHeaderItem(INTENSITY, QTableWidgetItem('Intensity'))
+
         # set material table
+        self.tblMaterial.setColumnWidth(UNITS, 80)
         self.tblMaterial.setColumnWidth(MATERIAL, 120)
-        self.tblMaterial.setColumnWidth(DOSE, 100)
+        self.tblMaterial.setColumnWidth(INTENSITY, 100)
         self.tblMaterial.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
-        self.tblMaterial.setHorizontalHeaderItem(DOSE, QTableWidgetItem('Dose (\u00B5Sv/h)'))
-        self.tblMaterial.setItemDelegate(MaterialDoseDelegate(self.tblMaterial, materialCol=MATERIAL, doseCol=DOSE))
+        self.tblMaterial.setItemDelegate(MaterialDoseDelegate(self.tblMaterial, unitsCol=UNITS,
+                                                              materialCol=MATERIAL, intensityCol=INTENSITY))
         self.tblMaterial.setRowCount(10)
         for row in range(self.tblMaterial.rowCount()):
-            self.tblMaterial.setItem(row, DOSE    , QTableWidgetItem())
+            self.tblMaterial.setItem(row, UNITS, QTableWidgetItem())
+            self.tblMaterial.setItem(row, INTENSITY, QTableWidgetItem())
             self.tblMaterial.setItem(row, MATERIAL, QTableWidgetItem())
-            self.tblMaterial.item(row, DOSE).setToolTip("Enter comma-separated values OR range as min-max:step OR range followed by comma-separated values")
+            self.tblMaterial.item(row, INTENSITY).setToolTip("Enter comma-separated values OR range as min-max:step OR range followed by comma-separated values")
             self.tblMaterial.setRowHeight(row, 22)
-
-        self.tblMaterial.cellChanged.connect(self.updateScenariosList)
-
 
         # set background table
         #self.tblBackground.setEnabled(False)
+        self.tblBackground.setColumnWidth(UNITS, 80)
         self.tblBackground.setColumnWidth(MATERIAL, 120)
-        self.tblBackground.setColumnWidth(DOSE, 100)
+        self.tblBackground.setColumnWidth(INTENSITY, 100)
         self.tblBackground.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
-        self.tblBackground.setHorizontalHeaderItem(DOSE, QTableWidgetItem('Dose (\u00B5Sv/h)'))
-        self.tblBackground.setItemDelegate(MaterialDoseDelegate(self.tblBackground, materialCol=MATERIAL, doseCol=DOSE))
+        self.tblBackground.setItemDelegate(MaterialDoseDelegate(self.tblBackground, unitsCol=UNITS,
+                                                                materialCol=MATERIAL, intensityCol=INTENSITY))
         self.tblBackground.setRowCount(10)
         for row in range(self.tblBackground.rowCount()):
-            self.tblBackground.setItem(row, DOSE    , QTableWidgetItem())
+            self.tblBackground.setItem(row, UNITS, QTableWidgetItem())
+            self.tblBackground.setItem(row, INTENSITY, QTableWidgetItem())
             self.tblBackground.setItem(row, MATERIAL, QTableWidgetItem())
-            self.tblBackground.item(row, DOSE).setToolTip("Enter comma-separated values OR range as min-max:step OR range followed by comma-separated values")
+            self.tblBackground.item(row, INTENSITY).setToolTip("Enter comma-separated values OR range as min-max:step OR range followed by comma-separated values")
             self.tblBackground.setRowHeight(row, 22)
-
-        self.tblBackground.cellChanged.connect(self.updateScenariosList)
 
         # link group name and description
         self.comboScenarioGroupName.currentIndexChanged.connect(self.updateScenarioDesc)
@@ -132,12 +136,13 @@ class ScenarioDialog(ui_create_scenario_dialog.Ui_ScenarioDialog, QDialog):
             materials = scenario.scen_materials
             bckg_materials = scenario.scen_bckg_materials
             influences = scenario.influences
-            for rowCount, mat in enumerate(materials):
-                self.tblMaterial.setItem(rowCount, 0, QTableWidgetItem(mat.material_name))
-                self.tblMaterial.setItem(rowCount, 1, QTableWidgetItem(str(mat.dose)))
-            for rowCount, mat in enumerate(bckg_materials):
-                self.tblBackground.setItem(rowCount, 0, QTableWidgetItem(mat.material_name))
-                self.tblBackground.setItem(rowCount, 1, QTableWidgetItem(str(mat.dose)))
+            for table, mat_list in zip((self.tblMaterial, self.tblBackground),(materials, bckg_materials)):
+                for rowCount, mat in enumerate(mat_list):
+                    item = QTableWidgetItem(units_labels[mat.fd_mode])
+                    item.setData(Qt.UserRole, mat.fd_mode)
+                    table.setItem(rowCount, 0, item)
+                    table.setItem(rowCount, 1, QTableWidgetItem(mat.material_name))
+                    table.setItem(rowCount, 2, QTableWidgetItem(str(mat.dose)))
             self.txtAcqTime.setText(str(scenario.acq_time))
             self.txtReplication_2.setText(str(scenario.replication))
             scenGrp = self.session.query(ScenarioGroup).get(scenario.scen_group_id)
@@ -150,7 +155,11 @@ class ScenarioDialog(ui_create_scenario_dialog.Ui_ScenarioDialog, QDialog):
 
         # signal/slot connections (this has to be done after_ the previous scenario is loaded)
         self.tblMaterial.cellChanged.connect(self.scenarioChanged)
+        # self.tblMaterial.cellChanged.connect(self.material_hasChanged)
         self.tblBackground.cellChanged.connect(self.scenarioChanged)
+        # self.tblBackground.cellChanged.connect(self.material_hasChanged)
+        self.tblMaterial.cellChanged.connect(self.updateScenariosList)
+        self.tblBackground.cellChanged.connect(self.updateScenariosList)
         self.lstInfluences.itemSelectionChanged.connect(self.scenarioChanged)
         self.txtAcqTime.textChanged.connect(self.scenarioChanged)
         self.txtReplication_2.textChanged.connect(self.scenarioChanged)
@@ -158,7 +167,7 @@ class ScenarioDialog(ui_create_scenario_dialog.Ui_ScenarioDialog, QDialog):
         self.comboScenarioGroupName.currentTextChanged.connect(self.groupChanged)
         self.buttonBox.accepted.connect(self.accept)
         self.buttonBox.rejected.connect(self.reject)
-
+        
 
     @pyqtSlot()
     def scenarioChanged(self):
@@ -180,9 +189,11 @@ class ScenarioDialog(ui_create_scenario_dialog.Ui_ScenarioDialog, QDialog):
             selected_detname = None
         else:
             selected_detname = self.comboDetectorSelect.currentText()
-        self.tblMaterial.setItemDelegate(MaterialDoseDelegate(self.tblMaterial, materialCol=MATERIAL, doseCol=DOSE,
+        self.tblMaterial.setItemDelegate(MaterialDoseDelegate(self.tblMaterial, unitsCol=UNITS,
+                                                              materialCol=MATERIAL, intensityCol=INTENSITY,
                                                               selected_detname=selected_detname))
-        self.tblBackground.setItemDelegate(MaterialDoseDelegate(self.tblBackground, materialCol=MATERIAL, doseCol=DOSE,
+        self.tblBackground.setItemDelegate(MaterialDoseDelegate(self.tblBackground, unitsCol=UNITS,
+                                                                materialCol=MATERIAL, intensityCol=INTENSITY,
                                                                 selected_detname=selected_detname))
 
     @pyqtSlot(int)
@@ -191,28 +202,34 @@ class ScenarioDialog(ui_create_scenario_dialog.Ui_ScenarioDialog, QDialog):
         Updates Scenario description
         """
         if index >= 0:    # index = -1 should not happen, but just in case
-            scenGrp = self.session.query(ScenarioGroup).filter_by(name = self.comboScenarioGroupName.currentText()).first()
+            scenGrp = self.session.query(ScenarioGroup).filter_by(name=self.comboScenarioGroupName.currentText()).first()
             self.txtScenarioGroupDescription.setPlainText(scenGrp.description)
 
     @pyqtSlot()
     def updateScenariosList(self):
-        #scenDescList = []
         materialStr=""
         for row in range(self.tblMaterial.rowCount()):
+            untStr = self.tblMaterial.item(row, UNITS).text()
             matStr = self.tblMaterial.item(row, MATERIAL).text()
-            if matStr:
-                if(len(materialStr)>0):
+            intStr = self.tblMaterial.item(row, INTENSITY).text()
+            if matStr and untStr and intStr:
+                if (len(materialStr) > 0):
                     materialStr = materialStr + "\n "
-                materialStr = materialStr + '{}({})'.format(matStr, ', '.join("{:.5f}".format(float(dose)) for dose in self.getSet(self.tblMaterial.item(row, DOSE))))
-                #scenDescList.append('{}({})'.format(matStr, ', '.join(str(dose) for dose in self.getSet(self.tblMaterial.item(row, DOSE)))))
-        #self.txtScenariosList_2.setText('\n'.join(scenDescList))
+                materialStr = materialStr + '{}({})'.format(matStr, ', '.join("{:.5f}".format(float(dose)) for
+                                  dose in self.getSet(self.tblMaterial.item(row, INTENSITY)))) + \
+                                  ', Units: ' + self.tblMaterial.item(row, UNITS).data(Qt.UserRole).title()
+
         backgroundStr = ""
         for row in range(self.tblBackground.rowCount()):
+            untStr = self.tblBackground.item(row, UNITS).text()
             matStr = self.tblBackground.item(row, MATERIAL).text()
-            if matStr:
-                if(len(backgroundStr)>0):
+            intStr = self.tblBackground.item(row, INTENSITY).text()
+            if matStr and untStr and intStr:
+                if (len(backgroundStr)>0):
                     backgroundStr = backgroundStr + "\n "
-                backgroundStr = backgroundStr + '{}({})'.format(matStr, ', '.join("{:.5f}".format(float(dose)) for dose in self.getSet(self.tblBackground.item(row, DOSE))))
+                backgroundStr = backgroundStr + '{}({})'.format(matStr, ', '.join("{:.5f}".format(float(dose)) for
+                                  dose in self.getSet(self.tblBackground.item(row, INTENSITY)))) + \
+                                  ', Units: ' + self.tblBackground.item(row, UNITS).data(Qt.UserRole).title()
         self.txtScenariosList_2.setText(f"Source materials:\n {materialStr} \n\nBackground materials:\n {backgroundStr}")
 
     @pyqtSlot()
@@ -264,33 +281,26 @@ class ScenarioDialog(ui_create_scenario_dialog.Ui_ScenarioDialog, QDialog):
             influences.append(self.session.query(Influence).filter_by(
                 name = self.lstInfluences.itemFromIndex(index).text()).first())
 
-        materials_doses = []
-        for row in range(self.tblMaterial.rowCount()):
-            matName = self.tblMaterial.item(row, MATERIAL).text()
-            if matName:
-                matArr =[]
-                for dose in self.getSet(self.tblMaterial.item(row, 1)):
-                    mat = self.session.query(Material).filter_by(name=matName).first()
-                    matArr.append((mat, dose))
-                materials_doses.append(matArr)
-
-        bckg_materials_doses = []
-        for row in range(self.tblBackground.rowCount()):
-            matName = self.tblBackground.item(row, MATERIAL).text()
-            if matName:
-                matArr =[]
-                for dose in self.getSet(self.tblBackground.item(row, 1)):
-                    mat = self.session.query(Material).filter_by(name=matName).first()
-                    matArr.append((mat, dose))
-                bckg_materials_doses.append(matArr)
+        materials_doses = [[],[]]
+        for i, matsT in enumerate([self.tblMaterial, self.tblBackground]):
+            for row in range(matsT.rowCount()):
+                matName = matsT.item(row, MATERIAL).text()
+                if matName:
+                    matArr =[]
+                    for dose in self.getSet(matsT.item(row, 2)):
+                        mat = self.session.query(Material).filter_by(name=matName).first()
+                        fd_mat = matsT.item(row, UNITS).data(Qt.UserRole)
+                        matArr.append((fd_mat, mat, dose))
+                    materials_doses[i].append(matArr)
 
         # cartesian product to break out scenarios from scenario group
         for acqTime in self.getSet(self.txtAcqTime):
-            mm = product(*materials_doses)
-            bb = product(*bckg_materials_doses)
+            mm = product(*materials_doses[0])
+            bb = product(*materials_doses[1])
             for mat_dose_arr, bckg_mat_dose_arr in product(mm, bb):
-                scenMaterials = [ScenarioMaterial(material=m, dose=float(d)) for m, d in mat_dose_arr]
-                bcgkScenMaterials = [ScenarioBackgroundMaterial(material=m, dose=float(d)) for m, d in bckg_mat_dose_arr]
+                scenMaterials = [ScenarioMaterial(material=m, dose=float(d), fd_mode=u) for u, m, d in mat_dose_arr]
+                bcgkScenMaterials = [ScenarioBackgroundMaterial(material=m, dose=float(d), fd_mode=u)
+                                                                for u, m, d in bckg_mat_dose_arr]
                 scenario = Scenario(float(acqTime), replication, scenMaterials, bcgkScenMaterials, influences)
                 scenGroup.scenarios.append(scenario)
 
@@ -305,27 +315,89 @@ class ScenarioDialog(ui_create_scenario_dialog.Ui_ScenarioDialog, QDialog):
                                  'At least one record from this Scenario Group is in the database! Please change scenario.')
             self.session.rollback()
 
+    # TODO: combine these two methods using a cellChanged.connect()
     @pyqtSlot(int, int)
     def on_tblMaterial_cellChanged(self, row, col):
         """
         Listens for Material table cell changed
         """
+        if col == UNITS:
+            if self.tblMaterial.item(row, MATERIAL) and self.tblMaterial.item(row, INTENSITY):
+                if not self.tblMaterial.item(row, UNITS).data(Qt.UserRole):
+                    self.tblMaterial.item(row, MATERIAL).setText('')
+                    self.tblMaterial.item(row, INTENSITY).setText('')
+                elif self.tblMaterial.item(row, MATERIAL):
+                    units = self.tblMaterial.item(row, UNITS)
+                    matName = self.tblMaterial.item(row, MATERIAL)
+                    doseItem = self.tblMaterial.item(row, INTENSITY)
+                    self.set_otherCols_fromUnit(units, matName, doseItem)
+
         if col == MATERIAL:
+            units = self.tblMaterial.item(row, UNITS)
             matName = self.tblMaterial.item(row, MATERIAL).text()
-            doseItem = self.tblMaterial.item(row, DOSE)
-            if   not matName:         doseItem.setText('')
-            elif not doseItem.text(): doseItem.setText('0.1')
+            doseItem = self.tblMaterial.item(row, INTENSITY)
+            self.set_otherCols_fromMat(units, matName, doseItem)
 
     @pyqtSlot(int, int)
     def on_tblBackground_cellChanged(self, row, col):
         """
         Listens for Material table cell changed
         """
+        if col == UNITS:
+            if self.tblBackground.item(row, MATERIAL) and self.tblBackground.item(row, INTENSITY):
+                if not self.tblBackground.item(row, UNITS).data(Qt.UserRole):
+                    self.tblBackground.item(row, MATERIAL).setText('')
+                    self.tblBackground.item(row, INTENSITY).setText('')
+                elif self.tblBackground.item(row, MATERIAL):
+                    units = self.tblBackground.item(row, UNITS)
+                    matName = self.tblBackground.item(row, MATERIAL)
+                    doseItem = self.tblBackground.item(row, INTENSITY)
+                    self.set_otherCols_fromUnit(units, matName, doseItem)
         if col == MATERIAL:
+            units = self.tblBackground.item(row, UNITS)
             matName = self.tblBackground.item(row, MATERIAL).text()
-            doseItem = self.tblBackground.item(row, DOSE)
-            if   not matName:         doseItem.setText('')
-            elif not doseItem.text(): doseItem.setText('0.1')
+            doseItem = self.tblBackground.item(row, INTENSITY)
+            self.set_otherCols_fromMat(units, matName, doseItem)
+
+    def set_otherCols_fromUnit(self, units, matName, doseItem):
+        textKeep = False
+        if self.comboDetectorSelect.currentIndex() == 0:
+            detector_list = [detector for detector in Session().query(Detector)]
+        else:
+            detector_list = [Session().query(Detector).filter_by(
+                name=self.comboDetectorSelect.currentText()).first()]
+        for detector in detector_list:
+            for baseSpectrum in detector.base_spectra:
+                if baseSpectrum.material.name == matName.text() and not textKeep:
+                    if (units.data(Qt.UserRole) == 'DOSE' and isinstance(baseSpectrum.rase_sensitivity, float)) or \
+                       (units.data(Qt.UserRole) == 'FLUX' and isinstance(baseSpectrum.flux_sensitivity, float)):
+                        textKeep = True
+        if not textKeep:
+            matName.setText('')
+
+    def set_otherCols_fromMat(self, units, matName, doseItem):
+        if matName:
+            if not doseItem.text():
+                doseItem.setText('0.1')
+            if not units.text():
+                textSet = False
+                if self.comboDetectorSelect.currentIndex() == 0:
+                    detector_list = [detector for detector in Session().query(Detector)]
+                else:
+                    detector_list = [Session().query(Detector).filter_by(
+                        name=self.comboDetectorSelect.currentText()).first()]
+                for detector in detector_list:
+                    for baseSpectrum in detector.base_spectra:
+                        if baseSpectrum.material.name == matName and not textSet:
+                            units.tableWidget().blockSignals(True)
+                            if isinstance(baseSpectrum.rase_sensitivity, float):
+                                units.setText(units_labels['DOSE'])
+                                units.setData(Qt.UserRole, 'DOSE')
+                                textSet = True
+                            else:
+                                units.setText(units_labels['FLUX'])
+                                units.setData(Qt.UserRole, 'FLUX')
+                            units.tableWidget().blockSignals(False)
 
     def getSet(self, dialogField):
         values = []
@@ -347,23 +419,36 @@ class ScenarioDialog(ui_create_scenario_dialog.Ui_ScenarioDialog, QDialog):
 
 
 class MaterialDoseDelegate(QItemDelegate):
-    def __init__(self, tblMat, materialCol, doseCol=-1, selected_detname=None, editable=False):
+    def __init__(self, tblMat, materialCol, intensityCol=-1, unitsCol=2, selected_detname=None, editable=False):
         QItemDelegate.__init__(self)
         self.tblMat = tblMat
         self.matCol = materialCol
-        self.doseCol = doseCol
+        self.intensityCol = intensityCol
+        self.unitsCol = unitsCol
         self.editable = editable
         self.selected_detname = selected_detname
+        self.settings = RaseSettings()
 
     def createEditor(self, parent, option, index):
         if index.column() == self.matCol:
             # generate material list
+            fd_units = self.tblMat.item(index.row(), self.unitsCol).data(Qt.UserRole)
+            material_list = []
             if not self.selected_detname:
-                material_list = sorted([material.name for material in Session().query(Material)])
+                for detector in Session().query(Detector):
+                    for baseSpectrum in detector.base_spectra:
+                        if baseSpectrum.material.name not in material_list:
+                            if ((isinstance(baseSpectrum.rase_sensitivity, float) and (fd_units == 'DOSE')) or
+                                (isinstance(baseSpectrum.flux_sensitivity, float) and (fd_units == 'FLUX')) or
+                                    not fd_units):
+                                material_list.append(baseSpectrum.material.name)
+                material_list = sorted(material_list)
             else:
                 detector = Session().query(Detector).filter_by(name=self.selected_detname).first()
-                material_list = sorted([baseSpectrum.material.name for baseSpectrum in detector.base_spectra])
-
+                material_list = sorted([baseSpectrum.material.name for baseSpectrum in detector.base_spectra if
+                                        ((isinstance(baseSpectrum.rase_sensitivity, float) and (fd_units == 'DOSE')) or
+                                         (isinstance(baseSpectrum.flux_sensitivity, float) and (fd_units == 'FLUX')) or
+                                            not fd_units)])
             # remove any materials already used
             for row in range(self.tblMat.rowCount()):
                 item = self.tblMat.item(row, self.matCol)
@@ -378,10 +463,40 @@ class MaterialDoseDelegate(QItemDelegate):
             comboEdit.addItem('')
             comboEdit.addItems(material_list)
             return comboEdit
-        elif index.column() == self.doseCol:
+        elif index.column() == self.intensityCol:
             editor = QLineEdit(parent)
             editor.setValidator(RegExpSetValidator(editor))
             return editor
+        elif index.column() == self.unitsCol:
+            return self.unitsEditor(parent, index)
         else:
             return super(MaterialDoseDelegate, self).createEditor(parent, option, index)
 
+    # def setEditorData(self, editor, index):
+    #     if index.column() == self.unitsCol:
+    #         item = self.tblMat.item(index.row(), self.unitsCol)
+    #         print("setEditorData", item.data(Qt.UserRole))
+    #         editor.setCurrentIndex(editor.findData(item.data(Qt.UserRole)))
+
+    def setModelData(self, editor, model, index):
+        if index.column() == self.unitsCol:
+            self.tblMat.item(index.row(), self.unitsCol).setText(editor.currentText())
+            self.tblMat.item(index.row(), self.unitsCol).setData(Qt.UserRole, editor.currentData(Qt.UserRole))
+        if index.column() == self.matCol:
+            self.tblMat.item(index.row(), self.matCol).setText(editor.currentText())
+        if index.column() == self.intensityCol:
+            self.tblMat.item(index.row(), self.intensityCol).setText(editor.text())
+
+    def unitsEditor(self, parent, index):
+        curr_item = self.tblMat.item(index.row(), self.unitsCol)
+        curr_item.setText('')
+        model = QStandardItemModel(0, 1)
+        for index, (key, text) in enumerate(units_labels.items()):
+            item = QStandardItem(text)
+            item.setData(key, Qt.UserRole)
+            model.appendRow(item)
+        comboEdit = QComboBox(parent)
+        comboEdit.setSizeAdjustPolicy(0)
+        comboEdit.setModel(model)
+        comboEdit.setCurrentIndex(comboEdit.findData(curr_item.data(Qt.UserRole)))
+        return comboEdit

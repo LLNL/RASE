@@ -4,7 +4,7 @@
 Notice to Users
 ***************
 
-RASE v 1.1 - Copyright (c) 2017-2019, Lawrence Livermore National Security, LLC. All rights reserved. LLNL-CODE-750919
+RASE v 1.1 - Copyright (c) 2017-2020, Lawrence Livermore National Security, LLC. All rights reserved. LLNL-CODE-750919
 
 NOTICE
 ~~~~~~
@@ -20,7 +20,7 @@ LICENSE
 ~~~~~~~
 Copyright (c) 2018-2019 Lawrence Livermore National Security, LLC. Produced at the Lawrence Livermore National Laboratory
 
-Written by J. Brodsky, J. Chavez, G. Kosinovsky, V. Mozin, S. Sangiorgio. RASE-support@llnl.gov.
+Written by J. Brodsky, J. Chavez, S. Czyz, G. Kosinovsky, V. Mozin, S. Sangiorgio. RASE-support@llnl.gov.
 
 LLNL-CODE-750919
 

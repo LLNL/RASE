@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>862</width>
+    <width>1253</width>
     <height>482</height>
    </rect>
   </property>
@@ -15,7 +15,7 @@
   </property>
   <layout class="QGridLayout" name="gridLayout_2">
    <item row="0" column="0">
-    <widget class="QTableWidget" name="tblResults">
+    <widget class="QTableView" name="tblResView">
      <property name="editTriggers">
       <set>QAbstractItemView::NoEditTriggers</set>
      </property>
@@ -37,13 +37,6 @@
        <widget class="QLabel" name="label">
         <property name="text">
          <string>X axis</string>
-        </property>
-       </widget>
-      </item>
-      <item row="2" column="2">
-       <widget class="QLabel" name="txtZmat">
-        <property name="text">
-         <string>material:</string>
         </property>
        </widget>
       </item>
@@ -79,7 +72,7 @@
       <item row="2" column="0">
        <widget class="QLabel" name="label_3">
         <property name="text">
-         <string>Z axis</string>
+         <string>Group by</string>
         </property>
        </widget>
       </item>
@@ -113,9 +106,6 @@
       <item row="1" column="1">
        <widget class="QComboBox" name="cmbYaxis"/>
       </item>
-      <item row="2" column="3">
-       <widget class="QComboBox" name="cmbZmat"/>
-      </item>
       <item row="2" column="4">
        <spacer name="horizontalSpacer">
         <property name="orientation">
@@ -132,7 +122,7 @@
       <item row="2" column="5">
        <widget class="QPushButton" name="btnViewPlot">
         <property name="enabled">
-         <bool>false</bool>
+         <bool>true</bool>
         </property>
         <property name="text">
          <string>View Plot...</string>
@@ -155,6 +145,13 @@
       <widget class="QPushButton" name="buttonCorrTable">
        <property name="text">
         <string>Correspondence Table</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="btnSettings">
+       <property name="text">
+        <string>Table Settings</string>
        </property>
       </widget>
      </item>

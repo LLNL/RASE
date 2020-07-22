@@ -2,7 +2,7 @@
 # Copyright (c) 2018 Lawrence Livermore National Security, LLC.
 # Produced at the Lawrence Livermore National Laboratory
 #
-# Written by J. Chavez, G. Kosinovsky, V. Mozin, S. Sangiorgio.
+# Written by J. Chavez, S. Czyz, G. Kosinovsky, V. Mozin, S. Sangiorgio.
 # RASE-support@llnl.gov.
 #
 # LLNL-CODE-750919
@@ -37,6 +37,7 @@ from PyQt5.QtCore import pyqtSlot
 from PyQt5.QtWidgets import QDialog, QFileDialog, QMessageBox
 
 from src import sampling_algos
+from src.rase_settings import RaseSettings
 from .ui_generated import ui_prefs_dialog
 import os
 import sys
@@ -44,14 +45,15 @@ import inspect
 
 
 class SettingsDialog(ui_prefs_dialog.Ui_Dialog, QDialog):
-    def __init__(self, parent, settings):
+    def __init__(self, parent):
         QDialog.__init__(self, parent)
-        self.settings = settings
+        self.settings = RaseSettings()
         self.setupUi(self)
         self.txtDataDir.setReadOnly(True)
-        self.txtDataDir.setText(settings.getDataDirectory())
+        self.txtDataDir.setText(self.settings.getDataDirectory())
         self.dataDirectoryChanged = False
         self.algoDictionary = {}
+
         algoCount = 0
 
         for name, data in inspect.getmembers(sampling_algos, predicate=inspect.isfunction):
@@ -88,11 +90,16 @@ class SettingsDialog(ui_prefs_dialog.Ui_Dialog, QDialog):
         """
         self.algorithmSelected = True
 
+
     @pyqtSlot()
     def accept(self):
         if self.dataDirectoryChanged:
             self.settings.setDataDirectory(os.path.normpath(self.txtDataDir.text()))
             QMessageBox.warning(self,"Restart Needed", "Please restart RASE in order for the changes to take effect")
         idx = self.downSapmplingAlgoComboBox.currentIndex()
-        if self.algorithmSelected: self.settings.setSamplingAlgo(self.algoDictionary[idx])
+        if self. algorithmSelected:
+            self.settings.setSamplingAlgo(self.algoDictionary[idx])
+        # if current state is different from initial state (somehow record the initial state so if the user toggles
+        # but then toggles back the user is not prompted to reset RASE)
+
         super().accept()

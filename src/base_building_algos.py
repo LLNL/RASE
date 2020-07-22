@@ -18,16 +18,16 @@ def remove_control_characters(xml):
     return xml
 
 
-def insert_RASE_Sensitivity(specElement, Rsens):
+def insert_Sensitivity(specElement, Rsens, flag):
     """ Adds RASE Sensitivity to a Spectrum element
     :param specElement:
     :param Rsens:
     :return:
     """
-    existing_rsens = specElement.findall('RASE_Sensitivity')
+    existing_rsens = specElement.findall(flag)
     for rsens in existing_rsens:
         specElement.remove(rsens)
-    RsensElement = etree.Element('RASE_Sensitivity')
+    RsensElement = etree.Element(flag)
     RsensElement.text = str(Rsens)
     specElement.append(RsensElement)
 
@@ -129,18 +129,20 @@ def get_container(ET, id=None, containername='RadMeasurement'):
     return return_rads[0]
 
 
-def calc_RASE_Sensitivity(counts, livetime, uSievertsph):
+def calc_RASE_Sensitivity(counts, livetime, source_act_fact):
     """
-    Derived from the documentation formula for calcuating RASE Sensitivity
+    Derived from the documentation formula for calcuating RASE Sensitivity.
+    For dose, source_act_fact is microsieverts/hour
+    For flux, source_act_fact is counts*cm^-2*s-1 in the photopeak of interest
     :param counts:
     :param livetime:
     :param uSievertsph:
     :return:
     """
-    return (counts.sum() / livetime) / uSievertsph
+    return (counts.sum() / livetime) / source_act_fact
 
 
-def build_base_ET(ET_orig, radid=None, uSievertsph=None, subtraction_ET=None, subtraction_radid=None,
+def build_base_ET(ET_orig, radid=None, uSievertsph=None, fluxValue=None, subtraction_ET=None, subtraction_radid=None,
                   containername='RadMeasurement', spectrum_id=None, subtraction_spectrum_id=None, transform=None):
     '''
     Old base building core that produces output N42s with all original content except an updated RadMeasurement.
@@ -179,15 +181,17 @@ def build_base_ET(ET_orig, radid=None, uSievertsph=None, subtraction_ET=None, su
     radElement.append(specElement)
     if (transform):
         counts = transform(counts)
-
     insert_counts(specElement, counts)
     livetime = get_livetime(specElement)
     if uSievertsph:
         Rsens = calc_RASE_Sensitivity(counts, livetime, uSievertsph)
-    else:
-        Rsens = 1.
-    insert_RASE_Sensitivity(specElement, Rsens)
-
+        insert_Sensitivity(specElement, Rsens, 'RASE_Sensitivity')
+    if fluxValue:
+        Rsens = calc_RASE_Sensitivity(counts, livetime, fluxValue)
+        insert_Sensitivity(specElement, Rsens, 'FLUX_Sensitivity')
+    if not (uSievertsph or fluxValue):
+        Rsens = 1
+        insert_Sensitivity(specElement, Rsens, 'RASE_Sensitivity')
     parent = parent_map[radElement]
     parent.remove(radElement)
     parent.insert(0, radElement)
@@ -218,13 +222,14 @@ def indent(elem, level=0):
             elem.tail = i
 
 
-def build_base_clean(ET_orig, radid=None, uSievertsph=None, subtraction_ET=None, subtraction_radid=None,
+def build_base_clean(ET_orig, radid=None, uSievertsph=None, fluxValue=None, subtraction_ET=None, subtraction_radid=None,
                      containername='RadMeasurement', spectrum_id=None, subtraction_spectrum_id=None, transform=None):
     '''
     New base building core that produces a "clean" N42 with only the RadMeasurement.
     :param ET_orig:
     :param radid:
     :param uSievertsph:
+    :param fluxValue:
     :param subtraction_ET:
     :param subtraction_radid:
     :param containername:
@@ -262,11 +267,18 @@ def build_base_clean(ET_orig, radid=None, uSievertsph=None, subtraction_ET=None,
     radElement.insert(0, specElement)
     livetime = get_livetime(specElement)
     insert_counts(specElement, counts)
+    # TODO: Make so that if the user puts nothing in dose or flux an error gets thrown
     if uSievertsph:
         Rsens = calc_RASE_Sensitivity(counts, livetime, uSievertsph)
-    else:
-        Rsens = 1.
-    insert_RASE_Sensitivity(specElement, Rsens)
+        insert_Sensitivity(specElement, Rsens, 'RASE_Sensitivity')
+    if fluxValue:
+        Rsens = calc_RASE_Sensitivity(counts, livetime, fluxValue)
+        insert_Sensitivity(specElement, Rsens, 'FLUX_Sensitivity')
+    if not (uSievertsph or fluxValue):
+        Rsens = 1
+        insert_Sensitivity(specElement, Rsens, 'RASE_Sensitivity')
+        insert_Sensitivity(specElement, Rsens, 'FLUX_Sensitivity')
+
     indent(newroot)
 
     return etree.ElementTree(newroot)
@@ -302,7 +314,8 @@ def get_ET_from_file(inputfile):
         return etree.ElementTree(etree.fromstring(inputstr))
 
 
-def do_all(inputfile, radid, outputfolder, manufacturer, model, source, uSievertsph, subtraction, subtraction_radid,
+def do_all(inputfile, radid, outputfolder, manufacturer, model, source, uSievertsph, fluxValue, subtraction,
+           subtraction_radid,
            containername='RadMeasurement', spectrum_id=None, subtraction_spectrum_id=None, description=None,
            transform=None):
     ET_orig = get_ET_from_file(inputfile)
@@ -310,8 +323,9 @@ def do_all(inputfile, radid, outputfolder, manufacturer, model, source, uSievert
         subtraction_ET = get_ET_from_file(subtraction)
     except TypeError:
         subtraction_ET = subtraction
-    ET = build_base_ET(ET_orig, radid, uSievertsph, subtraction_ET, subtraction_radid, containername=containername,
-                       spectrum_id=spectrum_id, subtraction_spectrum_id=subtraction_spectrum_id, transform=transform)
+    ET = build_base_ET(ET_orig, radid, uSievertsph, fluxValue, subtraction_ET, subtraction_radid,
+                       containername=containername, spectrum_id=spectrum_id,
+                       subtraction_spectrum_id=subtraction_spectrum_id, transform=transform)
     outputfilename = base_output_filename(manufacturer, model, source, description)
     write_base_ET(ET, outputfolder, outputfilename)
 

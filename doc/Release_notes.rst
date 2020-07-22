@@ -4,6 +4,23 @@
 RASE Release Notes
 ******************
 
+RASE v1.2
+=========
+- Improved scenario results table providing:
+
+  - More results information
+  - User-customizable column display settings
+  - Sorting capabilities
+  - Source separation for multi-isotope scenarios
+
+- Multi-instrument selection/scenario execution
+- Full workflow execution via single button
+- Addition of flux sensitivity unit
+- Generic plotting features implemented
+- S-curve fitting
+- Various bug fixes
+- Documentation updates
+
 
 RASE v1.1
 =========

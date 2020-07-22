@@ -22,6 +22,6 @@ For a stand-alone replay tool, switch to the external vendor-provided software t
 .. _rase-WorkflowStep5:
 
 .. figure:: _static/rase_WorkflowStep5.png
-    :scale: 75 %
+    :scale: 20 %
 
-    “Add Instrument” dialog.
+    "Run Replay Tool" in main window

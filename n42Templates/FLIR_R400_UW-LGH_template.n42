@@ -35,7 +35,6 @@
     <Spectrum id="measurementGroup1ForegroundMeasurementSpectrum" radDetectorInformationReference="spectra" energyCalibrationReference="energyCalibration">
       <LiveTimeDuration>PT${scenario.acq_time}S</LiveTimeDuration>
       <ChannelData>${sample_counts}</ChannelData>
-      <RASE_Sensitivity>${rase_sensitivity}</RASE_Sensitivity>
     </Spectrum>
   </RadMeasurement>
   <RadMeasurement id="measurementGroup1IntrinsicActivityMeasurement" radMeasurementGroupReferences="measurementGroup1">

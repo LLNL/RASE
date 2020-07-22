@@ -10,7 +10,7 @@ Requirements
 The RASE software is intended to be compatible with all mainstream platforms and operation systems.  The binary executable works on Windows 7/10 systems without a need for installation procedure,
 downloading additional libraries, or requiring administrator's permissions. RASE is coded in Python and can be compiled to run also on MacOS or Linux operating systems.
 
-In order to effectively utilize all functions of the RASE software, the user must have acces to the following additional
+In order to effectively utilize all functions of the RASE software, the user must have access to the following additional
 files and utilities:
 
 *  **Base spectra** for the instruments under evaluation. The base spectra must be defined in the \*.n42 format and should follow the RASE standard requirements. See :ref:`create_base_spectra` The current library of base spectra is not included with the RASE distributable version and should be requested separately. A set of example base spectra is provided with the distributable for the workflow testing and demonstration.

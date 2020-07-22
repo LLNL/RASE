@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RadInstrumentData xmlns="http://physics.nist.gov/N42/2011/N42" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:sym="http://www.symetrica.com/schemas/ANSIN42-2011Extension" xsi:schemaLocation="http://physics.nist.gov/N42/2011/N42 http://physics.nist.gov/N42/2011/n42.xsd http://www.symetrica.com/schemas/ANSIN42-2011Extension http://www.symetrica.com/schemas/ANSIN42-2011Extension.xsd">
+	<RadInstrumentInformation id="Symetrica-SN33-N-SN33N-190022">
+		<RadInstrumentManufacturerName>Symetrica</RadInstrumentManufacturerName>
+		<RadInstrumentIdentifier>SN33N-190022</RadInstrumentIdentifier>
+		<RadInstrumentModelName>SN33-N</RadInstrumentModelName>
+		<RadInstrumentClassCode>Radionuclide Identifier</RadInstrumentClassCode>
+		<RadInstrumentVersion>
+			<RadInstrumentComponentName>Software</RadInstrumentComponentName>
+			<RadInstrumentComponentVersion>2.37.131133</RadInstrumentComponentVersion>
+		</RadInstrumentVersion>
+		<RadInstrumentVersion>
+			<RadInstrumentComponentName>MainAnalysis</RadInstrumentComponentName>
+			<RadInstrumentComponentVersion>49101</RadInstrumentComponentVersion>
+		</RadInstrumentVersion>
+	</RadInstrumentInformation>
+	<RadDetectorInformation id="DetectorInfoDetN1">
+		<RadDetectorCategoryCode>Neutron</RadDetectorCategoryCode>
+		<RadDetectorKindCode>LiZnS</RadDetectorKindCode>
+		<RadDetectorCharacteristics>
+			<Characteristic>
+				<Remark>ErrorCode=0</Remark>
+				<CharacteristicName>SerialNumber</CharacteristicName>
+				<CharacteristicValue>18040008</CharacteristicValue>
+				<CharacteristicValueUnits>unitless</CharacteristicValueUnits>
+				<CharacteristicValueDataClassCode>string</CharacteristicValueDataClassCode>
+			</Characteristic>
+			<Characteristic>
+				<Remark>ErrorCode=0</Remark>
+				<CharacteristicName>PartNumber</CharacteristicName>
+				<CharacteristicValue>410-0857-01</CharacteristicValue>
+				<CharacteristicValueUnits>unitless</CharacteristicValueUnits>
+				<CharacteristicValueDataClassCode>string</CharacteristicValueDataClassCode>
+			</Characteristic>
+			<Characteristic valueDateTime="2019-03-21T18:11:00.110-04:00" valueOutOfLimits="false">
+				<Remark>ErrorCode=0,PT4.554102125S</Remark>
+				<CharacteristicName>Neutron-DetN1.CPLDVersion</CharacteristicName>
+				<CharacteristicValue>42362</CharacteristicValue>
+				<CharacteristicValueUnits>unitless</CharacteristicValueUnits>
+				<CharacteristicValueDataClassCode>string</CharacteristicValueDataClassCode>
+			</Characteristic>
+			<Characteristic valueDateTime="2019-03-21T18:11:00.110-04:00" valueOutOfLimits="false">
+				<Remark>ErrorCode=0,PT4.554028458S</Remark>
+				<CharacteristicName>Neutron-DetN1.FirmwareVersion</CharacteristicName>
+				<CharacteristicValue>trunk.49947#0217-03</CharacteristicValue>
+				<CharacteristicValueUnits>unitless</CharacteristicValueUnits>
+				<CharacteristicValueDataClassCode>string</CharacteristicValueDataClassCode>
+			</Characteristic>
+		</RadDetectorCharacteristics>
+	</RadDetectorInformation>
+	<RadDetectorInformation id="DetectorInfoGPS">
+		<RadDetectorCategoryCode>Other</RadDetectorCategoryCode>
+		<RadDetectorKindCode>Other</RadDetectorKindCode>
+		<RadDetectorCharacteristics>
+			<Characteristic>
+				<Remark>ErrorCode=0</Remark>
+				<CharacteristicName>SerialNumber</CharacteristicName>
+				<CharacteristicValue>Unknown</CharacteristicValue>
+				<CharacteristicValueUnits>unitless</CharacteristicValueUnits>
+				<CharacteristicValueDataClassCode>string</CharacteristicValueDataClassCode>
+			</Characteristic>
+			<Characteristic>
+				<Remark>ErrorCode=0</Remark>
+				<CharacteristicName>PartNumber</CharacteristicName>
+				<CharacteristicValue>GlobalTop|GMM-G3</CharacteristicValue>
+				<CharacteristicValueUnits>unitless</CharacteristicValueUnits>
+				<CharacteristicValueDataClassCode>string</CharacteristicValueDataClassCode>
+			</Characteristic>
+		</RadDetectorCharacteristics>
+	</RadDetectorInformation>
+	<RadDetectorInformation id="DetectorInfoGamma">
+		<RadDetectorCategoryCode>Gamma</RadDetectorCategoryCode>
+		<RadDetectorKindCode>NaI</RadDetectorKindCode>
+		<RadDetectorLengthValue>76.2</RadDetectorLengthValue>
+		<RadDetectorWidthValue>76.2</RadDetectorWidthValue>
+		<RadDetectorDepthValue>76.2</RadDetectorDepthValue>
+		<RadDetectorCharacteristics>
+			<Characteristic>
+				<Remark>ErrorCode=0</Remark>
+				<CharacteristicName>SerialNumber</CharacteristicName>
+				<CharacteristicValue>190000</CharacteristicValue>
+				<CharacteristicValueUnits>unitless</CharacteristicValueUnits>
+				<CharacteristicValueDataClassCode>string</CharacteristicValueDataClassCode>
+			</Characteristic>
+			<Characteristic>
+				<Remark>ErrorCode=0</Remark>
+				<CharacteristicName>PartNumber</CharacteristicName>
+				<CharacteristicValue>410-0811-05</CharacteristicValue>
+				<CharacteristicValueUnits>unitless</CharacteristicValueUnits>
+				<CharacteristicValueDataClassCode>string</CharacteristicValueDataClassCode>
+			</Characteristic>
+			<Characteristic valueDateTime="2019-03-22T08:14:10.893-04:00" valueOutOfLimits="false">
+				<Remark>ErrorCode=0,PT50595.336875948S</Remark>
+				<CharacteristicName>Gamma-Gamma.BiasVoltage</CharacteristicName>
+				<CharacteristicValue>67.3628</CharacteristicValue>
+				<CharacteristicValueUnits>V</CharacteristicValueUnits>
+				<CharacteristicValueDataClassCode>float</CharacteristicValueDataClassCode>
+			</Characteristic>
+			<Characteristic valueDateTime="2019-03-21T18:11:00.888-04:00" valueOutOfLimits="false">
+				<Remark>ErrorCode=0,PT5.331642667S</Remark>
+				<CharacteristicName>Gamma-Gamma.CalibrationName</CharacteristicName>
+				<CharacteristicValue>Gamma-190000</CharacteristicValue>
+				<CharacteristicValueUnits>unitless</CharacteristicValueUnits>
+				<CharacteristicValueDataClassCode>string</CharacteristicValueDataClassCode>
+			</Characteristic>
+			<Characteristic valueDateTime="2019-03-22T08:09:27.445-04:00" valueOutOfLimits="false">
+				<Remark>ErrorCode=0,PT50311.889336289S</Remark>
+				<CharacteristicName>Gamma-Gamma.FineGain</CharacteristicName>
+				<CharacteristicValue>0.826965</CharacteristicValue>
+				<CharacteristicValueUnits>unitless</CharacteristicValueUnits>
+				<CharacteristicValueDataClassCode>float</CharacteristicValueDataClassCode>
+			</Characteristic>
+			<Characteristic valueDateTime="2019-03-21T18:10:57.597-04:00" valueOutOfLimits="false">
+				<Remark>ErrorCode=0,PT2.04150675S</Remark>
+				<CharacteristicName>Gamma-Gamma.FineGainCorrectionCount</CharacteristicName>
+				<CharacteristicValue>(NULL)</CharacteristicValue>
+				<CharacteristicValueUnits>unitless</CharacteristicValueUnits>
+				<CharacteristicValueDataClassCode>string</CharacteristicValueDataClassCode>
+			</Characteristic>
+			<Characteristic valueDateTime="2019-03-21T18:11:00.563-04:00" valueOutOfLimits="false">
+				<Remark>ErrorCode=0,PT5.007452459S</Remark>
+				<CharacteristicName>Gamma-Gamma.FirmwareVersion</CharacteristicName>
+				<CharacteristicValue>tmeeks:trunk/500-0026-NewMCAFirmware43694</CharacteristicValue>
+				<CharacteristicValueUnits>unitless</CharacteristicValueUnits>
+				<CharacteristicValueDataClassCode>string</CharacteristicValueDataClassCode>
+			</Characteristic>
+			<Characteristic valueDateTime="2019-03-22T08:14:11.298-04:00" valueOutOfLimits="false">
+				<Remark>ErrorCode=0,PT50595.742314531S</Remark>
+				<CharacteristicName>Gamma-Gamma.HighVoltage</CharacteristicName>
+				<CharacteristicValue>678.695</CharacteristicValue>
+				<CharacteristicValueUnits>V</CharacteristicValueUnits>
+				<CharacteristicValueDataClassCode>double</CharacteristicValueDataClassCode>
+			</Characteristic>
+		</RadDetectorCharacteristics>
+	</RadDetectorInformation>
+	<EnergyCalibration id="ECalVirtual3keV">
+		<CoefficientValues>0 3 0</CoefficientValues>
+		<CalibrationDateTime>1970-01-01T00:00:00+00:00</CalibrationDateTime>
+	</EnergyCalibration>
+	<EnergyCalibration id="ECalGamma-190000">
+		<CoefficientValues>-1.902526 2.718745 0.000303</CoefficientValues>
+		<CalibrationDateTime>2019-03-11T16:23:56.076-04:00</CalibrationDateTime>
+	</EnergyCalibration>
+	<FWHMCalibration id="RCalGamma-190000">
+		<EnergyValues>1408 778.9 344.3 121.78 42.44 511</EnergyValues>
+		<FWHMValues>72.2838 43.3061 32.8813 16.6789 18.343 47.4314</FWHMValues>
+		<CalibrationDateTime>2019-03-11T16:23:56.076-04:00</CalibrationDateTime>
+	</FWHMCalibration>
+
+	<DerivedData id="Analysis0DerivedData">
+		<Remark>Realtime is the maximum realtime measured by an instrument</Remark>
+		<MeasurementClassCode>NotSpecified</MeasurementClassCode>
+		<StartDateTime>2019-03-22T08:14:16.463-04:00</StartDateTime>
+		<RealTimeDuration>PT${scenario.acq_time}S</RealTimeDuration>
+		<Spectrum id="Analysis0BGGamma" radDetectorInformationReference="DetectorInfoGamma" energyCalibrationReference="ECalGamma-190000" FWHMCalibrationReference="RCalGamma-190000">
+			<LiveTimeDuration>PT7222.4069273S</LiveTimeDuration>
+			<ChannelData Compression="None">0 0 0 0 0 4865 5088 5267 5382 5746 6103 6411 6750 6801 7102 7286 7413 8194 8756 9313 10116 11380 12792 14252 15980 17530 19154 20939 22532 24066 25129 25708 26600 26900 27729 28327 28798 28869 29115 29381 29175 29529 29484 29374 29396 29233 29205 28888 28828 28173 27697 27566 26893 26471 26360 25300 24947 24843 24245 23588 23187 22787 22164 22197 21794 21698 21355 20937 20773 20143 19770 19544 19061 18790 18347 18134 17826 17534 17206 16909 16924 16459 16289 16104 16239 16052 15970 15819 15398 14721 14355 13603 12976 12659 12271 11886 11523 11159 11036 10921 10661 10604 10498 10421 10358 10069 10004 9963 9599 9672 9314 8972 9025 8426 8319 8301 8120 8106 7883 8061 7978 7792 7853 7675 7758 7676 7479 7305 7213 7107 6646 6468 6252 6046 5791 5520 5501 5254 5119 5049 4890 4887 4702 4861 4695 4605 4503 4569 4432 4399 4226 4151 4223 4230 4054 4103 4025 3970 4031 3888 3927 3891 3830 3671 3851 3814 3841 3791 3831 3946 4107 4417 4685 5078 5602 6440 6827 7759 8546 9553 10577 11528 12157 12897 13007 13135 13092 12579 11710 10855 9709 8439 7267 6413 5424 4795 4151 3702 3334 3164 3044 3007 2861 2951 2970 2903 3050 2975 3058 3102 3145 3301 3250 3239 3178 3236 3090 3053 3037 2925 2848 2721 2618 2580 2525 2411 2247 2183 2063 2135 2061 2029 1902 1815 1883 1951 1972 1861 1844 1857 1797 1819 1848 1810 1747 1811 1881 1817 1809 1867 1877 1868 1916 1866 1927 1902 1876 1780 1841 1880 1851 1796 1770 1752 1796 1741 1786 1757 1809 1757 1649 1701 1644 1665 1659 1633 1683 1664 1581 1595 1602 1651 1586 1510 1549 1559 1503 1490 1498 1465 1464 1413 1443 1480 1428 1468 1444 1418 1413 1402 1425 1367 1350 1362 1370 1421 1417 1365 1465 1407 1403 1425 1462 1484 1483 1458 1487 1560 1457 1464 1508 1550 1524 1517 1493 1605 1500 1455 1466 1482 1456 1436 1425 1415 1407 1368 1466 1413 1434 1412 1369 1403 1344 1333 1339 1316 1265 1295 1234 1244 1205 1176 1177 1144 1129 1115 1043 1071 1071 1051 1029 1022 1004 1002 980 996 992 994 972 925 918 983 981 920 916 968 951 956 968 950 971 982 946 967 1023 1009 969 959 990 963 959 1003 943 1011 984 988 967 941 945 913 917 913 899 842 827 892 819 824 807 813 847 754 803 780 774 730 733 712 736 718 733 713 746 728 783 839 835 847 883 955 1023 1038 1116 1156 1231 1312 1459 1479 1610 1655 1693 1731 1830 1923 1922 1940 2060 1997 1934 1859 1852 1753 1766 1607 1604 1495 1380 1312 1233 1109 1082 1016 928 840 811 692 690 620 573 602 552 549 528 558 540 503 575 575 543 588 582 606 581 658 669 700 677 714 798 774 851 893 957 1042 1026 1067 1207 1262 1217 1362 1354 1477 1485 1516 1547 1573 1463 1524 1542 1558 1545 1462 1467 1323 1296 1277 1144 1072 1036 952 923 817 824 777 745 645 610 566 560 497 441 399 392 402 365 361 370 361 356 352 338 330 325 308 320 308 330 333 301 325 302 297 279 287 329 322 306 258 279 282 268 273 249 249 259 266 259 248 231 239 210 228 214 215 211 215 210 184 209 201 174 190 182 182 180 166 178 195 172 179 203 191 166 203 206 227 221 239 239 240 247 245 275 230 253 259 256 288 269 283 260 292 324 326 332 336 382 382 360 383 386 373 432 398 424 478 456 463 475 488 489 503 486 471 479 462 490 459 435 388 396 408 357 351 289 318 267 250 218 241 208 208 212 168 153 146 147 128 140 114 116 105 111 106 86 68 77 102 90 96 85 89 81 81 67 75 87 79 82 93 90 79 102 74 57 82 69 93 89 74 68 82 80 83 77 78 87 67 79 78 87 90 95 81 86 77 84 73 99 94 101 96 110 97 99 108 113 99 109 112 126 124 113 116 123 119 130 118 132 127 136 122 118 124 143 131 127 151 132 115 134 138 117 109 116 106 107 120 118 126 126 119 99 124 119 111 122 102 118 116 116 96 111 106 114 93 99 91 102 94 103 90 98 61 91 81 103 89 87 73 83 80 89 74 75 70 79 70 75 71 71 69 62 89 59 60 63 50 59 63 54 59 68 52 67 72 53 41 70 61 57 43 54 58 43 41 52 48 45 44 44 41 42 45 51 37 39 50 44 42 48 34 42 42 39 32 30 48 33 37 34 38 34 34 41 23 22 34 25 33 35 50 34 25 23 35 35 38 27 30 22 27 33 36 41 45 44 52 37 59 64 53 60 76 65 76 89 97 83 116 112 126 115 143 138 162 130 145 161 181 175 187 184 176 191 170 170 202 196 169 204 154 182 179 166 133 151 185 152 135 143 145 131 99 105 97 93 86 101 79 64 68 47 65 45 41 40 37 29 29 23 20 21 14 15 17 11 6 5 12 11 6 2 4 3 5 4 1 4 6 1 4 2 3 5 1 1 2 1 4 6 0 3 1 1 3 2 0 1 2 1 0 0 2 0 1 2 1 1 0 2 1 3 3 2 1 1 0 2 1 1 2 2 1 3 0 0 1 0 1 1 2 0 2 0 2 2 2 1 1 3 1 1 0 2 1 1 2 4 0 0 0 0 0 </ChannelData>
+			<sym:RealTimeDuration>7229.9278611</sym:RealTimeDuration>
+		</Spectrum>
+		<Spectrum id="Analysis0Gamma" radDetectorInformationReference="DetectorInfoGamma" energyCalibrationReference="ECalGamma-190000" FWHMCalibrationReference="RCalGamma-190000">
+			<LiveTimeDuration>PT${scenario.acq_time}S</LiveTimeDuration>
+			<ChannelData compressionCode="CountedZeroes">${compressed_sample_counts} </ChannelData>
+			<sym:RealTimeDuration>${scenario.acq_time}</sym:RealTimeDuration>
+		</Spectrum>
+
+	</DerivedData>
+
+</RadInstrumentData>
+

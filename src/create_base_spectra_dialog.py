@@ -2,7 +2,7 @@
 # Copyright (c) 2018 Lawrence Livermore National Security, LLC.
 # Produced at the Lawrence Livermore National Laboratory
 #
-# Written by J. Chavez, G. Kosinovsky, V. Mozin, S. Sangiorgio.
+# Written by J. Chavez, S. Czyz, G. Kosinovsky, V. Mozin, S. Sangiorgio.
 # RASE-support@llnl.gov.
 #
 # LLNL-CODE-750919
@@ -40,23 +40,25 @@ from PyQt5.QtCore import pyqtSlot, Qt, QRegExp
 from PyQt5.QtGui import QRegExpValidator, QDoubleValidator, QColor
 from PyQt5.QtWidgets import QDialog, QFileDialog, QTableWidgetItem, QDialogButtonBox, QItemDelegate, QMessageBox, \
     QLineEdit, QAbstractItemView
-
+from src.rase_settings import RaseSettings
 from .ui_generated import ui_create_base_spectra_dialog
 
 from .base_building_algos import base_output_filename, do_all
 
-hh = {'folder': 0, 'file': 1, 'matID': 2, 'otherID': 3, 'dose': 4, 'base_name': 5,}
+hh = {'folder': 0, 'file': 1, 'matID': 2, 'otherID': 3, 'dose': 4, 'flux': 5, 'base_name': 6,}
 
 
 class CreateBaseSpectraDialog(ui_create_base_spectra_dialog.Ui_Dialog, QDialog):
-    def __init__(self, session, settings):
+    def __init__(self, session):
         QDialog.__init__(self)
         self.setupUi(self)
         self.buttonBox.addButton("Create", QDialogButtonBox.AcceptRole)
         self.buttonBox.accepted.connect(self.accept)
         self.buttonBox.rejected.connect(self.reject)
-        self.settings = settings
+        self.settings = RaseSettings()
 
+        # TODO: Add a delegate to the flux column as well; doing so now via a simple copy and paste operation is
+        #  creating a SIGSEGV
         self.sourceTable.setItemDelegateForColumn(hh['dose'], PositiveDoubleDelegate())
         self.sourceTable.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.sourceTable.setColumnHidden(hh['folder'], True)    # folder is hidden but shown as tooltip on filename cell
@@ -259,6 +261,7 @@ class CreateBaseSpectraDialog(ui_create_base_spectra_dialog.Ui_Dialog, QDialog):
             return
 
         v = {}
+        throw_err = False
         for row in range(self.sourceTable.rowCount()):
             for col in hh.keys():
                 item = self.sourceTable.item(row, hh[col])
@@ -276,10 +279,25 @@ class CreateBaseSpectraDialog(ui_create_base_spectra_dialog.Ui_Dialog, QDialog):
             # TODO: allow to indicate a different "radid" for the background spectrum to be subtracted
             # TODO: should 'containername' be part of the user inputs? Or can we just try default container names?
             radid = self.txtSpectrumTag.text() or None
+            for mode in ['flux', 'dose']:
+                if not v[mode]:
+                    pass
+                else:
+                    v[mode] = float(v[mode])
+
             do_all(inputfile=in_file, radid=radid, outputfolder=self.txtOutFolder.text(),
                    manufacturer=self.txtVendorID.text(), model=self.txtModelID.text(), source=v['matID'],
-                   uSievertsph=float(v['dose']), subtraction=bkg_file, subtraction_radid=radid,
+                   uSievertsph=v['dose'], fluxValue=v['flux'], subtraction=bkg_file,
+                   subtraction_radid=radid,
                    description=v['otherID'], containername='RadMeasurement')
+
+            if not (v['dose'] or v['flux']):
+                throw_err = True
+
+        if throw_err:
+            QMessageBox.warning(self, 'No Exposure Rate or Flux defined',
+                                 'At least one spectrum has neither an exposure rate or flux defined.\n' +
+                                 'RASE_sensitivity and FLUX_sensitivty are both set to 1 for said spectrum/spectra.')
 
         return QDialog.accept(self)
 
