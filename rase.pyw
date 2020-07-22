@@ -36,6 +36,7 @@ import traceback
 import os
 import logging
 
+from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QApplication, QMessageBox
 from src.rase import Rase
 from src.rase_settings import RaseSettings
@@ -89,6 +90,8 @@ sys.excepthook = log_except_hook
 
 
 if __name__ == '__main__':
+    QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)  # enable highdpi scaling
+    QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)  # use highdpi icons
     app = QApplication(sys.argv)
     win = Rase(sys.argv)
     win.show()
