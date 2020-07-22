@@ -138,6 +138,9 @@ latex_elements = {
     # Latex figure (float) alignment
     #
     # 'figure_align': 'htbp',
+
+    # allows unicode greek letters
+    'fontenc': r'\usepackage[LGR,X2,T1]{fontenc}'
 }
 
 # Grouping the document tree into LaTeX files. List of tuples

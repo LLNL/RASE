@@ -40,7 +40,7 @@ from PyQt5.QtWidgets import QApplication, QMessageBox
 from src.rase import Rase
 from src.rase_settings import RaseSettings
 
-RASE_VERSION = 'v1.0b2'
+RASE_VERSION = 'v1.1'
 
 if getattr(sys, 'frozen', False):
     # we are in a pyinstaller bundle

@@ -1,0 +1,163 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RadInstrumentData xmlns="http://physics.nist.gov/N42/2011/N42" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:sym="http://www.symetrica.com/schemas/ANSIN42-2011Extension" xsi:schemaLocation="http://physics.nist.gov/N42/2011/N42 http://physics.nist.gov/N42/2011/n42.xsd http://www.symetrica.com/schemas/ANSIN42-2011Extension http://www.symetrica.com/schemas/ANSIN42-2011Extension.xsd">
+  <RadInstrumentInformation id="Symetrica-SN31-N-SN31N-170005">
+    <RadInstrumentManufacturerName>Symetrica</RadInstrumentManufacturerName>
+    <RadInstrumentIdentifier>SN31N-170005</RadInstrumentIdentifier>
+    <RadInstrumentModelName>SN31-N</RadInstrumentModelName>
+    <RadInstrumentClassCode>Radionuclide Identifier</RadInstrumentClassCode>
+    <RadInstrumentVersion>
+      <RadInstrumentComponentName>Software</RadInstrumentComponentName>
+      <RadInstrumentComponentVersion>trunk.44935</RadInstrumentComponentVersion>
+    </RadInstrumentVersion>
+  </RadInstrumentInformation>
+  <RadDetectorInformation id="DetectorInfoDetN1">
+    <RadDetectorCategoryCode>Other</RadDetectorCategoryCode>
+    <RadDetectorKindCode>Other</RadDetectorKindCode>
+    <RadDetectorCharacteristics>
+      <Characteristic>
+        <Remark>ErrorCode=0</Remark>
+        <CharacteristicName>SerialNumber</CharacteristicName>
+        <CharacteristicValue>160135</CharacteristicValue>
+        <CharacteristicValueUnits>unitless</CharacteristicValueUnits>
+        <CharacteristicValueDataClassCode>string</CharacteristicValueDataClassCode>
+      </Characteristic>
+      <Characteristic>
+        <Remark>ErrorCode=0</Remark>
+        <CharacteristicName>PartNumber</CharacteristicName>
+        <CharacteristicValue>410-0334-E</CharacteristicValue>
+        <CharacteristicValueUnits>unitless</CharacteristicValueUnits>
+        <CharacteristicValueDataClassCode>string</CharacteristicValueDataClassCode>
+      </Characteristic>
+    </RadDetectorCharacteristics>
+  </RadDetectorInformation>
+  <RadDetectorInformation id="DetectorInfoDetN2">
+    <RadDetectorCategoryCode>Other</RadDetectorCategoryCode>
+    <RadDetectorKindCode>Other</RadDetectorKindCode>
+    <RadDetectorCharacteristics>
+      <Characteristic>
+        <Remark>ErrorCode=0</Remark>
+        <CharacteristicName>SerialNumber</CharacteristicName>
+        <CharacteristicValue>160128</CharacteristicValue>
+        <CharacteristicValueUnits>unitless</CharacteristicValueUnits>
+        <CharacteristicValueDataClassCode>string</CharacteristicValueDataClassCode>
+      </Characteristic>
+      <Characteristic>
+        <Remark>ErrorCode=0</Remark>
+        <CharacteristicName>PartNumber</CharacteristicName>
+        <CharacteristicValue>410-0334-E</CharacteristicValue>
+        <CharacteristicValueUnits>unitless</CharacteristicValueUnits>
+        <CharacteristicValueDataClassCode>string</CharacteristicValueDataClassCode>
+      </Characteristic>
+    </RadDetectorCharacteristics>
+  </RadDetectorInformation>
+  <RadDetectorInformation id="DetectorInfoGamma">
+    <RadDetectorCategoryCode>Other</RadDetectorCategoryCode>
+    <RadDetectorKindCode>Other</RadDetectorKindCode>
+    <RadDetectorCharacteristics>
+      <Characteristic>
+        <Remark>ErrorCode=0</Remark>
+        <CharacteristicName>SerialNumber</CharacteristicName>
+        <CharacteristicValue>170004</CharacteristicValue>
+        <CharacteristicValueUnits>unitless</CharacteristicValueUnits>
+        <CharacteristicValueDataClassCode>string</CharacteristicValueDataClassCode>
+      </Characteristic>
+      <Characteristic>
+        <Remark>ErrorCode=0</Remark>
+        <CharacteristicName>PartNumber</CharacteristicName>
+        <CharacteristicValue>440-0193-01</CharacteristicValue>
+        <CharacteristicValueUnits>unitless</CharacteristicValueUnits>
+        <CharacteristicValueDataClassCode>string</CharacteristicValueDataClassCode>
+      </Characteristic>
+    </RadDetectorCharacteristics>
+  </RadDetectorInformation>
+  <EnergyCalibration id="ECalVirtual3keV">
+    <CoefficientValues>0 3 0</CoefficientValues>
+    <CalibrationDateTime>1970-01-01T00:00:00+00:00</CalibrationDateTime>
+  </EnergyCalibration>
+  <EnergyCalibration id="ECalGamma-170004">
+    <CoefficientValues>-1.902526 2.718745 0.000303</CoefficientValues>
+    <CalibrationDateTime>2016-05-21T18:34:12.466-04:00</CalibrationDateTime>
+  </EnergyCalibration>
+  <FWHMCalibration id="RCalGamma-170004">
+    <EnergyValues>1408 778.9 511 344.3 121.78 42.44</EnergyValues>
+    <FWHMValues>79.5773 48.7048 29.7896 32.2133 17.3133 15.7615</FWHMValues>
+    <CalibrationDateTime>2016-05-21T18:34:12.466-04:00</CalibrationDateTime>
+  </FWHMCalibration>
+  <RadMeasurement id="CalMeasurementGamma-170004">
+    <MeasurementClassCode>Calibration</MeasurementClassCode>
+    <StartDateTime>2016-05-21T18:34:12.466-04:00</StartDateTime>
+    <RealTimeDuration>PT46.341757246S</RealTimeDuration>
+    <Spectrum id="CalGamma" radDetectorInformationReference="DetectorInfoGamma" energyCalibrationReference="ECalGamma-170004" FWHMCalibrationReference="RCalGamma-170004">
+      <LiveTimeDuration>PT46.129448196S</LiveTimeDuration>
+      <ChannelData compressionCode="CountedZeroes">0 5 394 310 232 199 187 256 352 534 885 1595 2159 1713 1162 834 514 325 324 287 347 350 399 463 459 484 534 571 668 811 862 881 771 773 695 703 696 716 750 896 1172 1606 2229 2376 2087 1464 958 681 468 428 415 472 471 442 460 450 456 467 442 423 414 405 402 378 389 390 368 353 373 348 387 369 342 382 361 350 365 339 333 363 413 371 439 437 490 499 504 511 463 451 417 360 320 274 277 262 239 222 218 235 191 229 221 211 227 232 213 216 211 213 231 227 242 305 365 419 476 517 595 688 706 770 703 774 717 619 545 455 401 325 271 230 189 169 158 142 134 135 125 153 116 114 146 154 150 151 184 142 156 152 151 184 142 162 137 151 136 145 147 141 163 134 120 134 120 141 103 111 118 107 115 125 138 122 164 130 146 141 166 147 151 139 165 140 150 142 135 114 124 102 108 115 111 84 88 86 106 90 94 94 104 91 92 94 88 68 82 90 74 78 91 78 83 66 91 84 82 65 97 69 74 72 67 73 59 61 71 63 58 92 74 64 75 87 69 81 89 59 75 78 92 85 80 80 76 74 78 75 77 75 77 71 75 75 78 77 70 66 80 84 88 84 113 110 114 129 107 141 150 122 154 149 163 153 150 170 112 157 144 111 121 108 97 81 81 91 68 81 70 56 67 65 71 67 53 78 72 72 93 68 86 50 70 61 67 59 74 81 68 68 69 54 49 53 64 64 48 55 67 51 72 83 67 61 74 62 90 99 102 104 97 103 126 119 110 110 100 114 115 101 101 106 102 79 103 72 59 57 50 60 59 56 46 53 43 42 37 43 52 36 31 45 42 55 50 53 60 72 90 64 88 87 94 111 110 120 115 128 139 112 126 131 147 140 136 125 134 118 127 112 97 114 88 82 68 66 74 55 67 42 44 43 45 42 39 34 18 22 27 22 28 16 16 25 21 12 12 14 16 13 21 22 24 12 18 17 17 16 18 20 15 21 24 25 20 15 14 21 22 24 25 28 23 25 30 22 23 15 19 19 27 23 18 22 22 10 13 9 8 12 11 16 18 17 14 21 16 19 26 32 30 36 33 43 38 45 50 64 77 78 65 56 64 82 53 71 84 72 80 70 65 68 62 69 57 59 47 46 55 44 32 46 44 30 26 34 25 24 19 15 19 16 13 12 16 14 7 10 6 9 6 7 9 7 3 10 5 9 6 5 5 3 2 7 5 4 5 2 9 1 2 3 3 3 1 1 0 1 2 4 4 1 1 1 2 0 1 2 4 3 3 4 1 2 1 0 1 1 0 1 1 1 2 2 3 1 1 3 0 2 1 0 1 1 1 3 1 1 0 1 1 4 1 0 1 3 0 1 1 2 0 2 2 0 1 1 3 0 2 1 2 2 1 6 2 3 1 0 1 2 3 4 3 6 1 2 3 2 3 3 1 3 4 3 0 1 3 1 2 2 1 2 3 5 2 4 0 1 2 2 3 2 0 1 2 4 1 1 0 1 2 2 3 2 1 0 2 1 1 1 1 0 1 2 1 1 1 0 1 1 0 1 1 0 1 1 0 3 1 1 0 13 1 0 2 1 1 0 2 1 0 4 1 0 2 1 0 1 1 0 1 1 0 5 1 1 0 2 2 1 0 2 2 2 1 0 1 1 1 0 3 2 0 2 2 2 1 0 3 2 0 4 1 0 1 2 0 2 1 1 0 2 2 0 6 1 1 0 1 1 0 6 1 0 2 1 2 0 1 1 0 2 1 1 0 1 1 0 1 1 0 2 1 0 6 1 0 10 1 0 14 2 0 2 2 0 7 1 0 5 1 0 5 1 0 1 1 0 5 1 0 2 1 0 2 1 0 3 1 0 4 1 0 4 1 0 1 2 1 0 1 1 1 1 0 6 1 2 2 0 2 1 0 2 1 0 2 1 0 1 3 0 2 1 1 1 2 1 2 0 2 1 0 5 1 0 62 1 0 7 1 0 36 </ChannelData>
+      <sym:RealTimeDuration>46.341757246</sym:RealTimeDuration>
+      <sym:TotalCounts>100815</sym:TotalCounts>
+    </Spectrum>
+  </RadMeasurement>
+  <RadMeasurementGroup id="MG-1"/>
+  <RadMeasurement id="BackgroundMeasure3" radMeasurementGroupReferences="MG-1">
+    <MeasurementClassCode>Background</MeasurementClassCode>
+    <StartDateTime>2016-05-22T16:37:46.003-04:00</StartDateTime>
+    <RealTimeDuration>PT300.191791678S</RealTimeDuration>
+    <Spectrum id="BackgroundMeasure3Gamma" radDetectorInformationReference="DetectorInfoGamma" energyCalibrationReference="ECalGamma-170004" FWHMCalibrationReference="RCalGamma-170004">
+      <LiveTimeDuration>PT299.885274299S</LiveTimeDuration>
+      <ChannelData compressionCode="CountedZeroes">0 5 197 197 184 218 235 209 225 260 306 306 303 304 317 379 385 422 489 575 584 675 724 751 837 877 1037 1046 1064 1060 1180 1127 1160 1152 1157 1202 1230 1224 1216 1221 1183 1149 1230 1211 1188 1157 1109 1072 1084 1082 1114 1011 1058 1092 1032 1002 1031 915 935 873 908 882 859 844 871 867 792 792 772 752 791 734 723 747 659 703 683 649 632 636 661 642 657 631 607 614 597 573 535 561 539 464 463 454 455 426 419 434 436 424 421 414 374 404 386 384 346 387 348 340 331 345 341 341 352 323 312 313 332 320 306 321 282 305 255 291 286 291 260 231 234 226 226 198 215 191 238 201 176 213 202 159 184 201 179 205 167 172 143 161 171 191 181 155 169 170 167 171 177 141 146 158 157 161 158 156 155 178 173 169 182 223 261 276 342 325 373 406 487 542 553 603 561 531 479 455 462 411 381 335 305 234 201 172 166 149 112 108 125 107 117 149 119 113 118 123 133 126 132 120 130 142 143 117 137 137 114 113 105 89 97 102 85 90 82 88 83 76 82 58 75 76 69 73 91 89 71 69 96 63 68 77 57 68 63 87 68 81 86 67 74 74 78 67 86 76 77 72 72 64 75 75 56 85 67 72 75 77 68 68 66 79 68 66 57 70 56 48 62 55 54 44 56 59 65 41 57 53 56 53 69 70 59 50 45 54 61 46 51 46 50 59 59 61 44 49 60 52 53 64 48 49 56 65 69 62 52 65 59 65 69 64 61 59 65 56 50 69 53 58 60 48 47 64 64 56 63 59 56 70 42 56 59 41 43 62 57 56 46 55 46 44 47 37 57 37 45 43 42 39 39 40 51 49 30 43 44 56 41 42 31 41 29 36 34 38 44 28 36 56 33 47 47 39 34 32 34 38 42 39 30 45 44 29 43 53 33 39 38 35 31 33 40 24 32 36 26 28 32 31 25 32 29 31 25 24 29 24 35 32 35 33 22 29 29 45 45 43 35 41 52 53 46 68 71 57 65 72 68 85 74 82 77 82 75 77 82 80 88 74 79 67 74 54 69 59 69 43 37 52 31 45 35 23 25 25 20 30 33 23 17 11 21 23 21 23 17 16 20 18 25 29 23 36 34 27 30 34 24 28 32 53 45 56 60 53 49 55 61 56 57 48 60 59 58 55 60 65 54 58 54 47 49 49 46 44 40 49 29 48 41 30 23 18 24 20 26 17 18 15 24 16 13 14 10 7 17 15 16 16 15 9 9 12 10 10 12 11 10 15 13 13 8 20 12 15 17 17 12 10 13 14 13 10 5 11 6 11 6 5 8 12 11 10 9 6 8 11 9 5 5 6 8 7 14 10 10 15 3 8 5 11 14 12 4 6 7 3 10 14 17 12 9 19 11 13 7 19 8 17 6 12 11 10 11 13 17 16 15 15 10 18 8 16 21 22 18 19 15 25 17 24 16 20 15 15 13 16 18 21 14 16 18 12 8 10 10 11 5 5 6 4 6 5 6 1 7 2 6 4 1 3 3 2 5 2 6 6 3 3 4 3 3 5 3 3 0 1 5 4 2 1 2 5 2 2 2 3 7 6 2 3 6 2 5 3 0 1 2 9 2 2 1 3 1 9 4 3 4 2 4 3 5 4 6 3 7 4 2 8 3 3 3 3 2 6 3 4 7 2 10 8 4 6 4 3 3 3 4 6 6 4 3 3 7 6 5 3 4 6 1 6 3 1 5 4 5 5 2 6 7 5 5 4 5 4 3 3 4 4 4 0 1 7 4 3 0 1 4 5 2 3 3 3 2 6 4 6 4 4 2 7 3 4 4 4 2 3 3 2 3 3 2 5 2 1 3 3 5 5 3 2 2 4 1 6 2 2 3 3 3 1 2 3 3 2 2 0 1 1 3 0 1 3 2 0 1 1 0 1 2 0 1 1 1 0 1 3 0 1 2 3 1 0 1 1 2 1 0 1 2 1 1 2 1 0 1 1 1 2 1 4 2 2 0 1 1 2 1 1 2 3 0 1 1 2 5 3 4 4 0 1 1 6 1 0 1 6 10 7 2 2 4 5 7 8 8 8 9 4 5 8 11 11 6 10 9 9 7 6 7 9 9 6 5 7 4 6 4 5 4 4 4 5 5 3 4 2 0 1 1 1 1 3 1 1 2 2 2 0 1 1 0 1 2 0 1 3 0 22 1 0 6 1 1 0 27 1 1 0 6 1 0 18 </ChannelData>
+      <sym:RealTimeDuration>300.191791678</sym:RealTimeDuration>
+      <sym:TotalCounts>121320</sym:TotalCounts>
+    </Spectrum>
+    <sym:Degraded>false</sym:Degraded>
+    <sym:ScaleFactor>1</sym:ScaleFactor>
+  </RadMeasurement>
+  <RadMeasurement id="BackgroundMeasure1" radMeasurementGroupReferences="MG-1">
+    <MeasurementClassCode>Background</MeasurementClassCode>
+    <StartDateTime>2016-05-22T16:37:46.105-04:00</StartDateTime>
+    <RealTimeDuration>PT300.085013593S</RealTimeDuration>
+    <GrossCounts id="BackgroundMeasure1DetN1" radDetectorInformationReference="DetectorInfoDetN1">
+      <LiveTimeDuration>PT300.085013593S</LiveTimeDuration>
+      <CountData>0</CountData>
+    </GrossCounts>
+  </RadMeasurement>
+  <RadMeasurement id="BackgroundMeasure2" radMeasurementGroupReferences="MG-1">
+    <MeasurementClassCode>Background</MeasurementClassCode>
+    <StartDateTime>2016-05-22T16:37:46.110-04:00</StartDateTime>
+    <RealTimeDuration>PT300.08501359S</RealTimeDuration>
+    <GrossCounts id="BackgroundMeasure2DetN2" radDetectorInformationReference="DetectorInfoDetN2">
+      <LiveTimeDuration>PT300.08501359S</LiveTimeDuration>
+      <CountData>0</CountData>
+    </GrossCounts>
+  </RadMeasurement>
+  <RadMeasurement id="SyncMeasure42b112">
+    <MeasurementClassCode>NotSpecified</MeasurementClassCode>
+    <StartDateTime>2016-05-22T18:02:01.845-04:00</StartDateTime>
+    <RealTimeDuration>PT84611.78047842S</RealTimeDuration>
+    <sym:MessageID>73328278634496</sym:MessageID>
+  </RadMeasurement>  
+  </RadMeasurement>
+  <DerivedData id="ForegroundMeasureSum">
+    <MeasurementClassCode>Foreground</MeasurementClassCode>
+    <StartDateTime>2016-05-22T18:02:01.845-04:00</StartDateTime>
+    <RealTimeDuration>PT${scenario.acq_time}S</RealTimeDuration>
+    <Spectrum id="ForegroundSumGamma" radDetectorInformationReference="DetectorInfoGamma" energyCalibrationReference="ECalGamma-170004" FWHMCalibrationReference="RCalGamma-170004">
+      <LiveTimeDuration>PT${scenario.acq_time}S</LiveTimeDuration>
+      <ChannelData compressionCode="CountedZeroes">
+        ${compressed_sample_counts}
+       </ChannelData>
+      <sym:RealTimeDuration>${scenario.acq_time}</sym:RealTimeDuration>
+      <sym:TotalCounts>617472</sym:TotalCounts>
+    </Spectrum>
+    <GrossCounts id="ForegroundSumDetN1" radDetectorInformationReference="DetectorInfoDetN1">
+      <LiveTimeDuration>PT${scenario.acq_time}S</LiveTimeDuration>
+      <CountData>0</CountData>
+    </GrossCounts>
+    <GrossCounts id="ForegroundSumDetN2" radDetectorInformationReference="DetectorInfoDetN2">
+      <LiveTimeDuration>PT${scenario.acq_time}S</LiveTimeDuration>
+      <CountData>0</CountData>
+    </GrossCounts>
+    <sym:EventId>0</sym:EventId>
+    <sym:GeographicPoint>
+      <sym:Latitude>0.000000</sym:Latitude>
+      <sym:Longitude>0.000000</sym:Longitude>
+      <sym:Elevation>0.000000</sym:Elevation>
+    </sym:GeographicPoint>
+  </DerivedData>
+</RadInstrumentData>

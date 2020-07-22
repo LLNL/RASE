@@ -15,5 +15,6 @@ Welcome to RASE documentation!
    Using_RASE
    ReplayToolSettings
    Advanced_topics
+   Release_notes
    References
    disclaimer

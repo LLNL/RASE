@@ -191,10 +191,10 @@ class BaseSpectraFormatException(Exception):
 
 def requiredElement(element, source, extratext=''):
     if isinstance(element, str):
-        el = source.find(element)
+        el = source.find(f".//{element}")
     else:
         for thiselement in element:
-            el = source.find(thiselement)
+            el = source.find(f".//{thiselement}")
             if el is not None: return el
     if extratext: extratext = f'({extratext})'
     if el is None:

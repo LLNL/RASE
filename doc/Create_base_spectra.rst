@@ -10,7 +10,7 @@ Four steps are required to produce a new base spectra for a given instrument for
 #. Obtain high statistics measurement of the source and background spectra at a known dose rate.
 #. Process the measured spectra to extract the source term
 #. Calculate the ``rase_sensitivity`` factor
-#. Produce a properly formatted n42 file for ingestion in RASE
+#. Produce a properly formatted n42 file for ingestion in RASE, either manually or using the :ref:`base_spectra_creation_tool`
 
 For additional details, refer to [RASE_standard]_
 
@@ -39,6 +39,7 @@ In order to allow for generation of varying scenarios with different sources and
 
 The resulting background-subtracted spectrum can be obtained through channel-by-channel subtraction of measured source and background spectra after normalizing both spectra by live time. Re-binning should be performed if needed to account for any gain shift between source and background spectra. If an intrinsic calibration source is visible in the measured source spectrum, it should be also subtracted. When generating base spectra of natural radiation background, background subtraction should not be performed.
 
+.. _compute_rase_sensitivity_factor:
 
 Compute ``rase_sensitivity`` factor
 ===================================
@@ -52,6 +53,8 @@ The RASE sensitivity factor :math:`S_{\text{RASE}}` encodes all information nece
 The net count rate is obtained by integrating the background-subtracted measured spectrum and dividing it by the measured live time. The gamma dose equivalent rate comes from the value obtained during measurement with the calibrated ionization chamber, again after the dose equivalent rate for background has been subtracted.
 IMPORTANT NOTE. When creating base spectra for the background (from the measured background), use the raw spectra and the actual dose rates to calculate the RASE Sensitivity factor.
 
+.. _base_spectra_naming_convention:
+
 Base spectra naming convention
 ==============================
 
@@ -60,7 +63,7 @@ The file name for the base spectra follows the format ``Vvvvv_Mmmm_Source_Descri
 * Vvvvv = a four-character manufacturer abbreviation
 *	Mmmm = a three -character alphanumeric model number abbreviation
 *	Source = a label describing the source
-* Description = a label describing the shielding scenario or other relevant measurment conditions
+* Description = a label describing the shielding scenario or other relevant measurement conditions
 
 The source description label shall follow a defined naming convention:
 

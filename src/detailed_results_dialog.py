@@ -45,6 +45,7 @@ from PyQt5.QtGui import QKeySequence
 from .table_def import Session
 from .ui_generated import ui_detailed_results_dialog
 from src.rase_settings import RaseSettings
+from .utils import natural_keys
 
 
 class DetailedResultsDialog(ui_detailed_results_dialog.Ui_dlgDetailedResults, QDialog):
@@ -61,7 +62,7 @@ class DetailedResultsDialog(ui_detailed_results_dialog.Ui_dlgDetailedResults, QD
         self.tblDetailedResults.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
         self.tblDetailedResults.setRowCount(0)
         row=0
-        for file in resultMap:
+        for file in sorted(resultMap, key=natural_keys):
             results = resultMap[file]
             results.insert(0, file)
             self.tblDetailedResults.insertRow(row)

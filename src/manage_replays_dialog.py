@@ -36,6 +36,7 @@ import csv
 
 from PyQt5.QtWidgets import QDialog, QFileDialog, QTableWidgetItem, QAbstractItemView
 from PyQt5.QtWidgets import QHeaderView, QMessageBox
+from PyQt5.QtCore import pyqtSlot
 
 from .table_def import Session, Replay, ResultsTranslator
 from .ui_generated import ui_manage_replays_dialog
@@ -88,6 +89,7 @@ class ManageReplaysDialog(ui_manage_replays_dialog.Ui_Dialog, QDialog):
                     self.tblReplays.setItem(row, TRANSL_IS_CMD_LINE, QTableWidgetItem("No"))
                 self.tblReplays.setItem(row, TRANSL_SETTING, QTableWidgetItem(resultsTranslator.settings))
             row = row + 1
+        self.tblReplays.setEditTriggers(QAbstractItemView.NoEditTriggers)
 
     def on_btnNewReplay_clicked(self, checked):
         """
@@ -98,6 +100,18 @@ class ManageReplaysDialog(ui_manage_replays_dialog.Ui_Dialog, QDialog):
             self.session.add(dialog.replay)
             self.session.add(dialog.resultsTranslator)
             self.session.commit()
+            self.setReplaysTable()
+
+    @pyqtSlot(int, int)
+    def on_tblReplays_cellDoubleClicked(self, row, col):
+        """
+        Edit existing replay on double clicking a row
+        """
+        replay = self.session.query(Replay).filter_by(
+            name=self.tblReplays.item(row, NAME).text()).first()
+        resultsTranslator = self.session.query(ResultsTranslator).filter_by(
+            name=self.tblReplays.item(row, NAME).text()).first()
+        if ReplayDialog(self, self.settings, replay, resultsTranslator).exec_():
             self.setReplaysTable()
 
     def handleExport(self):

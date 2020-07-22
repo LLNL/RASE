@@ -67,6 +67,7 @@ from src.table_def import Scenario, Detector, Session, ResultsTranslator, Replay
 
 from .manage_replays_dialog import ManageReplaysDialog
 from .random_seed_dialog import RandomSeedDialog
+from .create_base_spectra_dialog import CreateBaseSpectraDialog
 
 from itertools import product
 
@@ -113,8 +114,16 @@ class Rase(ui_rase.Ui_MainWindow, QMainWindow):
         self.tblScenario.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.tblScenario.setItemDelegate(HtmlDelegate())
         self.tblScenario.setSortingEnabled(True)
+        self.tblScenario.horizontalHeader().setDefaultSectionSize(140)
+        # self.tblScenario.setColumnWidth(2, 140)
+        # self.tblScenario.setHorizontalHeaderItem()
         self.tblScenario.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
+        # self.tblScenario.horizontalHeader().setSectionResizeMode(1, QHeaderView.Interactive)
         self.tblScenario.horizontalHeader().setSectionResizeMode(2, QHeaderView.Stretch)
+        # self.tblScenario.horizontalHeader().setSectionResizeMode(5, QHeaderView.ResizeToContents)
+        print(self.tblScenario.columnWidth(2))
+        # self.tblScenario.resizeColumnsToContents()
+
 
         self.tblDetectorReplay.setContextMenuPolicy(Qt.CustomContextMenu)
         self.tblDetectorReplay.setColumnCount(3)
@@ -149,7 +158,7 @@ class Rase(ui_rase.Ui_MainWindow, QMainWindow):
         """
         Exports Instrument to CSV
         """
-        path = QFileDialog.getSaveFileName(self, 'Save File', self.settings.getDataDirectory(), 'CSV (*.csv)')
+        path = QFileDialog.getSaveFileName(self, 'Save File', self.settings.getLastDirectory(), 'CSV (*.csv)')
         if path[0]:
             with open(path[0], mode='w', newline='') as stream:
                 writer = csv.writer(stream)
@@ -168,7 +177,7 @@ class Rase(ui_rase.Ui_MainWindow, QMainWindow):
         """
         Exports Scenario to CSV
         """
-        path = QFileDialog.getSaveFileName(self, 'Save File', self.settings.getDataDirectory(), 'CSV (*.csv)')
+        path = QFileDialog.getSaveFileName(self, 'Save File', self.settings.getLastDirectory(), 'CSV (*.csv)')
         if path[0]:
             with open(path[0], mode='w', newline='') as stream:
                 writer = csv.writer(stream)
@@ -298,10 +307,13 @@ class Rase(ui_rase.Ui_MainWindow, QMainWindow):
         self.populateScenarioGroupCombo()
 
     def populateScenarioGroupCombo(self):
+        currentSelection = self.cmbScenarioGroups.currentText()
         self.cmbScenarioGroups.clear()
         self.cmbScenarioGroups.addItem('All Scenario Groups')
         for scenGrp in Session().query(ScenarioGroup):
             self.cmbScenarioGroups.addItem(scenGrp.name)
+        if currentSelection:
+            self.cmbScenarioGroups.setCurrentText(currentSelection)
 
     def populateScenarios(self):
         """shows scenarios in main screen scenario table"""
@@ -340,10 +352,10 @@ class Rase(ui_rase.Ui_MainWindow, QMainWindow):
             item = QTableWidgetItem(scenario.id)
             item.setData(Qt.UserRole, scenario.id)
             self.tblScenario.setItem(row, SCENARIO_ID, item)
-            matExp = [f'{scen_mat.material.name}({scen_mat.dose:.3f})' for scen_mat in scenario.scen_materials]
+            matExp = [f'{scen_mat.material.name}({scen_mat.dose:.5g})' for scen_mat in scenario.scen_materials]
             self.tblScenario.setItem(row, MATER_EXPOS, QTableWidgetItem(', '.join(matExp)))
             #TODO place correct data in BCKRND column
-            bckgMatExp = [f'{scen_mat.material.name}({scen_mat.dose:.3f})' for scen_mat in scenario.scen_bckg_materials]
+            bckgMatExp = [f'{scen_mat.material.name}({scen_mat.dose:.5g})' for scen_mat in scenario.scen_bckg_materials]
             self.tblScenario.setItem(row, BCKRND, QTableWidgetItem(', '.join(bckgMatExp)))
             self.tblScenario.setItem(row, INFLUENCES,
                                      QTableWidgetItem(', '.join(infl.name for infl in scenario.influences)))
@@ -476,7 +488,7 @@ class Rase(ui_rase.Ui_MainWindow, QMainWindow):
                 if detector and (scenMat.material not in detMaterials):
                     scenMatTxt = '<font color="red">' + scenMatTxt + '</font>'
                     if detector: toolTip = detector.name + ' missing base spectra for this scenario'
-                matExp.append(f'{scenMatTxt}({scenMat.dose:.3f})')
+                matExp.append(f'{scenMatTxt}({scenMat.dose:.5g})')
 
             item.setText(', '.join(matExp))
             item.setToolTip(toolTip)
@@ -490,7 +502,7 @@ class Rase(ui_rase.Ui_MainWindow, QMainWindow):
                 if detector and (scenMat.material not in detMaterials):
                     scenMatTxt = '<font color="red">' + scenMatTxt + '</font>'
                     if detector: toolTip = detector.name + ' missing base spectra for this scenario'
-                matExp.append(f'{scenMatTxt}({scenMat.dose:.3f})')
+                matExp.append(f'{scenMatTxt}({scenMat.dose:.5g})')
             item.setText(', '.join(matExp))
             item.setToolTip(toolTip)
 
@@ -1250,6 +1262,10 @@ class Rase(ui_rase.Ui_MainWindow, QMainWindow):
         dialog = RandomSeedDialog(self, self.settings)
         dialog.exec_()
 
+    @pyqtSlot(bool)
+    def on_actionBase_Spectra_Creation_Tool_triggered(self, checked):
+        dialog = CreateBaseSpectraDialog(self, self.settings)
+        dialog.exec_()
 
 
 class SampleSpectraGeneration(QObject):

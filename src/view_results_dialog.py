@@ -148,7 +148,7 @@ class ViewResultsDialog(ui_results_dialog.Ui_dlgResults, QDialog):
             self.tblResults.insertRow(row)
             self.tblResults.setItem(row, INST_REPL, QTableWidgetItem(dataRow['detectorName'] + '/' + dataRow['replayName']))
             self.tblResults.setItem(row, SCEN_ID,   QTableWidgetItem(dataRow['scenId']))
-            self.tblResults.setItem(row, SCEN_DESC, QTableWidgetItem(', '.join('{}({})'.format(matName, dataRow['materialAndExposure'][matName]) for matName in dataRow['materialAndExposure'])))
+            self.tblResults.setItem(row, SCEN_DESC, QTableWidgetItem(', '.join(f'{matName}({dataRow["materialAndExposure"][matName]:.5g})' for matName in dataRow['materialAndExposure'])))
             self.tblResults.setItem(row, INFL,      QTableWidgetItem(', '.join(infl for infl in dataRow['influences'])))
             self.tblResults.setItem(row, ACQ_TIME,  QTableWidgetItem(str(dataRow['acqTime'])))
             self.tblResults.setItem(row, REPL,      QTableWidgetItem(str(dataRow['replication'])))

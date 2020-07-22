@@ -84,6 +84,9 @@ class RaseSettings:
         if not self.settings.value(RANDOM_SEED_FIXED_KEY):
             self.settings.setValue(RANDOM_SEED_FIXED_KEY, RANDOM_SEED_FIXED_DEFAULT)
 
+        # this is qt internal settings store
+        self.qtsettings = QtCore.QSettings(QtCore.QSettings.UserScope, "qtproject")
+
     # Sample Directory
     def getSampleDirectory(self):
         """
@@ -104,11 +107,20 @@ class RaseSettings:
         """
         return self.settings.value(RASE_DATA_DIR_KEY)
 
-    def setDataDirectory(self, dir):
+    def setDataDirectory(self, path):
         """
         Sets Rase Data directory
         """
-        self.settings.setValue(RASE_DATA_DIR_KEY, dir)
+        self.settings.setValue(RASE_DATA_DIR_KEY, path)
+
+    def getLastDirectory(self):
+        """
+        Returns the last visited file from Qt
+        """
+        # Qt non-native dialogs automatically remember the history of visited paths.
+        # In order to use the OS native dialogs, we need to keep track of this manually
+        u = QtCore.QUrl(self.qtsettings.value("FileDialog/lastVisited"))
+        return u.toLocalFile()
 
     def getSamplingAlgo(self):
         """
