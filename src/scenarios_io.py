@@ -37,9 +37,12 @@ This module provides a utility to read/write scenarios to/from XML files
 from pathlib import Path
 
 import declxml as xml
+import pandas as pd
+import numpy as np
+import xml.etree.ElementTree as ET
 from sqlalchemy.orm import Session
 
-from .table_def import Scenario, Session, ScenarioMaterial, Material, \
+from src.table_def import Scenario, Session, ScenarioMaterial, Material, \
     ScenarioBackgroundMaterial, Influence, ScenarioGroup
 
 
@@ -53,6 +56,10 @@ class ScenariosIO:
 
         def dict_to_scenario(state, value):
             session = Session()
+            value['id'] = Scenario.scenario_hash(value['acq_time'],
+                                    value['scen_materials'],
+                                    value['scen_bckg_materials'],
+                                    value['influences'])
             q = session.query(Scenario).filter_by(id=value['id']).first()
             if q:
                 if self.scenario_group:
@@ -63,10 +70,9 @@ class ScenariosIO:
                                     value['replication'],
                                     value['scen_materials'],
                                     value['scen_bckg_materials'],
-                                    value['influences'])
-                # session.add(scenario)
-                if self.scenario_group:
-                    self.scenario_group.scenarios.append(scenario)
+                                    value['influences'],
+                                    [self.scenario_group])
+
             return scenario
 
         def scenario_to_dict(state, value):
@@ -160,11 +166,58 @@ class ScenariosIO:
             self.scenario_group = r
         else:
             self.scenario_group = ScenarioGroup(name=self.group_name, description=self.group_desc)
-        session.add(self.scenario_group)
+            session.add(self.scenario_group)
+
+    def xmlstr_from_csv(self, CsvFileName):
+        """Returns an xml string from a list of scenarios in CSV format"""
+        df = pd.read_csv(CsvFileName)
+        return self.xmlstr_from_df(df)
+
+    def xmlstr_from_df(self, df):
+
+        root = ET.Element('Scenarios')
+
+        for index, row in df.iterrows():
+
+            if not np.isnan(row['acq_time']) and not np.isnan(row['replications']):
+                scenario = ET.SubElement(root, 'Scenario')
+                id_field = ET.SubElement(scenario, 'id')
+                id_field.text = ''
+                acq_time = ET.SubElement(scenario, 'acq_time')
+                acq_time.text = str(row['acq_time'])
+                replication = ET.SubElement(scenario, 'replication')
+                replication.text = str(row['replications'])
+            else:
+                return False
+
+            # if source materials are defined
+            if not np.isnan(row['s_intensity']):
+                scenarioMaterial = ET.SubElement(scenario, 'ScenarioMaterial')
+                material = ET.SubElement(scenarioMaterial, 'Material')
+                baseMaterialName = ET.SubElement(material, 'BaseMaterialName')
+                baseMaterialName.text = row['s_material']
+                fdmode = ET.SubElement(scenarioMaterial, 'fd_mode')
+                fdmode.text = row['s_fd_mode']
+                dose = ET.SubElement(scenarioMaterial, 'dose')
+                dose.text = str(row['s_intensity'])
+
+            # if background materials are defined
+            if not np.isnan(row['b_intensity']):
+                scenarioBkgMaterial = ET.SubElement(scenario, 'ScenarioBackgroundMaterial')
+                Bkgmaterial = ET.SubElement(scenarioBkgMaterial, 'Material')
+                baseBkgMaterialName = ET.SubElement(Bkgmaterial, 'BaseMaterialName')
+                baseBkgMaterialName.text = row['b_material']
+                fdmode = ET.SubElement(scenarioBkgMaterial, 'fd_mode')
+                fdmode.text = row['s_fd_mode']
+                Bkgdose = ET.SubElement(scenarioBkgMaterial, 'dose')
+                Bkgdose.text = str(row['b_intensity'])
+
+        tree = ET.ElementTree(root).getroot()
+        return ET.tostring(tree, 'utf-8', method='xml')
 
 
 def main():
-    from .rase_functions import initializeDatabase
+    from src.rase_functions import initializeDatabase
     initializeDatabase(str(Path(Path.home(), "test.sql")))
     session = Session()
 

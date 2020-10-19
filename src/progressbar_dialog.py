@@ -49,7 +49,7 @@ class ProgressBar(QDialog):
     sig_abort_worker = pyqtSignal()
     sig_finished = pyqtSignal(bool)
 
-    def __init__(self, parent):
+    def __init__(self, parent, dispProg=True):
         super(ProgressBar, self).__init__(parent)
         self.setWindowTitle('Progress')
 
@@ -76,7 +76,8 @@ class ProgressBar(QDialog):
 
         self.setLayout(self.layout)
         self.setModal(True)
-        self.show()
+        if dispProg:
+            self.show()
 
         self.t = 0
         self.deltaT = []
@@ -102,6 +103,7 @@ class ProgressBar(QDialog):
 
     @pyqtSlot(int)
     def onCountChanged(self, value):
+        """Rolling average across 50 samples"""
         self.progress.setValue(value)
         iterator = value % 50 - 1
         if len(self.deltaT) < 50:

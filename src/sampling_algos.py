@@ -52,28 +52,22 @@ def generate_sample_counts_rejection(scenario, detector, countsDoseAndSensitivit
 
     np.random.seed(seed)
 
-    # FIXME: this implementation assumes integer-type spectra
-
     sampleCounts = np.zeros(detector.chan_count, dtype=int)
 
     for counts, dose, sensitivity in countsDoseAndSensitivity:
         counts[counts < 0] = 0
 
-        # pdf = np.array(counts) / float(sum(counts))
-        pdf = np.array(counts)
+        pdf = np.array(counts) / sum(counts.astype(float))
         integral = np.random.poisson(scenario.acq_time * dose * sensitivity)
 
         i = 0
         counts_len = len(counts)
-        counts_max = max(counts)
-        # counts = np.zeros(counts_len, dtype=int)
 
-        while True:
+        while integral > 0:
             # there might be an optimization possible between the size of the array of random numbers
             # and the looping through each array
-            # also using randint() as it is somehow faster than rand()
             xx = np.random.randint(0, counts_len, size=integral * 10)
-            yy = np.random.randint(1, counts_max, size=integral * 10)
+            yy = np.random.random_sample(integral * 10)
 
             for x in xx[np.where(yy <= pdf[xx])]:
                 if i < integral:
@@ -107,7 +101,7 @@ def generate_sample_counts_poisson(scenario, detector, countsDoseAndSensitivity,
     # sum up
     for counts, dose, sensitivity in countsDoseAndSensitivity:
         counts[counts < 0] = 0
-        counts = counts.astype(float) * (scenario.acq_time * dose * sensitivity) / sum(counts)  # scale down
+        counts = counts.astype(float) * (scenario.acq_time * dose * sensitivity) / sum(counts.astype(float))
         counts = np.random.poisson(counts)  # Poisson noise
         sampleCounts += counts
     return sampleCounts.astype(int)
@@ -131,7 +125,7 @@ def generate_sample_counts_inversion(scenario, detector, countsDoseAndSensitivit
     for counts, dose, sensitivity in countsDoseAndSensitivity:
         counts[counts < 0] = 0
 
-        pdf = np.array(counts) / float(sum(counts))
+        pdf = np.array(counts) / sum(counts.astype(float))
         integral = np.random.poisson(scenario.acq_time * dose * sensitivity)
 
         x = np.random.choice(len(pdf), size=integral, p=pdf)

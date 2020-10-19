@@ -38,10 +38,11 @@ from sqlalchemy.orm             import relationship, sessionmaker, scoped_sessio
 from sqlalchemy.sql.schema import Table, CheckConstraint
 from sqlalchemy import event
 import numpy as np
+import hashlib
 from typing import Set
-from .utils import compress_counts
+from src.utils import compress_counts
 
-DB_VERSION_NAME = 'rase_db_v1_0_8'
+DB_VERSION_NAME = 'rase_db_v1_1'
 
 Base    = declarative_base()
 # Session = sessionmaker()
@@ -54,6 +55,11 @@ Session = scoped_session(session_factory)
 scen_infl_assoc_tbl = Table('scenario_influences', Base.metadata,
     Column('scenario_id',    Integer, ForeignKey('scenarios.id')),
     Column('influence_name', String, ForeignKey('influences.name')))
+
+scen_group_assoc_tbl = Table('scen_group_association', Base.metadata,
+    Column('group_id', Integer, ForeignKey('scenario_groups.id')),
+    Column('scenario_id', String, ForeignKey('scenarios.id'))
+)
 
 class CorrespondenceTableElement(Base):
     __tablename__   = 'correspondence_table_element'
@@ -141,48 +147,35 @@ class Scenario(Base):
     scen_materials      = relationship('ScenarioMaterial', cascade='save-update, merge, delete', lazy='joined')
     scen_bckg_materials = relationship('ScenarioBackgroundMaterial', cascade='save-update, merge, delete', lazy='joined')
     influences          = relationship('Influence', secondary=scen_infl_assoc_tbl, lazy='joined')
-    scen_group_id       = Column(Integer, ForeignKey('scenario_groups.id'))
+    scenario_groups     = relationship('ScenarioGroup', secondary=scen_group_assoc_tbl, backref='scenarios')
 
-    def __init__(self, acq_time, replication, scen_materials, scen_bckg_materials, influences, description = '', ):
+    def __init__(self, acq_time=1, replication=1, scen_materials=[], scen_bckg_materials=[], influences=[],
+                 scenario_groups=[],
+                 description = '', ):
         # id: a hash of scenario parameters, truncated to a 6-digit hex string
-        self.id = hex(0xffffff & hash('{}{}{}{}'.format(acq_time,
-                    ''.join(sorted('{}{:9.12f}{}'.format(
-                        scenMat.material.name, scenMat.dose, scenMat.fd_mode) for scenMat in scen_materials)),
-                    ''.join(sorted('{}{:9.12f}{}'.format(
-                        scenMat.material.name, scenMat.dose, scenMat.fd_mode) for scenMat in scen_bckg_materials)),
-                    ''.join(sorted(infl.name for infl in influences))
-                  ))).upper()[2:]
-        self.acq_time       = acq_time
-        self.replication    = replication  # number of sample spectra to create
-        self.influences     = influences
+        self.id = self.scenario_hash(acq_time, scen_materials, scen_bckg_materials, influences)
+        self.acq_time = acq_time
+        self.replication = replication  # number of sample spectra to create
+        self.influences = influences
         self.scen_materials = scen_materials
         self.scen_bckg_materials = scen_bckg_materials
+        self.scenario_groups = scenario_groups
+
+    @staticmethod
+    def scenario_hash(acq_time, scen_materials, scen_bckg_materials, influences=[]):
+        s = f'{acq_time}' + \
+            ''.join(sorted('{}{:9.12f}{}'.format(
+                scenMat.material.name, scenMat.dose, scenMat.fd_mode) for scenMat in scen_materials)) + \
+            ''.join(sorted('{}{:9.12f}{}'.format(
+                scenMat.material.name, scenMat.dose, scenMat.fd_mode) for scenMat in scen_bckg_materials)) + \
+            ''.join(sorted(infl.name for infl in influences))
+        return hashlib.md5(s.encode('utf-8')).hexdigest()[:6].upper()
 
     def get_material_names_no_shielding(self) -> Set[str]:
         return set(name for scenMat in self.scen_materials for name in scenMat.material.name_no_shielding())
 
     def get_bckg_material_names_no_shielding(self) -> Set[str]:
         return set(name for scenMat in self.scen_bckg_materials for name in scenMat.material.name_no_shielding())
-
-    def dump_xml(self, _indent=0):
-        xml = [f'<Scenario ScenarioGroup="{self.scen_group_id}" ID="{self.id}>']
-        xml.append(f'  <SourceMaterials>')
-        for scenMat in self.scen_materials:
-            xml.append(f"    <BaseMaterialName>{scenMat.material_name}</BaseMaterialName>")
-            xml.append(f"    <BaseMaterialExposure>{scenMat.dose}</BaseMaterialExposure>")
-        xml.append('  </SourceMaterials>')
-        xml.append('  <BackgroundMaterials>')
-        for scenMat in self.scen_bckg_materials:
-            xml.append(f"    <BaseMaterialName>{scenMat.material_name}</BaseMaterialName>")
-            xml.append(f"    <BaseMaterialExposure>{scenMat.dose}</BaseMaterialExposure>")
-        xml.append('  </BackgroundMaterials>')
-        xml.append(f'  <Replications>{self.replication}</Replications>')
-        xml.append(f'  <AcquisitionTime>{self.acq_time}</AcquisitionTime>')
-        for influence in self.influences:
-            xml.append(f'  <Influence>{influence.name}</Influence>')
-        xml.append('</Scenario>')
-        indent = "  " * _indent
-        return "".join([f'{indent}{l}\n' for l in xml])
 
 
 class SampleSpectraSeed(Base):
@@ -200,16 +193,7 @@ class ScenarioGroup(Base):
     id          = Column(Integer, primary_key=True)
     name        = Column(String, unique=True)
     description = Column(String)
-    scenarios   = relationship('Scenario', backref='scenario_groups')
 
-    def dump_xml(self, _indent=0):
-        indent = "  " * _indent
-        return(
-                f'{indent}<ScenarioGroup id="{self.id}">\n'
-                f'{indent}  <ScenarioGroupID>{self.name}</ScenarioGroupID>\n'
-                f'{indent}  <ScenarioGroupDescription>{self.description}s</ScenarioGroupDescription>\n'
-                f'{indent}</ScenarioGroup>\n'
-                 )
 
 class ScenarioMaterial(Base):
     """many-to-many table between scenario and material"""
@@ -298,8 +282,18 @@ class BaseSpectrum(Base):
     material_name = Column(String, ForeignKey('materials.name'))
 
     def get_counts_as_np(self):
-        # FIXME: forced casting to int. What if there are spectra with floats?
-        return np.array([int(float(c)) for c in self.baseCounts.split(",")])
+        if self.is_spectrum_float():
+            return np.array([float(c) for c in self.baseCounts.split(",")])
+        else:
+            return np.array([int(float(c)) for c in self.baseCounts.split(",")])
+
+    def is_spectrum_float(self):
+        """Checks if spectrum has floats in it or not"""
+        for binval in self.baseCounts.split(','):
+            c = float(binval)
+            if c and (c < 1 or int(c) % c):
+                return True
+        return False
 
 # TODO: Secondary background currently does not have flux/dose sensitivity parameters, it is a direct copy/paste from
 #  the base spectra
@@ -315,16 +309,34 @@ class BackgroundSpectrum(Base):
     material_name = Column(String, ForeignKey('materials.name'))
 
     def get_counts_as_np(self):
-        # FIXME: forced casting to int. What if there are spectra with floats?
-        return np.array([int(float(c)) for c in self.baseCounts.split(",")])
+        if self.is_spectrum_float():
+            return np.array([float(c) for c in self.baseCounts.split(",")])
+        else:
+            return np.array([int(float(c)) for c in self.baseCounts.split(",")])
+
 
     def get_counts_as_str(self):
-        # FIXME: forced casting to int. What if there are spectra with floats?
-        return ' '.join([str(int(float(c))) for c in self.baseCounts.split(",")])
+        if self.is_spectrum_float():
+            return ' '.join([str(float(c)) for c in self.baseCounts.split(",")])
+        else:
+            return ' '.join([str(int(float(c))) for c in self.baseCounts.split(",")])
+
 
     def get_compressed_counts_as_str(self):
-        # FIXME: forced casting to int. What if there are spectra with floats?
-        return ' '.join('{:d}'.format(x) for x in compress_counts(self.get_counts_as_np()))
+        if self.is_spectrum_float():
+            return ' '.join('{:f}'.format(x) for x in
+                            compress_counts(np.array([float(c) for c in self.baseCounts.split(",")])))
+        else:
+            return ' '.join('{:d}'.format(x) for x in
+                            compress_counts(np.array([int(float(c)) for c in self.baseCounts.split(",")])))
+
+    def is_spectrum_float(self):
+        """Checks if spectrum has floats in it or not"""
+        for binval in self.baseCounts.split(','):
+            c = float(binval)
+            if c and (c < 1 or int(c) % c):
+                return True
+        return False
 
 
 class MaterialNameTranslation(Base):

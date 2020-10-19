@@ -41,3 +41,5 @@ Installation and Getting Started
 *  RASE maintains a database in a sqlite file inside the RASE data directory. This file should not be deleted or modified by the user.
 
 *  A human-readable log text file "rase.log" will be created in the working directory. It will record only information pertaining to errors encountered during the code operation. Please include this file when reporting errors to RASE developers.
+
+.. rase_requirements:

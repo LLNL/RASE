@@ -65,9 +65,16 @@
             </widget>
            </item>
            <item>
-            <widget class="QPushButton" name="btnImportScenarios">
+            <widget class="QPushButton" name="btnImportScenariosXML">
              <property name="text">
-              <string>Import</string>
+              <string>Import from .xml</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QPushButton" name="btnImportScenariosCSV">
+             <property name="text">
+              <string>Import from .csv</string>
              </property>
             </widget>
            </item>
@@ -370,7 +377,7 @@
      <x>0</x>
      <y>0</y>
      <width>1000</width>
-     <height>21</height>
+     <height>22</height>
     </rect>
    </property>
    <property name="nativeMenuBar">
@@ -383,6 +390,7 @@
     <addaction name="actionPreferences"/>
     <addaction name="actionReplay_Software"/>
     <addaction name="actionCorrespondence_Table"/>
+    <addaction name="actionModify_Scenario_Groups"/>
    </widget>
    <widget class="QMenu" name="menuFile">
     <property name="title">
@@ -403,6 +411,7 @@
     </property>
     <addaction name="actionInput_Random_Seed"/>
     <addaction name="actionBase_Spectra_Creation_Tool"/>
+    <addaction name="actionAutomated_Scurve"/>
     <addaction name="actionDynamic_Scenarios_under_development"/>
    </widget>
    <addaction name="menuFile"/>
@@ -474,6 +483,11 @@
     <string>Base Spectra Creation</string>
    </property>
   </action>
+  <action name="actionAutomated_Scurve">
+   <property name="text">
+    <string>Automated S Curve Generation</string>
+   </property>
+  </action>
   <action name="actionMDA_Studies_under_development">
    <property name="enabled">
     <bool>false</bool>
@@ -488,6 +502,11 @@
    </property>
    <property name="text">
     <string>Dynamic Scenarios (under development)</string>
+   </property>
+  </action>
+  <action name="actionModify_Scenario_Groups">
+   <property name="text">
+    <string>Modify Scenario Groups...</string>
    </property>
   </action>
  </widget>

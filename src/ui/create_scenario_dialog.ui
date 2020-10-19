@@ -9,27 +9,20 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>835</width>
+    <width>677</width>
     <height>695</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>Scenario Creation</string>
   </property>
-  <layout class="QVBoxLayout" name="verticalLayout_3">
+  <layout class="QVBoxLayout" name="verticalLayout">
    <item>
-    <layout class="QHBoxLayout" name="horizontalLayout_4" stretch="0,0,0,0,0">
+    <layout class="QHBoxLayout" name="horizontalLayout_4" stretch="0,0,0,0">
      <item>
-      <widget class="QLabel" name="label">
+      <widget class="QPushButton" name="btnGroups">
        <property name="text">
-        <string>Scenario Group Name</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QComboBox" name="comboScenarioGroupName">
-       <property name="editable">
-        <bool>true</bool>
+        <string>Scenario Groups</string>
        </property>
       </widget>
      </item>
@@ -47,21 +40,28 @@
       </spacer>
      </item>
      <item>
-      <widget class="QLabel" name="label_3">
+      <widget class="QLabel" name="label_detectors">
        <property name="text">
         <string>Show materials for</string>
        </property>
       </widget>
      </item>
      <item>
-      <widget class="QComboBox" name="comboDetectorSelect"/>
+      <widget class="QComboBox" name="comboDetectorSelect">
+       <property name="minimumSize">
+        <size>
+         <width>200</width>
+         <height>0</height>
+        </size>
+       </property>
+      </widget>
      </item>
     </layout>
    </item>
    <item>
     <layout class="QHBoxLayout" name="horizontalLayout">
      <item>
-      <widget class="QLabel" name="label_9">
+      <widget class="QLabel" name="label_rep">
        <property name="text">
         <string>Replications</string>
        </property>
@@ -84,7 +84,7 @@
       </widget>
      </item>
      <item>
-      <widget class="QLabel" name="label_5">
+      <widget class="QLabel" name="label_time">
        <property name="text">
         <string>Acq Time (sec)</string>
        </property>
@@ -119,140 +119,146 @@
     </layout>
    </item>
    <item>
-    <layout class="QHBoxLayout" name="horizontalLayout_3">
-     <item>
-      <widget class="QTableWidget" name="tblMaterial">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
-       </property>
-       <attribute name="verticalHeaderVisible">
-        <bool>false</bool>
-       </attribute>
-       <column>
-        <property name="text">
-         <string>Flux/Dose</string>
-        </property>
-        <property name="font">
-         <font>
-          <italic>false</italic>
-         </font>
-        </property>
-       </column>
-       <column>
-        <property name="text">
-         <string>Source Materials</string>
-        </property>
-       </column>
-       <column>
-        <property name="text">
-         <string>Intensity</string>
-        </property>
-        <property name="font">
-         <font>
-          <italic>false</italic>
-         </font>
-        </property>
-       </column>
-      </widget>
-     </item>
-     <item>
-      <widget class="QTableWidget" name="tblBackground">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
-       </property>
-       <property name="showGrid">
-        <bool>true</bool>
-       </property>
-       <property name="gridStyle">
-        <enum>Qt::SolidLine</enum>
-       </property>
-       <attribute name="verticalHeaderVisible">
-        <bool>false</bool>
-       </attribute>
-       <column>
-        <property name="text">
-         <string>Flux/Dose</string>
-        </property>
-       </column>
-       <column>
-        <property name="text">
-         <string>Background Materials</string>
-        </property>
-       </column>
-       <column>
-        <property name="text">
-         <string>Intensity</string>
-        </property>
-       </column>
-      </widget>
-     </item>
-    </layout>
+    <widget class="QTableWidget" name="tblMaterial">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <property name="minimumSize">
+      <size>
+       <width>540</width>
+       <height>0</height>
+      </size>
+     </property>
+     <attribute name="horizontalHeaderMinimumSectionSize">
+      <number>150</number>
+     </attribute>
+     <attribute name="horizontalHeaderDefaultSectionSize">
+      <number>150</number>
+     </attribute>
+     <attribute name="horizontalHeaderStretchLastSection">
+      <bool>true</bool>
+     </attribute>
+     <attribute name="verticalHeaderVisible">
+      <bool>false</bool>
+     </attribute>
+     <attribute name="verticalHeaderStretchLastSection">
+      <bool>true</bool>
+     </attribute>
+     <column>
+      <property name="text">
+       <string>Flux/Dose</string>
+      </property>
+      <property name="font">
+       <font>
+        <italic>false</italic>
+       </font>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>Source Materials</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>Intensity</string>
+      </property>
+      <property name="font">
+       <font>
+        <italic>false</italic>
+       </font>
+      </property>
+     </column>
+    </widget>
    </item>
    <item>
-    <layout class="QVBoxLayout" name="verticalLayout_4">
-     <item>
-      <widget class="QLabel" name="label_8">
-       <property name="text">
-        <string>Scenarios List:</string>
-       </property>
-       <property name="wordWrap">
-        <bool>true</bool>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QLabel" name="txtScenariosList_2">
-       <property name="text">
-        <string/>
-       </property>
-       <property name="wordWrap">
-        <bool>true</bool>
-       </property>
-      </widget>
-     </item>
-    </layout>
+    <widget class="QTableWidget" name="tblBackground">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <property name="minimumSize">
+      <size>
+       <width>540</width>
+       <height>0</height>
+      </size>
+     </property>
+     <property name="showGrid">
+      <bool>true</bool>
+     </property>
+     <property name="gridStyle">
+      <enum>Qt::SolidLine</enum>
+     </property>
+     <attribute name="horizontalHeaderMinimumSectionSize">
+      <number>150</number>
+     </attribute>
+     <attribute name="horizontalHeaderDefaultSectionSize">
+      <number>150</number>
+     </attribute>
+     <attribute name="horizontalHeaderStretchLastSection">
+      <bool>true</bool>
+     </attribute>
+     <attribute name="verticalHeaderVisible">
+      <bool>false</bool>
+     </attribute>
+     <attribute name="verticalHeaderStretchLastSection">
+      <bool>true</bool>
+     </attribute>
+     <column>
+      <property name="text">
+       <string>Flux/Dose</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>Background Materials</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>Intensity</string>
+      </property>
+     </column>
+    </widget>
    </item>
    <item>
-    <layout class="QHBoxLayout" name="horizontalLayout_6">
-     <item>
-      <layout class="QVBoxLayout" name="verticalLayout">
-       <item>
-        <widget class="QLabel" name="label_7">
-         <property name="text">
-          <string>Influences</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QListWidget" name="lstInfluences">
-         <property name="selectionMode">
-          <enum>QAbstractItemView::MultiSelection</enum>
-         </property>
-        </widget>
-       </item>
-      </layout>
-     </item>
-     <item>
-      <layout class="QVBoxLayout" name="verticalLayout_2">
-       <item>
-        <widget class="QLabel" name="label_2">
-         <property name="text">
-          <string>Scenario Group Description</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QPlainTextEdit" name="txtScenarioGroupDescription"/>
-       </item>
-      </layout>
-     </item>
-    </layout>
+    <widget class="QLabel" name="label_influences">
+     <property name="text">
+      <string>Influences</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QListWidget" name="lstInfluences">
+     <property name="selectionMode">
+      <enum>QAbstractItemView::MultiSelection</enum>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLabel" name="label_scenlist">
+     <property name="text">
+      <string>Scenarios List:</string>
+     </property>
+     <property name="wordWrap">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLabel" name="txtScenariosList_2">
+     <property name="text">
+      <string/>
+     </property>
+     <property name="wordWrap">
+      <bool>true</bool>
+     </property>
+    </widget>
    </item>
    <item>
     <layout class="QHBoxLayout" name="horizontalLayout_2">

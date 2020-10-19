@@ -156,8 +156,9 @@ class ResultsTableModel(QAbstractTableModel):
 
     def sort(self, column: int, order: Qt.SortOrder = ...) -> None:
         self.layoutAboutToBeChanged.emit()
-        self._data.sort_values(by=[self._data.columns[column]],
-                               ascending=not order, inplace=True)
+        if len(self._data.columns):
+            self._data.sort_values(by=[self._data.columns[column]],
+                                   ascending=not order, inplace=True)
         self.layoutChanged.emit()
 
     def scenario_desc_col_index(self):
@@ -199,7 +200,7 @@ class ViewResultsDialog(ui_results_dialog.Ui_dlgResults, QDialog):
 
         self.btnClose.clicked.connect(self.closeSelected)
         self.buttonExport.clicked.connect(self.handleExport)
-        self.buttonCorrTable.clicked.connect(self.openCorrTable)
+        self.buttonCorrTable.clicked.connect(lambda: self.openCorrTable(scenIds, detNames))
 
         self.results_model = ResultsTableModel(self.parent.scenario_stats_df)
         self.tblResView.setModel(self.results_model)
@@ -210,13 +211,14 @@ class ViewResultsDialog(ui_results_dialog.Ui_dlgResults, QDialog):
         self.tblResView.resizeColumnsToContents()
         self.tblResView.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
 
-    def openCorrTable(self):
+    def openCorrTable(self, scenIds, detNames):
         """
         Launches Correspondence Table Dialog
         """
         CorrespondenceTableDialog().exec_()
         self.parent.settings.setIsAfterCorrespondenceTableCall(True)
-        self.parent.calculateScenarioStats(caller=self)
+        self.parent.calculateScenarioStats(caller=self, selected_scenarios=scenIds,
+                                           selected_detectors=detNames)
         self.results_model.reset_data(self.parent.scenario_stats_df)
 
     def handleExport(self):
@@ -297,6 +299,8 @@ class ViewResultsDialog(ui_results_dialog.Ui_dlgResults, QDialog):
         y = []
         x_err = []
         y_err = []
+        repl = []
+
         for axis in ['X', 'Y']:
             cmbAxis = getattr(self, 'cmb' + axis + 'axis').currentText()
             matName = getattr(self, 'cmb' + axis + 'mat').currentText()
@@ -351,6 +355,7 @@ class ViewResultsDialog(ui_results_dialog.Ui_dlgResults, QDialog):
                     y.append(self.parent.scenario_stats_df[ax_vars[1]].to_list())
                     if ax_vars[1] in ['PID', 'C&C']:
                         y_err.append([(l, h) for (l, h) in zip(df[f'{ax_vars[1]}_L_err'], df[f'{ax_vars[1]}_H_err'])])
+                    repl.append(df['Repl'].tolist())
             else:
                 for cat_label in categories:
                     if isinstance(cat_label, str) and \
@@ -361,6 +366,7 @@ class ViewResultsDialog(ui_results_dialog.Ui_dlgResults, QDialog):
                     else:
                         df = self.parent.scenario_stats_df.loc[self.parent.scenario_stats_df[cat] == cat_label]
                         x.append(df[ax_vars[0]].to_list())
+                        repl.append(df['Repl'].tolist())
                         if ax_vars[0] in ['PID', 'C&C']:
                             x_err.append([(l, h) for (l, h) in zip(df[f'{ax_vars[0]}_L_err'], df[f'{ax_vars[0]}_H_err'])])
                     if ax_vars[1]:
@@ -373,7 +379,7 @@ class ViewResultsDialog(ui_results_dialog.Ui_dlgResults, QDialog):
             QMessageBox.information(self, "Info", "Sorry, the requested plot cannot be generated.")
             return
 
-        dialog = ResultPlottingDialog(self, x, y, titles, categories, df.Repl.to_list(), x_err, y_err)
+        dialog = ResultPlottingDialog(self, x, y, titles, categories, repl, x_err, y_err)
         dialog.exec_()
 
     @pyqtSlot(bool)

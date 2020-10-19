@@ -19,7 +19,7 @@ At this point, RASE can be used to generate sampled spectra. To do this, execute
 
   a. Press the “Gen Sampled Spectra” button that becomes available in order to generate the sampled spectra.
 
-  b. Press the "Run Scenario" button that becomes available in order to sequentially execute the entire workflow (generate sample spectra, run replay, and run translator) for all selected scenarios and instruments without additional input from the user.
+  b. Press the "Run Scenario" button that becomes available in order to sequentially execute the entire workflow (generate sample spectra, run replay, and run translator) for all selected scenarios and instruments without additional input from the user. This option only becomes available if all of the selected instruments have command line-based replay tools.
 
   The rest of this guide will work under the assumption that the option (a) was selected, and the steps of the workflow are to be executed manually. However, it should be noted that the workflow will end in the same place, regardless of if the workflow is executed manually (option a) or using the "Run Scenario" button (option b).
 
@@ -37,6 +37,6 @@ The directory containing data associated with the specific scenario can be acces
 .. _rase-WorkflowStep4:
 
 .. figure:: _static/rase_WorkflowStep4.png
-    :scale: 20 %
+    :scale: 90%
 
     Populated main RASE window showing how to generate sample spectra.

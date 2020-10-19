@@ -45,6 +45,6 @@ field in the “Edit Instrument” window.
 .. _rase-WorkflowStep3:
 
 .. figure:: _static/rase_WorkflowStep3.png
-    :scale: 20 %
+    :scale: 70%
 
     “Define Replay Tool” dialog.

@@ -224,15 +224,16 @@ class ResultPlottingDialog(ui_results_plotting_dialog.Ui_Dialog, QDialog):
         if self.labels:
             self.ax.clear()
             self.draw()
-            for index, (lab, x_vals, y_vals, err_x, err_y) in enumerate(zip(self.labels, self.x, self.y, x_error, y_error)):
+            for index, (lab, x_vals, y_vals, err_x, err_y, repl) in \
+                    enumerate(zip(self.labels, self.x, self.y, x_error, y_error, self.replications)):
                 if str(lab) in self.get_selected_labels():
                     color, color_hash = self.color_array[index % 6]
-                    self.sCurveGen(lab, x_vals, y_vals, err_x, err_y, color, color_hash)
+                    self.sCurveGen(lab, x_vals, y_vals, err_x, err_y, repl, color, color_hash)
         else:
             self.ax.clear()
-            self.sCurveGen('Data', self.x[0], self.y[0], x_error[0], y_error[0], 'b', '#e5e7e9')
+            self.sCurveGen('Data', self.x[0], self.y[0], x_error[0], y_error[0], self.replications[0], 'b', '#e5e7e9')
 
-    def sCurveGen(self, label, x, y, x_err, y_err, color, color_hash):
+    def sCurveGen(self, label, x, y, x_err, y_err, repl, color, color_hash):
 
         # TODO: Automatically trim off all (x, y) pairs that are above the first 1 and below the last 0 to prevent
         #  fits from failing to converge or giving wonky results
@@ -243,7 +244,7 @@ class ResultPlottingDialog(ui_results_plotting_dialog.Ui_Dialog, QDialog):
 
         id_mark = self.idThreshBox.value() / 100
         alpha = self.alphaCBox.itemData(self.alphaCBox.currentIndex())
-        s = 1
+        B = 1
         Q = 1
         if self.combo_fitspace.currentText() == 'Logarithmic':
             logfit = True
@@ -251,17 +252,17 @@ class ResultPlottingDialog(ui_results_plotting_dialog.Ui_Dialog, QDialog):
             logfit = False
 
         errorbars = np.absolute([np.subtract((p, p), calc_result_uncertainty(p, n, alpha))
-                                 for (p, n) in zip(y, self.replications)])
+                                 for (p, n) in zip(y, repl)])
         weights = np.array([1. / ((h + l) / 2) for (h, l) in errorbars])  # weights by half total error bar length
         if np.isnan(np.sum(weights)):
             weights = None
-        r = sCurve.s_fit(x, y, weights, [s, Q], logfit)
-        # TODO: Throw message if nothing can be fit alerting the user
+
+        r = sCurve.s_fit(x, y, weights, [B, Q], logfit)
         p = [r.params[u].value for u in r.var_names]
         try:
-            (a1, a2, s, Q) = sCurve.correlated_values(p, r.covar)
+            (a1, a2, B, Q) = sCurve.correlated_values(p, r.covar)
         except:
-            (a1, a2, s, Q) = (0, 0, 0, 0)
+            (a1, a2, B, Q) = (0, 0, 0, 0)
 
         self.txtFitResults.append("------------\n" + str(label) + "\n")
         self.txtFitResults.append(r.fit_report(show_correl=False))
@@ -283,7 +284,7 @@ class ResultPlottingDialog(ui_results_plotting_dialog.Ui_Dialog, QDialog):
             self.ax.errorbar(x, y, color=color, yerr=np.transpose(y_err), fmt='none', capsize=3)
 
         if self.check_idshow.isChecked():
-            thresh_mark_nom, thresh_mark_stdev = sCurve.thresh_mark(a1, a2, s, Q, id_mark, logfit)
+            thresh_mark_nom, thresh_mark_stdev = sCurve.thresh_mark(a1, a2, B, Q, id_mark, logfit)
             if thresh_mark_nom == thresh_mark_stdev == 0:
                 pass
             else:

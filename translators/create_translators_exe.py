@@ -12,8 +12,7 @@ if not os.path.exists(distpath):
 translators = ['ORTEC-CmdLineReplayTool-ResultsTranslator.py',
                'ORTEC-StndAloneGUIReplayTool-ResultsTranslator.py',
                'FLIR-IdentiFinder-ResultsTranslator.py',
-               'Smith_RadSeeker_ResultsTranslator.py',
-               'Symetrica-ResultsTranslator.py']
+               'Smith_RadSeeker_ResultsTranslator.py']
 
 for translator in translators:
     os.system(sys.executable + " -m PyInstaller -a -y -F -c --clean --noupx" +

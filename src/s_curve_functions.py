@@ -32,33 +32,56 @@
 This module defines key functions used in the s-curve
 """
 
-from uncertainties import ufloat, correlated_values, umath   # correlated_values must be imported for inversion
+from uncertainties import ufloat, correlated_values, umath  # correlated_values must be imported for inversion
 from lmfit import Model
 import numpy as np
 
-def boltzmann_log(x, a1=1., a2=0., s=1., Q=1):
-    return a2 + (a1 - a2) / (1 + Q * np.exp(-np.log(x) / s))
 
-def boltzmann_lin(x, a1=1., a2=0., s=1., Q=1):
-    return a2 + (a1 - a2) / (1 + Q * np.exp(-x / s))
+def boltzmann_log(x, a1=1., a2=0., B=1., Q=1):
+    return a2 + (a1 - a2) / (1 + Q * np.exp(-np.log(x) * B))
 
-def boltzmann_inverse(y, a1=1., a2=0., s=1., Q=1, logfit=True):
+
+def boltzmann_lin(x, a1=1., a2=0., B=1., Q=1):
+    return a2 + (a1 - a2) / (1 + Q * np.exp(-x * B))
+
+
+def boltzmann_log_alt(x, a1=1., a2=0., B=1., Q=1):
+    """Alternative fitting (1/B instead of B) that sometimes helps the plotter converge.
+        Used only in cases where the original approach fails"""
+    return a2 + (a1 - a2) / (1 + Q * np.exp(-np.log(x) * 1 / B))
+
+
+def boltzmann_lin_alt(x, a1=1., a2=0., B=1., Q=1):
+    """Alternative fitting (1/B instead of B) that sometimes helps the plotter converge.
+        Used only in cases where the original approach fails"""
+    return a2 + (a1 - a2) / (1 + Q * np.exp(-x * 1 / B))
+
+
+def boltzmann_inverse(y, a1=1., a2=0., B=1., Q=1, logfit=True, altfit=0):
+    """Inverts and finds the user defined crossing point (default at 80%)"""
     try:
         y = y.nominal_value
         if logfit:
-            b_inv = np.power((1 / Q * ((a1 - y) / (y - a2))), -s)
+            if altfit == 1:
+                b_inv = np.power((1 / Q * ((a1 - y) / (y - a2))), -B)
+            else:
+                b_inv = np.power((1 / Q * ((a1 - y) / (y - a2))), -1 / B)
         else:
-            b_inv = -s * umath.log(1 / Q * ((a1 - y) / (y - a2)))
+            if altfit == 1:
+                b_inv = -B * umath.log(1 / Q * ((a1 - y) / (y - a2)))
+            else:
+                b_inv = -1 / B * umath.log(1 / Q * ((a1 - y) / (y - a2)))
     except:
         print('Failed to invert')
         b_inv = []
     return b_inv
 
-def thresh_mark(a1=1., a2=0., s=1., Q=1., id_mark=0.8, logfit=True):
+
+def thresh_mark(a1=1., a2=0., B=1., Q=1, id_mark=0.8, logfit=True, altfit=0):
     """
     Find at what dose rate you achieve 80% PID, as determined by the S-curve
     """
-    thresh_mark_new = boltzmann_inverse(ufloat(id_mark, 0), a1=a1, a2=a2, s=s, Q=Q, logfit=logfit)
+    thresh_mark_new = boltzmann_inverse(ufloat(id_mark, 0), a1=a1, a2=a2, B=B, Q=Q, logfit=logfit, altfit=altfit)
     if not thresh_mark_new:
         thresh_mark_nom = 0
         thresh_mark_sd = 0
@@ -78,18 +101,26 @@ def find_max_plot_dose(pid, index=1):
         index = find_max_plot_dose(pid, index)
     return index
 
-def s_fit(dose, pid, weights=None, p_guess=[1, 1], logfit=True):
+
+def s_fit(dose, pid, weights=None, p_guess=[1, 1], logfit=True, altfit=0):
     """
     Determines fit parameters from an S-curve fit to data
     """
     if logfit:
-        model = Model(boltzmann_log)
+        if altfit == 1:
+            model = Model(boltzmann_log_alt)
+        else:
+            model = Model(boltzmann_log)
     else:
-        model = Model(boltzmann_lin)
+        if altfit == 1:
+            model = Model(boltzmann_lin_alt)
+        else:
+            model = Model(boltzmann_lin)
+
     params = model.make_params()
     params["a1"].set(1.0)
     params["a2"].set(0.0)
-    params["s"].set(p_guess[0])
+    params["B"].set(p_guess[0])
     params["Q"].set(p_guess[1])
     r = model.fit(pid, params, weights=weights, method='leastsq', x=dose)
     return r

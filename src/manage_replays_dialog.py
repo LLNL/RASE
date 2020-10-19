@@ -56,7 +56,6 @@ class ManageReplaysDialog(ui_manage_replays_dialog.Ui_Dialog, QDialog):
         self.setReplaysTable()
         self.deleteSelectedReplaysButton.clicked.connect(self.deleteSelectedReplays)
         self.btnOK.clicked.connect(self.oK)
-        self.buttonSave.clicked.connect(self.accept)
         self.buttonExport.clicked.connect(self.handleExport)
         self.buttonImport.clicked.connect(self.handleImport)
         self.addNewReplayButton.clicked.connect(self.on_btnNewReplay_clicked)
@@ -88,6 +87,9 @@ class ManageReplaysDialog(ui_manage_replays_dialog.Ui_Dialog, QDialog):
                 else:
                     self.tblReplays.setItem(row, TRANSL_IS_CMD_LINE, QTableWidgetItem("No"))
                 self.tblReplays.setItem(row, TRANSL_SETTING, QTableWidgetItem(resultsTranslator.settings))
+            else:
+                self.tblReplays.setItem(row, TRANSL_IS_CMD_LINE, QTableWidgetItem(" "))
+                self.tblReplays.setItem(row, TRANSL_SETTING, QTableWidgetItem(" "))
             row = row + 1
         self.tblReplays.setEditTriggers(QAbstractItemView.NoEditTriggers)
 
@@ -173,65 +175,6 @@ class ManageReplaysDialog(ui_manage_replays_dialog.Ui_Dialog, QDialog):
             self.session.commit()
             if self.parent:
                 self.parent.cmbReplay.removeItem(self.parent.cmbReplay.findText(name))
-
-    def accept(self):
-        """
-        Saves changes
-        """
-        session = Session()
-        for repl in session.query(Replay):
-            replayDelete = self.session.query(Replay).filter(Replay.name == repl.name)
-            replayDelete.delete()
-        for resTrans in session.query(ResultsTranslator):
-            resTranslatorDelete = self.session.query(ResultsTranslator).filter(ResultsTranslator.name == resTrans.name)
-            resTranslatorDelete.delete()
-        for row in range(self.tblReplays.rowCount()):
-            nameItem = self.tblReplays.item(row, NAME)
-            if not nameItem:
-                QMessageBox.critical(self, 'Insufficient Information', 'Must specify a replay tool name')
-                return
-            isReplCmdItem = self.tblReplays.item(row, REPL_IS_CMD_LINE)
-            if not isReplCmdItem:
-                QMessageBox.critical(self, 'Insufficient Information', 'Must specify whether replay tool is command line')
-                return
-            else:
-                if isReplCmdItem.text().lower() == "yes":
-                    isReplCmd = True
-                elif isReplCmdItem.text().lower() == "no":
-                    isReplCmd = False
-                else:
-                    QMessageBox.critical(self, 'Improper Input', ' Replay Cmd Line setting must be Yes or No')
-                    return
-            resTranslPathItem = self.tblReplays.item(row, TRANSL_PATH)
-            isResTransCmdItem = self.tblReplays.item(row, TRANSL_IS_CMD_LINE)
-            if len(resTranslPathItem.text()) > 0:
-                if not isResTransCmdItem:
-                    QMessageBox.critical(self, 'Insufficient Information', 'If Results Translator path set, must specify whether Results Translator is command line')
-                    return
-                if isResTransCmdItem.text().lower() == "yes":
-                    isResTransCmd = True
-                elif isResTransCmdItem.text().lower() == "no":
-                    isResTransCmd = False
-                else:
-                    QMessageBox.critical(self, 'Improper Input', ' Results Translator Cmd Line setting must be Yes or No')
-                    return
-            replay = Replay(name = nameItem.text())
-            replay.exe_path = self.tblReplays.item(row, REPL_PATH).text()
-            replay.is_cmd_line = isReplCmd
-            if self.tblReplays.item(row, REPL_SETTING):
-                replay.settings = self.tblReplays.item(row, REPL_SETTING).text()
-            if self.tblReplays.item(row, TEMPLATE_PATH):
-                replay.n42_template_path = self.tblReplays.item(row, TEMPLATE_PATH).text()
-            session.add(replay)
-            if len(resTranslPathItem.text()) > 0:
-                resultsTranslator = ResultsTranslator(name = nameItem.text())
-                resultsTranslator.exe_path = resTranslPathItem.text()
-                resultsTranslator.is_cmd_line = isResTransCmd
-                if self.tblReplays.item(row, TRANSL_SETTING):
-                    resultsTranslator.settings = self.tblReplays.item(row, TRANSL_SETTING).text()
-                session.add(resultsTranslator)
-        session.commit()
-        return QDialog.accept(self)
 
     def oK(self):
         """

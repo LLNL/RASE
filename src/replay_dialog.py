@@ -103,22 +103,21 @@ class ReplayDialog(ui_new_replay_dialog.Ui_ReplayDialog, QDialog):
             if repl:
                 QMessageBox.warning(self, 'Bad Replay Name', 'Replay with this name exists. Specify Different Replay Name')
                 return
-            self.replay = Replay(name = name)
+            self.replay = Replay(name=name)
             self.parent.new_replay = self.replay
+            session.add(self.replay)
         self.replay.exe_path    = self.txtCmdLine.text()
         self.replay.is_cmd_line = self.cbCmdLine.isChecked()
         self.replay.settings    = self.txtSettings.text().strip()
         self.replay.n42_template_path = self.txtTemplatePath.text()
         self.replay.input_filename_suffix = self.txtFilenameSuffix.text()
 
-        existingResultsTranslator = session.query(ResultsTranslator).filter(ResultsTranslator.name == name)
-        existingResultsTranslator.delete()
-        self.resultsTranslator = ResultsTranslator(name = name)
+        if not self.resultsTranslator:
+            self.resultsTranslator = ResultsTranslator(name=name)
+            session.add(self.resultsTranslator)
         self.resultsTranslator.exe_path    = self.txtResultsTranslator.text()
         self.resultsTranslator.is_cmd_line = self.cbCmdLine_3.isChecked()
         self.resultsTranslator.settings    = self.txtSettings_3.text().strip()
-        session.add(self.replay)
-        session.add(self.resultsTranslator)
         session.commit()
         return QDialog.accept(self)
 

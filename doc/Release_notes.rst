@@ -4,6 +4,29 @@
 RASE Release Notes
 ******************
 
+RASE v2.0
+=========
+
+- Automated S-curve generation tool added
+
+  - Automatic S-range finding and high statistics scenario creation
+  - Arbitrary number of static backgrounds (e.g.: masking scenarios)
+  - Regular and inverted S-curves
+
+- Improved plotting options
+- Scenario group redesign:
+
+  - Scenarios can now exist in multiple groups simultaneously
+  - Bulk scenario selection for group changes
+  - Scenarios can be created based on already existing scenarios
+  - Groups can be added and deleted freely
+
+- Automatic scenario range generation tool
+- Streamlined import of scenarios defined in .csv files
+- Various bug fixes
+- Documentation updates
+
+
 RASE v1.2
 =========
 - Improved scenario results table providing:
@@ -46,4 +69,3 @@ RASE v1.0
 - Extended the "Help" section with instructions and examples
 - Multiple code and UI modifications to improve the workflow
 - Extensive bug fixes and error intercepts
-

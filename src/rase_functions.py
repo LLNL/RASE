@@ -46,10 +46,10 @@ import numpy as np
 from mako import exceptions
 from sqlalchemy.engine import create_engine
 
-from .scenarios_io import ScenariosIO
-from .table_def import BaseSpectrum, BackgroundSpectrum, Detector, Scenario, IdentificationSet, IdentificationReport, \
+from src.scenarios_io import ScenariosIO
+from src.table_def import BaseSpectrum, BackgroundSpectrum, Detector, Scenario, IdentificationSet, IdentificationReport, \
     Session, Base, DetectorInfluence, ScenarioMaterial, ScenarioBackgroundMaterial
-from .utils import compress_counts
+from src.utils import compress_counts
 
 
 def initializeDatabase(databaseFilepath):
@@ -529,8 +529,11 @@ def _getCountsDoseAndSensitivity(scenario, detector):
     # if the detector has an internal calibration source, it needs to be added with special treatment
     if detector.includeSecondarySpectrum and detector.secondary_type == 2:
 
-        secondary_spectrum = (session.query(BackgroundSpectrum).filter_by(detector_name = detector.name)).first()
-        counts = np.array([int(float(c)) for c in secondary_spectrum.baseCounts.split(",")])
+        secondary_spectrum = (session.query(BackgroundSpectrum).filter_by(detector_name=detector.name)).first()
+        if secondary_spectrum.is_spectrum_float():
+            counts = np.array([float(c) for c in secondary_spectrum.baseCounts.split(",")])
+        else:
+            counts = np.array([int(float(c)) for c in secondary_spectrum.baseCounts.split(",")])
 
         # apply distortion on counts
         if scenario.influences:
@@ -569,11 +572,14 @@ def create_n42_file(filename, scenario, detector, sample_counts, secondary_spect
     f.write('        </Equation>\n')
     f.write('      </Calibration>\n')
     f.write('      <ChannelData>')
-    f.write('{}'.format(' '.join('{:d}'.format(x) for x in sample_counts)))
+    f.write('{}'.format(' '.join('{:f}'.format(x) for x in sample_counts)))
     f.write('</ChannelData>\n')
     f.write('    </Spectrum>\n')
     if secondary_spectrum:
-        sec_counts = [int(float(c_str)) for c_str in secondary_spectrum.baseCounts.split(",")]
+        if secondary_spectrum.is_spectrum_float():
+            sec_counts = [float(c_str) for c_str in secondary_spectrum.baseCounts.split(",")]
+        else:
+            sec_counts = [int(float(c_str)) for c_str in secondary_spectrum.baseCounts.split(",")]
         f.write('    <Spectrum>\n')
         f.write('      <RealTime Unit="sec">PT{}S</RealTime>\n'.format(secondary_spectrum.realtime))
         f.write('      <LiveTime Unit="sec">PT{}S</LiveTime>\n'.format(secondary_spectrum.livetime))
@@ -584,7 +590,10 @@ def create_n42_file(filename, scenario, detector, sample_counts, secondary_spect
         f.write('        </Equation>\n')
         f.write('      </Calibration>\n')
         f.write('      <ChannelData>')
-        f.write('{}'.format(' '.join('{:d}'.format(x) for x in sec_counts)))
+        if secondary_spectrum.is_spectrum_float():
+            f.write('{}'.format(' '.join('{:f}'.format(x) for x in sec_counts)))
+        else:
+            f.write('{}'.format(' '.join('{:d}'.format(x) for x in sec_counts)))
         f.write('</ChannelData>\n')
         f.write('    </Spectrum>\n')
     f.write('  </Measurement>\n')
@@ -611,6 +620,8 @@ def create_n42_file_from_template(n42_mako_template, filename, scenario, detecto
     )
 
     if secondary_spectrum:
+        secondary_spectrum_ints = [int(float(x)) for x in secondary_spectrum.baseCounts.split(',')]
+        secondary_spectrum.baseCounts = ','.join('{:d}'.format(val) for val in secondary_spectrum_ints)
         template_data.update(dict(secondary_spectrum=secondary_spectrum))
 
     try:
@@ -702,6 +713,8 @@ def delete_scenario(scenario_ids, sample_root_dir):
             shutil.rmtree(folder)
 
         # database
+        scenObj = scenDelete.first()
+        scenObj.scenario_groups.clear()
         matDelete.delete()
         backgMatDelete.delete()
         scenDelete.delete()
@@ -722,14 +735,20 @@ def export_scenarios(scenarios_ids, file_path):
     Path(file_path).write_text(xml_str)
 
 
-def import_scenarios(file_path, group_name="Imported", group_desc=""):
+def import_scenarios(file_path, file_format='xml'):
     """
     Import scenarios from an xml file into a list of scenarios. Objects are not committed to db here.
     """
-    session = Session()
     scen_io = ScenariosIO()
-    xml_str = Path(file_path).read_text()
-    return scen_io.scenario_import(xml_str)
+    if file_format == 'csv':
+        # import is taken from a tree directly
+        xml_str = scen_io.xmlstr_from_csv(file_path)
+        return scen_io.scenario_import(xml_str)
+    elif file_format == 'xml':
+        # xml is taken from a file
+        return scen_io.scenario_import(Path(file_path).read_text())
+    else:
+        return []
 
 
 def calc_result_uncertainty(p, n, alpha=0.05):
@@ -757,3 +776,10 @@ def calc_result_uncertainty(p, n, alpha=0.05):
     CI_neg = p_prime - s_prime
 
     return CI_pos, CI_neg
+
+
+def files_exist(directory, globadd='/*'):
+    if os.path.exists(directory) and glob.glob(directory + globadd):
+        return True
+    return False
+
