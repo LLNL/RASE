@@ -75,10 +75,15 @@ of the U.S. Department of Energy  under contract DEJAC52J07NA27344,
 and of the U.S. Department of Homeland Security Domestic Nuclear Detection Office
 under contract HSHQDC-15-X-00128.
 
+Lawrence Livermore National Laboratory (LLNL) gratefully acknowledges support from
+the U.S. Department of Energy (DOE) Nuclear Smuggling Detection and Deterrence
+program and from the Countering Weapons of Mass Destruction Office of the U.S.
+Department of Homeland Security.
+
 
 License
 -------
 
 RASE is released under an MIT license. For more details see the [LICENSE](/LICENSE) file.
 
-LLNL-CODE-750919
+LLNL-CODE-819515

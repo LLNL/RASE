@@ -5,7 +5,7 @@
 # Written by J. Chavez, S. Czyz, G. Kosinovsky, V. Mozin, S. Sangiorgio.
 # RASE-support@llnl.gov.
 #
-# LLNL-CODE-750919
+# LLNL-CODE-819515
 #
 # All rights reserved.
 #
@@ -456,6 +456,8 @@ class ScenarioDialog(ui_create_scenario_dialog.Ui_ScenarioDialog, QDialog):
         matDelete = self.session.query(ScenarioMaterial).filter(ScenarioMaterial.scenario_id == self.id)
         bckgMatDelete = self.session.query(ScenarioBackgroundMaterial).filter(
             ScenarioBackgroundMaterial.scenario_id == self.id)
+        scenGroupDelete = scenDelete.first()
+        scenGroupDelete.scenario_groups.clear()
         matDelete.delete()
         bckgMatDelete.delete()
         scenDelete.delete()
