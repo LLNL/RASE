@@ -149,6 +149,13 @@
       </widget>
      </item>
      <item>
+      <widget class="QPushButton" name="buttonManageWeights">
+       <property name="text">
+        <string>Weighted F-Score Manager</string>
+       </property>
+      </widget>
+     </item>
+     <item>
       <widget class="QPushButton" name="btnSettings">
        <property name="text">
         <string>Table Settings</string>

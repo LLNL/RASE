@@ -1,5 +1,5 @@
 ###############################################################################
-# Copyright (c) 2018 Lawrence Livermore National Security, LLC.
+# Copyright (c) 2018-2021 Lawrence Livermore National Security, LLC.
 # Produced at the Lawrence Livermore National Laboratory
 #
 # Written by J. Chavez, S. Czyz, G. Kosinovsky, V. Mozin, S. Sangiorgio.
@@ -101,7 +101,7 @@ class AutomatedSCurve(ui_auto_scurve.Ui_AutoSCurveDialog, QDialog):
 
     def setInstrumentItems(self):
         for det in self.session.query(Detector):
-            if det.replay.is_cmd_line:
+            if det.replay and det.replay.is_cmd_line:
                 self.combo_inst.addItem(det.name)
 
     @pyqtSlot(str)

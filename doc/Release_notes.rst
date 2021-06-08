@@ -4,6 +4,28 @@
 RASE Release Notes
 ******************
 
+RASE v2.1
+=========
+
+- Better secondary spectrum handling
+
+  - Internal background can now be taken directly from scenario definition or from specific base spectrum
+
+- Influences redesign
+
+  - User can now define energy resolution degradation
+  - Calibration coefficients and energy resolution terms can vary over time to model environmental effects
+
+- A set of "code evaluation" base spectra with standard shapes, such as "delta", "flat", and "sawtooth" are now included
+- Weighted F-score
+- Import of experimental spectra to utilize the RASE workflow
+- Improved internal project switching
+- Improved internal spectra viewer
+- Statistics on detailed ID results
+- Various bug fixes
+- Documentation updates, including GADRAS isotope ID replay tool documentation
+
+
 RASE v2.0
 =========
 

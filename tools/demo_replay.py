@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 #
 ###############################################################################
-# Copyright (c) 2018 Lawrence Livermore National Security, LLC.
+# Copyright (c) 2018-2021 Lawrence Livermore National Security, LLC.
 # Produced at the Lawrence Livermore National Laboratory
 #
 # Written by J. Chavez, S. Czyz, G. Kosinovsky, V. Mozin, S. Sangiorgio.

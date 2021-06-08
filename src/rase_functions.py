@@ -1,5 +1,5 @@
 ###############################################################################
-# Copyright (c) 2018 Lawrence Livermore National Security, LLC.
+# Copyright (c) 2018-2021 Lawrence Livermore National Security, LLC.
 # Produced at the Lawrence Livermore National Laboratory
 #
 # Written by J. Chavez, S. Czyz, G. Kosinovsky, V. Mozin, S. Sangiorgio.
@@ -47,10 +47,13 @@ from mako import exceptions
 from sqlalchemy.engine import create_engine
 
 from src.scenarios_io import ScenariosIO
-from src.table_def import BaseSpectrum, BackgroundSpectrum, Detector, Scenario, IdentificationSet, IdentificationReport, \
+from src.table_def import BaseSpectrum, BackgroundSpectrum, Detector, Scenario, \
     Session, Base, DetectorInfluence, ScenarioMaterial, ScenarioBackgroundMaterial
 from src.utils import compress_counts
 
+
+# Key variables used in several places
+secondary_type = {'internal': 2, 'base_spec': 0,  'scenario': 1, 'file': 3}
 
 def initializeDatabase(databaseFilepath):
     """
@@ -58,7 +61,8 @@ def initializeDatabase(databaseFilepath):
 
     :param databaseFilepath: path to src.sqlite file
     """
-    engine  = create_engine('sqlite:///' + databaseFilepath)
+    Session.remove()
+    engine = create_engine('sqlite:///' + databaseFilepath)
     Session.configure(bind=engine)
     if not os.path.exists(databaseFilepath):
         Base.metadata.create_all(engine)
@@ -77,43 +81,6 @@ def importDistortionFile(filepath):
         inflVals = [float(value) for value in inflElement.find('Nonlinearity').text.split()]
         detInfluences.append((inflName, inflVals))
     return detInfluences
-
-
-def importResultsDirectory(directory, scenarioId, detectorName):
-    """
-
-    :param directory:
-    :param scenarioId:
-    :param detectorName:
-    :return:
-    """
-    if not os.path.exists(directory): return
-
-    session  = Session()
-    detector = session.query(Detector).filter_by(name = detectorName).first()
-    scenario = session.query(Scenario).filter_by(id = scenarioId).first()
-    idSet    = session.query(IdentificationSet).filter_by(det_name = detectorName, scen_id = scenarioId).first()
-    if not idSet: idSet = IdentificationSet(det_name=detectorName, scen_id=scenarioId, replay=detector.replay)
-    session.add(idSet)
-    idSet.id_reports = []
-
-    for filename in os.listdir(directory):
-        if filename.endswith('.res'):
-            filenum = int(filename.split('___')[2].split('.')[0])
-            idReport = IdentificationReport(filenum=filenum)
-            idSet.id_reports.append(idReport)
-
-            # # parse each .res file and extract id_name, confidence and reported
-            # root = ET.parse(os.path.join(directory, filename)).getroot()
-            # resultElements = root.findall('Identification')
-            # for resultElement in resultElements:
-            #     name = resultElement.find('IDName').text
-            #     confidence = int(resultElement.find('IDConfidence').text)
-            #
-            #     idResult = IdentificationResult(name=name, confidence=confidence)
-            #     idReport.results.append(idResult)
-    idSet.scen_id=scenarioId
-    session.commit()
 
 
 def ConvertDurationToSeconds(inTime):
@@ -141,7 +108,7 @@ class ResultsFileFormatException(Exception):
     pass
 
 
-def readTranslatedResultFile(filename):
+def readTranslatedResultFile(filename, use_confs):
     """
     Reads translated results file from either of two formats:
 
@@ -164,8 +131,6 @@ def readTranslatedResultFile(filename):
     :param filename: path of valid results file
     :return: list of identification results
     """
-    # TODO: confidence level of the identification is neglected for now
-
     root = ET.parse(filename).getroot()
     if root.tag != "IdentificationResults":
         raise ResultsFileFormatException(f'{filename}: bad file format')
@@ -174,18 +139,61 @@ def readTranslatedResultFile(filename):
     if len(root.findall('Isotopes')) > 0:
        isotopes = root.find('Isotopes').text
        if isotopes:
-            return list(filter(lambda x: x.strip() not in ['-',''],isotopes.split('\n')))
+            results = list(filter(lambda x: x.strip() not in ['-', ''], isotopes.split('\n')))
+            if root.find('ConfidenceIndex') is not None:
+                confidences = root.find('ConfidenceIndex').text
+            elif root.find('Confidences') is not None:
+                confidences = root.find('Confidences').text
+            else:
+                confidences = None
+            if use_confs and confidences is not None:
+                confidences = list(filter(lambda x: x.strip() not in ['-', ''], confidences.split('\n')))
+                # for some instruments (e.g.: RadEagle), the confidences are zeros while the isotopes are dashes
+                if len(confidences) > len(results):
+                    confidences = confidences[0:len(results)]
+                if confidences:
+                    try:
+                        # 0 - 3 = low, 4 - 6 = medium, 7 - 10 = high
+                        confidences = [(int(float(c)/3.4) + 1) / 3 for c in confidences]
+                    except:
+                        raw_confidences = confidences
+                        confidences = []
+                        for c in raw_confidences:
+                            if c == 'low':
+                                confidences.append(1/3)
+                            elif c == 'medium':
+                                confidences.append(2/3)
+                            else:
+                                confidences.append(1)  # default to full confidence in results
+            else:
+                confidences = [1] * len(results)
+            return results, confidences
        else:
-           return []
+            return [], []
     # Read Format 2
     elif len(root.findall('Identification')) > 0:
         results = []
+        confidences = []
         for identification in root.findall('Identification'):
             idname = identification.find('IDName')
-            # confidence = identification.find('IDConfidence')
             if idname.text:
                 results.append(idname.text.strip())
-        return results
+                confidence = identification.find('IDConfidence')
+            if use_confs and confidence is not None:
+                try:
+                    # 0 - 3 = low, 4 - 6 = medium, 7 - 10 = high
+                    confidences.append((int(float(confidence.text.strip()) / 3.4) + 1) / 3)
+                except:
+                    if confidence.text.strip() == 'low':
+                        confidences.append(1 / 3)
+                    elif confidence.text.strip() == 'medium':
+                        confidences.append(2 / 3)
+                    else:
+                        confidences.append(1)  # default to full confidence in results
+            else:
+                confidences = [1] * len(results)
+
+        return results, confidences
     else:
         raise ResultsFileFormatException(f'{filename}: bad file format')
 
@@ -290,7 +298,7 @@ def parseRadMeasurement(root, filepath, sharedObject, tstatus, requireRASESens):
         tstatus.append(message)
         return None
 
-def parseMeasurement(measurement, filepath, sharedObject, tstatus):
+def parseMeasurement(measurement, filepath, sharedObject, tstatus, requireRASESen=True):
     try:
         specElement = requiredElement('Spectrum',measurement)
         allSpectra = measurement.findall("Spectrum")
@@ -333,15 +341,18 @@ def parseMeasurement(measurement, filepath, sharedObject, tstatus):
         realtime = getSeconds(realtimeElement.text.strip())
         livetimeElement = requiredElement(('LiveTimeDuration','LiveTime'), specElement)
         livetime = getSeconds(livetimeElement.text.strip())
-        RASEsensElement = requiredSensitivity(('RASE_Sensitivity', 'FLUX_Sensitivity'), specElement)
-        if RASEsensElement[0] is None:
-            rase_sensitivity = 'NaN'
+        if requireRASESen:
+            RASEsensElement = requiredSensitivity(('RASE_Sensitivity', 'FLUX_Sensitivity'), specElement)
+            if RASEsensElement[0] is None:
+                rase_sensitivity = 'NaN'
+            else:
+                rase_sensitivity = float(RASEsensElement[0].text.strip())
+            if RASEsensElement[1] is None:
+                flux_sensitivity = 'NaN'
+            else:
+                flux_sensitivity = float(RASEsensElement[1].text.strip())
         else:
-            rase_sensitivity = float(RASEsensElement[0].text.strip())
-        if RASEsensElement[1] is None:
-            flux_sensitivity = 'NaN'
-        else:
-            flux_sensitivity = float(RASEsensElement[1].text.strip())
+            rase_sensitivity = flux_sensitivity = 'NaN'
 
         if chanDataBckg is not None:
             ecalBckg = []
@@ -411,7 +422,7 @@ def readSpectrumFile(filepath, sharedObject, tstatus, requireRASESen=True):
         measurement = root.find('Measurement')
         rad_measurement = root.find('RadMeasurement')
         if measurement is not None:
-            return parseMeasurement(measurement, filepath, sharedObject, tstatus)
+            return parseMeasurement(measurement, filepath, sharedObject, tstatus, requireRASESen)
         elif rad_measurement is not None:
             return parseRadMeasurement(root, filepath, sharedObject, tstatus, requireRASESen)
     except BaseSpectraFormatException as ex:
@@ -462,16 +473,17 @@ def rebin(counts, oldEnergies, newEcal):
 
     # loop through and distribute old counts into new bins
     for ne in range(ne0, len(newCounts)):
-        if oe == len(oldEnergies): break # have already distributed all old counts
+        if oe == len(oldEnergies): break  # have already distributed all old counts
 
         # if no old energy boundaries within this new bin, new bin is fraction of old bin
-        if oldEnergies[oe] > newEnergies[ne+1]:
-            newCounts[ne] = counts[oe-1] * (newEnergies[ne+1] - newEnergies[ne]) \
-                            / (oldEnergies[oe]   - oldEnergies[oe-1])
+        if oldEnergies[oe] > newEnergies[ne + 1]:
+            newCounts[ne] = counts[oe - 1] * (newEnergies[ne + 1] - newEnergies[ne]) \
+                            / (oldEnergies[oe] - oldEnergies[oe - 1])
 
         # else there are old energy boundaries in this new bin: add each portion of old bins
         else:
             # Step 1: add first partial(or full) old bin
+            # TODO: This will crash if (oldEnergies[oe] - oldEnergies[oe-1]) < 0; might be necessary to handle this?
             newCounts[ne] = counts[oe-1] * (oldEnergies[oe] - newEnergies[ne]) \
                             / (oldEnergies[oe] - oldEnergies[oe-1])
             oe += 1
@@ -488,7 +500,7 @@ def rebin(counts, oldEnergies, newEcal):
     return newCounts
 
 
-def _getCountsDoseAndSensitivity(scenario, detector):
+def _getCountsDoseAndSensitivity(scenario, detector, degradations=None):
     """
 
     :param scenario:
@@ -500,13 +512,32 @@ def _getCountsDoseAndSensitivity(scenario, detector):
     # distortion:  distort ecal with influence factors
     ecal = [detector.ecal3, detector.ecal2, detector.ecal1, detector.ecal0]
     energies = np.polyval(ecal, np.arange(detector.chan_count))
-    if scenario.influences:
-        for infl in scenario.influences:
-            detInfl = (session.query(DetectorInfluence)
-                       .filter_by(detector_name=detector.name,
-                                  influence=infl)
-                       ).first()
-            energies = np.polyval([detInfl.infl_2, detInfl.infl_1, detInfl.infl_0], energies)
+    new_influences = []
+    bin_widths = np.zeros([len(scenario.influences), len(energies)])
+    for index, influence in enumerate(scenario.influences):
+        detInfl = session.query(DetectorInfluence).filter_by(influence_name=influence.name).first()
+        new_infl = [detInfl.infl_0, detInfl.infl_1, detInfl.infl_2, detInfl.fixed_smear, detInfl.linear_smear]
+        if degradations:
+            new_infl = [infl + deg for infl, deg in zip(new_infl, degradations[index])]
+            # deal with potential negative values
+            for position, n_inf in enumerate(new_infl):
+                if n_inf < 0:
+                    if not position == 1:
+                        new_infl[position] = 0
+                    else:
+                        new_infl[position] = 0.0001
+
+        new_influences.append(new_infl)
+
+        if new_infl[0] != 0 or new_infl[2] != 0 or new_infl[1] != 1:
+            energies = np.polyval([new_infl[2], (new_infl[1]), new_infl[0]], energies)
+        # convert fixed energy smear distortion from energy to bins
+        if new_infl[3] != 0:
+            e_width = new_infl[3] / 2
+            for sub_index, energy in enumerate(energies):
+                b0 = np.roots([new_infl[2], new_infl[1], new_infl[0] - (energy - e_width)])
+                b1 = np.roots([new_infl[2], new_infl[1], new_infl[0] - (energy + e_width)])
+                bin_widths[index][sub_index] = max(b1) - max(b0)
 
     # get dose, counts and sensitivity for each material
     countsDoseAndSensitivity = []
@@ -517,9 +548,9 @@ def _getCountsDoseAndSensitivity(scenario, detector):
                         ).first()
         counts = baseSpectrum.get_counts_as_np()
 
-        # apply distortion on counts
         if scenario.influences:
-            counts = rebin(np.array(counts), energies, ecal)
+            for index, infl in enumerate(new_influences):
+                counts = apply_distortions(infl, counts, bin_widths[index], energies, ecal)
 
         if scenMaterial.fd_mode == 'FLUX':
             countsDoseAndSensitivity.append((counts, scenMaterial.dose, baseSpectrum.flux_sensitivity))
@@ -527,17 +558,15 @@ def _getCountsDoseAndSensitivity(scenario, detector):
             countsDoseAndSensitivity.append((counts, scenMaterial.dose, baseSpectrum.rase_sensitivity))
 
     # if the detector has an internal calibration source, it needs to be added with special treatment
-    if detector.includeSecondarySpectrum and detector.secondary_type == 2:
+    if detector.includeSecondarySpectrum and detector.secondary_type == secondary_type['internal']:
 
         secondary_spectrum = (session.query(BackgroundSpectrum).filter_by(detector_name=detector.name)).first()
-        if secondary_spectrum.is_spectrum_float():
-            counts = np.array([float(c) for c in secondary_spectrum.baseCounts.split(",")])
-        else:
-            counts = np.array([int(float(c)) for c in secondary_spectrum.baseCounts.split(",")])
+        counts = secondary_spectrum.get_counts_as_np()
 
         # apply distortion on counts
         if scenario.influences:
-            counts = rebin(np.array(counts), energies, ecal)
+            for index, infl in enumerate(new_influences):
+                counts = apply_distortions(infl, counts, bin_widths[index], energies, ecal)
 
         # extract counts per second
         cps = sum(counts)/secondary_spectrum.livetime
@@ -697,6 +726,22 @@ def files_endswith_exists(dir, endswith_filters):
     return False
 
 
+def count_files_endwith(dir, endswith_filters):
+    """
+    Search if any files exists in 'dir' that ends with one of the specified filters
+    :param dir: search path (folder)
+    :param endswith_filters: tuple of file endings to filter e.g. (".n42",".res")
+    :return: Number of files that match the filter that exist in path
+    """
+    num_files = 0
+    if not os.path.exists(dir):
+        return 0
+    for f in os.listdir(dir):
+        if f.endswith(endswith_filters):
+            num_files += 1
+    return num_files
+
+
 def delete_scenario(scenario_ids, sample_root_dir):
     """
     Delete scenarios from database and cleanup sample folders
@@ -783,3 +828,39 @@ def files_exist(directory, globadd='/*'):
         return True
     return False
 
+
+def apply_distortions(new_influences, counts, bin_widths, energies, ecal):
+    count_bs = BaseSpectrum()
+    if (not new_influences[0] == 0) or (not new_influences[2] == 0) or (not new_influences[1] == 1):
+        counts = rebin(np.array(counts), energies, ecal)
+
+    count_bs.baseCounts = ','.join([str(c) for c in counts])
+
+    counts = gaussian_smearing(counts, bin_widths, new_influences[4], count_bs.is_spectrum_float())
+
+    return counts
+
+def gaussian_smearing(orig_hist, bin_widths, res_percent, is_float=False):
+    if is_float:
+        order_of_mag_list = [round(np.log10(v)) for v in orig_hist if v > 0]  # to prevent scaling values to large
+                                                                              # values that make sampling take forever
+        if min(order_of_mag_list) < 0:
+            oom_scale = int(np.power(10, (min(order_of_mag_list) + 1) * -1))
+        else:
+            oom_scale = int(np.power(10, max((4 - max(order_of_mag_list)), 0)))
+        hist = np.array(orig_hist * oom_scale).astype(int)
+    else:
+        hist = orig_hist  # expect counts, so casting into int
+    sigma = (res_percent / 100) / 2.355
+
+    # gaussian smearing
+    a = [np.random.normal(i, b + sigma * i, k) for i, (b, k) in enumerate(zip(bin_widths, hist))]
+    a = np.concatenate(a)
+
+    # reformat into an histogram
+    smeared_hist, __ = np.histogram(a, bins=np.arange(0, len(orig_hist) + 1))
+
+    if is_float:
+        smeared_hist = smeared_hist / oom_scale
+
+    return smeared_hist

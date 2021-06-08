@@ -4,7 +4,7 @@
 Notice to Users
 ***************
 
-RASE v 2.0 - Copyright (c) 2017-2020, Lawrence Livermore National Security, LLC. All rights reserved. LLNL-CODE-819515
+RASE v 2.1 - Copyright (c) 2017-2021, Lawrence Livermore National Security, LLC. All rights reserved. LLNL-CODE-819515, LLNL-SM-823092
 
 NOTICE
 ~~~~~~
@@ -18,13 +18,15 @@ Reference herein to any specific commercial products, process, or service by tra
 
 LICENSE
 ~~~~~~~
-Copyright (c) 2018-2020 Lawrence Livermore National Security, LLC. Produced at the Lawrence Livermore National Laboratory
+Copyright (c) 2018-2021 Lawrence Livermore National Security, LLC. Produced at the Lawrence Livermore National Laboratory
 
 Written by J. Brodsky, J. Chavez, S. Czyz, G. Kosinovsky, V. Mozin, S. Sangiorgio. RASE-support@llnl.gov.
 
-LLNL-CODE-819515
+LLNL-CODE-819515, LLNL-SM-823092
 
 All rights reserved.
+
+RASE is released under an MIT license.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
 

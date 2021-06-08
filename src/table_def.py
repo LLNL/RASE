@@ -1,5 +1,5 @@
 ###############################################################################
-# Copyright (c) 2018 Lawrence Livermore National Security, LLC.
+# Copyright (c) 2018-2021 Lawrence Livermore National Security, LLC.
 # Produced at the Lawrence Livermore National Laboratory
 #
 # Written by J. Chavez, S. Czyz, G. Kosinovsky, V. Mozin, S. Sangiorgio.
@@ -34,15 +34,17 @@ This module defines persistable objects in sqlalchemy framework
 
 from sqlalchemy import ForeignKey, Column, Integer, String, Float, Boolean
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm             import relationship, sessionmaker, scoped_session
+from sqlalchemy.orm             import relationship, sessionmaker, scoped_session, backref
 from sqlalchemy.sql.schema import Table, CheckConstraint
 from sqlalchemy import event
 import numpy as np
 import hashlib
 from typing import Set
+import json
+
 from src.utils import compress_counts
 
-DB_VERSION_NAME = 'rase_db_v1_1'
+DB_VERSION_NAME = 'rase_db_v1_3'
 
 Base    = declarative_base()
 # Session = sessionmaker()
@@ -54,6 +56,10 @@ Session = scoped_session(session_factory)
 # These form many-to-many association tables
 scen_infl_assoc_tbl = Table('scenario_influences', Base.metadata,
     Column('scenario_id',    Integer, ForeignKey('scenarios.id')),
+    Column('influence_name', String, ForeignKey('influences.name')))
+
+det_infl_assoc_tbl = Table('det_influences', Base.metadata,
+    Column('det_name', String, ForeignKey('detectors.name')),
     Column('influence_name', String, ForeignKey('influences.name')))
 
 scen_group_assoc_tbl = Table('scen_group_association', Base.metadata,
@@ -92,50 +98,14 @@ class Material(Base):
     __tablename__ = 'materials'
     name          = Column(String, primary_key=True)
     description   = Column(String)
-    associated_spectrum_counter = Column(Integer)
 
     def name_no_shielding(self) -> Set[str]:
         return set(self.name.split("-")[0].split("+"))
-    def increment_associated_spectrum_counter(self):
-        self.associated_spectrum_counter = self.associated_spectrum_counter + 1
-    def decrement_associated_spectrum_counter(self):
-        self.associated_spectrum_counter = self.associated_spectrum_counter - 1
 
 
 class Influence(Base):
     __tablename__ = 'influences'
     name          = Column(String, primary_key=True)
-
-
-class IdentificationSet(Base):
-    """set of id reports based on a scenario and a detector"""
-    __tablename__ = 'identification_sets'
-    id            = Column(Integer, primary_key=True)
-    scenario      = relationship('Scenario')
-    replay        = relationship('Replay')
-    detector      = relationship('Detector')
-    id_reports    = relationship('IdentificationReport', cascade='save-update, merge, delete, delete-orphan')
-    scen_id       = Column(String, ForeignKey('scenarios.id'))
-    repl_name     = Column(String, ForeignKey('replays.name'))
-    det_name       = Column(String, ForeignKey('detectors.name'))
-
-
-class IdentificationReport(Base):
-    """single output of the replay tool given a single input spectrum"""
-    __tablename__ = 'identification_reports'
-    id            = Column(Integer, primary_key=True)
-    filenum       = Column(Integer)
-    results       = relationship('IdentificationResult', cascade='save-update, merge, delete')
-    id_set_id     = Column(Integer, ForeignKey('identification_sets.id'))
-
-
-class IdentificationResult(Base):
-    """one line of the replay output"""
-    __tablename__ = 'identification_results'
-    id            = Column(Integer, primary_key=True)
-    name          = Column(String)
-    confidence    = Column(Float)
-    id_rept_id    = Column(Integer, ForeignKey('identification_reports.id'))
 
 
 class Scenario(Base):
@@ -164,9 +134,9 @@ class Scenario(Base):
     @staticmethod
     def scenario_hash(acq_time, scen_materials, scen_bckg_materials, influences=[]):
         s = f'{acq_time}' + \
-            ''.join(sorted('{}{:9.12f}{}'.format(
+            ''.join(sorted('SRC{}{:9.12f}{}'.format(
                 scenMat.material.name, scenMat.dose, scenMat.fd_mode) for scenMat in scen_materials)) + \
-            ''.join(sorted('{}{:9.12f}{}'.format(
+            ''.join(sorted('BKGD{}{:9.12f}{}'.format(
                 scenMat.material.name, scenMat.dose, scenMat.fd_mode) for scenMat in scen_bckg_materials)) + \
             ''.join(sorted(infl.name for infl in influences))
         return hashlib.md5(s.encode('utf-8')).hexdigest()[:6].upper()
@@ -229,25 +199,31 @@ class Detector(Base):
     ecal2        = Column(Float)
     ecal3        = Column(Float)
     includeSecondarySpectrum = Column(Boolean)
-    secondary_type = Column(Integer)    # 1=long_background, 2=internal_calibration
+    secondary_type = Column(Integer)    # 0=long_back from scen, 1=long_back from basespec, 2=internal_source, 3=long_back from file
     replay_name  = Column(String, ForeignKey('replays.name'))
     replay       = relationship('Replay')
     results_translator_name  = Column(String, ForeignKey('resultsTranslators.name'))
     resultsTranslator       = relationship('ResultsTranslator')
-    influences   = relationship('DetectorInfluence')
+    influences          = relationship('Influence', secondary=det_infl_assoc_tbl, lazy='joined', backref='detectors')
     base_spectra = relationship('BaseSpectrum')
     bckg_spectra = relationship('BackgroundSpectrum')
 
 
 class DetectorInfluence(Base):
-    __tablename__  = 'detector_influences'
-    id             = Column(Integer, primary_key=True)
-    infl_0         = Column(Float)
-    infl_1         = Column(Float)
-    infl_2         = Column(Float)
-    influence      = relationship('Influence')
-    detector_name  = Column(String, ForeignKey('detectors.name'))
-    influence_name = Column(String, ForeignKey('influences.name'))
+    __tablename__   = 'detector_influences'
+    id              = Column(Integer, primary_key=True)
+    infl_0          = Column(Float)
+    infl_1          = Column(Float)
+    infl_2          = Column(Float)
+    fixed_smear     = Column(Float)
+    linear_smear    = Column(Float)
+    degrade_infl0   = Column(Float)
+    degrade_infl1   = Column(Float)
+    degrade_infl2   = Column(Float)
+    degrade_f_smear = Column(Float)
+    degrade_l_smear = Column(Float)
+    influence       = relationship('Influence', backref=backref("detector_influences", cascade="all,delete"))
+    influence_name  = Column(String, ForeignKey('influences.name'))
 
 
 class Replay(Base):
@@ -295,6 +271,16 @@ class BaseSpectrum(Base):
                 return True
         return False
 
+    def as_json(self, detector):
+        return json.dumps([{"title": self.material_name,
+                            "livetime": self.livetime,
+                            "realtime": self.realtime,
+                            "xeqn": [detector.ecal0, detector.ecal1, detector.ecal2],
+                            "y": [float(c) for c in self.baseCounts.split(',')],
+                            "yScaleFactor": 1,
+                            }])
+
+
 # TODO: Secondary background currently does not have flux/dose sensitivity parameters, it is a direct copy/paste from
 #  the base spectra
 class BackgroundSpectrum(Base):
@@ -338,6 +324,13 @@ class BackgroundSpectrum(Base):
                 return True
         return False
 
+class MaterialWeight(Base):
+    __tablename__   = 'material_weight'
+    name            = Column(String, primary_key=True)
+    mat_name        = Column(String)
+    TPWF            = Column(Float)
+    FPWF            = Column(Float)
+    FNWF            = Column(Float)
 
 class MaterialNameTranslation(Base):
     __tablename__ = 'material_translations'

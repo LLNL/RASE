@@ -6,13 +6,20 @@ block_cipher = None
 # sys.setrecursionlimit(10000)
 
 import PyQt5
+import platform
+
+pathex = []
+exclude_binaries = True
+if platform.system() == "Windows":
+    pathex.append(PyQt5.__path__[0] + '\\Qt\\bin')
+    exclude_binaries=False
 
 a = Analysis(['rase.pyw'],
-             pathex=[PyQt5.__path__[0] + '\\Qt\\bin',],
+             pathex=pathex,
              binaries=[],
-             datas=[('doc/_build/html','doc/_build/html')],
-             # this hidden import is required for sqlalchemy 1.2
-             hiddenimports=['sqlalchemy.ext.baked'],
+             datas=[('doc/_build/html', 'doc/_build/html'),
+                    ('d3_resources', 'd3_resources')],
+             hiddenimports=['sqlalchemy.ext.baked', 'pandas._libs.tslibs.base'],
              hookspath=[],
              runtime_hooks=[],
              excludes=['IPython','tcl','tk','_tkinter', 'tkinter', 'Tkinter', 'Sphinx'],
@@ -23,12 +30,10 @@ a = Analysis(['rase.pyw'],
 pyz = PYZ(a.pure, a.zipped_data,
              cipher=block_cipher)
 
+exe_args = (a.scripts, a.binaries, a.zipfiles, a.datas) if platform.system() == 'Windows' else (a.scripts, [])
 exe = EXE(pyz,
-          a.scripts,
-          a.binaries,
-          a.zipfiles,
-          a.datas,
-          # exclude_binaries=True,
+          *exe_args,
+          exclude_binaries=exclude_binaries,
           name='rase',
           debug=False,
           strip=False,
@@ -44,3 +49,12 @@ exe = EXE(pyz,
 #                strip=False,
 #                upx=False,
 #                name='rase')
+
+if platform.system() == "Darwin":
+    app = BUNDLE(exe,
+                 a.binaries,
+                 a.zipfiles,
+                 a.datas,
+                 name='rase.app',
+                 icon=None,
+                 bundle_identifier=None)

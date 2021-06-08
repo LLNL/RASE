@@ -16,4 +16,5 @@ Using the RASE Software
    RASE_WorkflowStep5
    RASE_WorkflowStep6
    RASE_CorrespondenceTable
+   RASE_WeightsTable
    RASE_troubleshooting

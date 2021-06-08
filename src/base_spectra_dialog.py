@@ -1,5 +1,5 @@
 ###############################################################################
-# Copyright (c) 2018 Lawrence Livermore National Security, LLC.
+# Copyright (c) 2018-2021 Lawrence Livermore National Security, LLC.
 # Produced at the Lawrence Livermore National Laboratory
 #
 # Written by J. Chavez, S. Czyz, G. Kosinovsky, V. Mozin, S. Sangiorgio.
@@ -31,14 +31,15 @@
 """
 This module allows import of instrument base spectra
 """
-
+import logging
 import os
 import sys
+import traceback
 from os.path import splitext
 
 from PyQt5.QtCore import Qt, pyqtSlot, QModelIndex
 from PyQt5.QtGui import QColor
-from PyQt5.QtWidgets import QDialog, QFileDialog, QTableWidgetItem, QMessageBox, QHeaderView, QInputDialog
+from PyQt5.QtWidgets import QDialog, QFileDialog, QTableWidgetItem, QMessageBox, QHeaderView, QInputDialog, QApplication
 
 from .rase_functions import readSpectrumFile
 from .scenario_dialog import MaterialDoseDelegate
@@ -58,17 +59,17 @@ class BaseSpectraDialog(ui_import_base_spectra_dialog.Ui_Dialog, QDialog):
         self.tblSpectra.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
         self.txtStatus.setText('')
         self.baseSpectra = []
-        self.backgroundSpectra = []
-        self.backgroundSpectraType = 0
+        self.backgroundSpectrum = None
+        self.backgroundSpectrumType = None
         self.initializingTable = False
         self.ecal = None
         self.counts = None
         self.session = session
-        self.sharedObject = self.SharedObject(True)
+        self.sharedObject = SharedObject(True)
         self.specMap = None
         self.bckgrndCorrupted = False
-        self.redColor = QColor(255, 0, 0)
-        self.blackColor = QColor(0, 0, 0)
+        self.redColor = QColor(Qt.red)
+        self.blackColor = QApplication.palette().base()
 
     @pyqtSlot(bool)
     def on_btnBrowse_clicked(self, checked, directoryPath = None, secType = None):
@@ -97,7 +98,7 @@ class BaseSpectraDialog(ui_import_base_spectra_dialog.Ui_Dialog, QDialog):
               for filename in filenames:
                   v = readSpectrumFile(dir + os.sep + filename, self.sharedObject, self.txtStatus)
                   if v:
-                      self.specMap[filename] = self.ReadFileObject(v[0],v[1],v[2],v[3],v[4],v[5],v[6],v[7],v[8],v[9])
+                      self.specMap[filename] = ReadFileObject(v[0],v[1],v[2],v[3],v[4],v[5],v[6],v[7],v[8],v[9])
             # get ecal, counts, and bckg spetrum parameters for one spectrum
               for filename in self.specMap.keys():
                   rfo = self.specMap[filename]
@@ -124,10 +125,9 @@ class BaseSpectraDialog(ui_import_base_spectra_dialog.Ui_Dialog, QDialog):
                           if self.ecalBckg[i] != rfo.ecalBckg[i]:
                               self.txtStatus.append(
                                   "Mismatch in " + str(i) + "th energy calibration parameter between background spectra")
-            except Exception as inst:
-              print(type(inst))  # the exception instance
-              print(inst.args)  # arguments stored in .args
-              print(inst)
+            except Exception as e:
+                traceback.print_exc()
+                logging.exception("Handled Exception", exc_info=True)
 
             # populate material, filename table
             self.initializingTable = True
@@ -166,18 +166,19 @@ class BaseSpectraDialog(ui_import_base_spectra_dialog.Ui_Dialog, QDialog):
             # Check with the user about the type of the secondary spectrum
             if self.sharedObject.bkgndSpectrumInFile:
                 secondary_types = ["Background Spectrum", "Internal Calibration Spectrum"]
-                if secType is not None:
-                    self.backgroundSpectraType = secondary_types.index(secType) + 1
-                    self.txtStatus.append("Secondary spectrum identified as " + secType)
-                else:
+                if secType is None:
                     s_type, ok = QInputDialog.getItem(self, "Select Secondary Spectrum Type",
-                                                  "Secondary Spectrum was found. <br>  Select type or press cancel to disable secondary spectrum:",
-                                                  secondary_types, 0, False)
+                                                      "Secondary Spectrum was found. <br>  "
+                                                      "Select type or press cancel to disable secondary spectrum:",
+                                                      secondary_types, 0, False)
                     if ok:
-                        self.backgroundSpectraType = secondary_types.index(s_type) + 1
+                        self.backgroundSpectrumType = secondary_types.index(s_type)
                         self.txtStatus.append("Secondary spectrum identified as " + s_type)
                     else:
-                        self.txtStatus.append("Type of secondary spectrum not provided here")
+                        self.txtStatus.append("Secondary spectrum not included")
+                else:
+                    self.backgroundSpectrumType = secondary_types.index(secType)
+                    self.txtStatus.append("Secondary spectrum identified as " + secType)
 
 
     @pyqtSlot(QTableWidgetItem)
@@ -209,14 +210,13 @@ class BaseSpectraDialog(ui_import_base_spectra_dialog.Ui_Dialog, QDialog):
                 QMessageBox.warning(self, 'Empty Material Names', 'Must have a material name for each element')
                 return
 
-        backgroundSpectrum = None
+        self.backgroundSpectrum = None
         for row in range(self.tblSpectra.rowCount()):
             # initialize a BaseSpectrum
             materialName = self.tblSpectra.item(row, 0).text()
             material = self.session.query(Material).get(materialName)
             if not material:
-                material = Material(name=materialName, associated_spectrum_counter=0)
-            material.increment_associated_spectrum_counter()
+                material = Material(name=materialName)
             baseSpectraFilename = self.tblSpectra.item(row, 1).text()
             baseSpectraFilepath = self.dir + os.sep + baseSpectraFilename
             if "n42" not in baseSpectraFilepath and "N42" not in baseSpectraFilepath:
@@ -224,24 +224,24 @@ class BaseSpectraDialog(ui_import_base_spectra_dialog.Ui_Dialog, QDialog):
 
             rfo = self.specMap[baseSpectraFilename]
 
-            if self.sharedObject.bkgndSpectrumInFile:
+            if self.sharedObject.bkgndSpectrumInFile and self.backgroundSpectrumType is not None:
                 if row == 0:
                     if rfo.realtimeBckg is None or rfo.livetimeBckg is None or rfo.livetimeBckg is None:
                         self.bckgrndCorrupted = True
                     else:
-                        backgroundSpectrum = BackgroundSpectrum(material=material,
+                        self.backgroundSpectrum = BackgroundSpectrum(material=material,
                                                                 filename=baseSpectraFilepath,
                                                                 realtime=rfo.realtimeBckg,
                                                                 livetime=rfo.livetimeBckg,
                                                                 baseCounts=rfo.countsBckg)
                 else:
                     if(self.bckgrndCorrupted == True):
-                        backgroundSpectrum = None
+                        self.backgroundSpectrum = None
                     #if backgroundSpectrum.realtime != rfo.realtimeBckg:
                         #backgroundSpectrum = None
-                    if backgroundSpectrum.livetime != rfo.livetimeBckg:
-                        if rfo.livetimeBckg > backgroundSpectrum.livetime:
-                            backgroundSpectrum = BackgroundSpectrum(material=material,
+                    if self.backgroundSpectrum.livetime != rfo.livetimeBckg:
+                        if rfo.livetimeBckg > self.backgroundSpectrum.livetime:
+                            self.backgroundSpectrum = BackgroundSpectrum(material=material,
                                                                     filename=baseSpectraFilepath,
                                                                     realtime=rfo.realtimeBckg,
                                                                     livetime=rfo.livetimeBckg,
@@ -259,31 +259,30 @@ class BaseSpectraDialog(ui_import_base_spectra_dialog.Ui_Dialog, QDialog):
                                         baseCounts=rfo.counts)
             self.baseSpectra.append(baseSpectrum)
 
-        self.backgroundSpectra.append(backgroundSpectrum)
-
-      except Exception as inst:
-        print(type(inst))  # the exception instance
-        print(inst.args)  # arguments stored in .args
-        print(inst)
+      except Exception as e:
+          traceback.print_exc()
+          logging.exception("Handled Exception", exc_info=True)
 
       return QDialog.accept(self)
 
-    class SharedObject():
-        def __init__(self, isBckgrndSave):
-            self.isBckgrndSave = isBckgrndSave
-            self.chanDataType = None
-            self.bkgndSpectrumInFile = False
 
-    class ReadFileObject() :
-        def __init__(self, counts, ecal, realtime, livetime, rase_sensitivity, flux_sensitivity, countsBckg=None,
-                        ecalBckg=None, realtimeBckg=None, livetimeBckg=None):
-            self.counts = counts
-            self.ecal = ecal
-            self.realtime = realtime
-            self.livetime = livetime
-            self.rase_sensitivity = rase_sensitivity
-            self.flux_sensitivity = flux_sensitivity
-            self.countsBckg = countsBckg
-            self.ecalBckg = ecalBckg
-            self.realtimeBckg = realtimeBckg
-            self.livetimeBckg = livetimeBckg
+class SharedObject:
+    def __init__(self, isBckgrndSave):
+        self.isBckgrndSave = isBckgrndSave
+        self.chanDataType = None
+        self.bkgndSpectrumInFile = False
+
+
+class ReadFileObject:
+    def __init__(self, counts, ecal, realtime, livetime, rase_sensitivity, flux_sensitivity, countsBckg=None,
+                    ecalBckg=None, realtimeBckg=None, livetimeBckg=None):
+        self.counts = counts
+        self.ecal = ecal
+        self.realtime = realtime
+        self.livetime = livetime
+        self.rase_sensitivity = rase_sensitivity
+        self.flux_sensitivity = flux_sensitivity
+        self.countsBckg = countsBckg
+        self.ecalBckg = ecalBckg
+        self.realtimeBckg = realtimeBckg
+        self.livetimeBckg = livetimeBckg

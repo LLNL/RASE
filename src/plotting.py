@@ -1,5 +1,5 @@
 ###############################################################################
-# Copyright (c) 2018 Lawrence Livermore National Security, LLC.
+# Copyright (c) 2018-2021 Lawrence Livermore National Security, LLC.
 # Produced at the Lawrence Livermore National Laboratory
 #
 # Written by J. Chavez, S. Czyz, G. Kosinovsky, V. Mozin, S. Sangiorgio.
@@ -31,11 +31,13 @@
 """
 This module provides plotting support for RASE analysis
 """
-
-from itertools import groupby, cycle
-
+import glob
+import json
+from itertools import cycle
+import os
 import numpy as np
 import matplotlib
+from sqlalchemy.orm import Session
 
 matplotlib.use("Qt5Agg")
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
@@ -49,63 +51,122 @@ import seaborn as sns
 sns.set(font_scale=1.5)
 sns.set_style("whitegrid")
 
-from PyQt5.QtCore import pyqtSlot, Qt
-from PyQt5.QtWidgets import QDialog, QVBoxLayout, QSizePolicy, QMessageBox
+from PyQt5.QtCore import pyqtSlot, Qt, QUrl
+from PyQt5.QtWidgets import QDialog, QVBoxLayout, QMessageBox
 from PyQt5.QtGui import QStandardItemModel, QStandardItem
+from PyQt5.QtWebEngineWidgets import QWebEngineView
 
 from .ui_generated import ui_view_spectra_dialog, ui_results_plotting_dialog
-from src.rase_functions import calc_result_uncertainty
+from src.rase_functions import calc_result_uncertainty, get_sample_dir, readSpectrumFile
 import src.s_curve_functions as sCurve
+from src.utils import get_bundle_dir, natural_keys
+from src.base_spectra_dialog import SharedObject, ReadFileObject
+from src.rase_settings import RaseSettings
 
 
-class SpectraViewerDialog(ui_view_spectra_dialog.Ui_Dialog, QDialog):
-    def __init__(self, parent, session, base_spectra, selected):
-        QDialog.__init__(self)
+class BaseSpectraViewerDialog(ui_view_spectra_dialog.Ui_Dialog, QDialog):
+    def __init__(self, parent, base_spectra, detector, selected):
+        QDialog.__init__(self, parent)
         self.setupUi(self)
         self.baseSpectra = base_spectra
+        self.detector = detector
         self.selected = selected
-        self.session = session
-        # self.setParent(parent)
+        self.session = Session()
+        self.json_file = os.path.join(get_bundle_dir(), "d3_resources", "spectrum.json")
+        self.index = 0
 
-        self.label.setText(self.selected)
+        self.browser = WebSpectraView(self)
 
-        counts = np.array([])
-        for baseSpectrum in self.baseSpectra:
+        for i, baseSpectrum in enumerate(self.baseSpectra):
             if baseSpectrum.material.name == self.selected:
-                counts = baseSpectrum.get_counts_as_np()
+                self.index = i
+                self.plot_spectrum()
 
         self.plot_layout = QVBoxLayout(self.widget)
-        self.plot_canvas = SpectrumPlot(counts, self.widget, width=5, height=4, dpi=100)
-        self.navi_toolbar = NavigationToolbar(self.plot_canvas, self)
-        self.plot_layout.addWidget(self.plot_canvas)  # the matplotlib canvas
-        self.plot_layout.addWidget(self.navi_toolbar)
-
+        self.plot_layout.addWidget(self.browser)
         self.widget.setFocus()
 
+    def plot_spectrum(self):
+        baseSpectrum = self.baseSpectra[self.index]
+        with open(self.json_file, "w") as json_file:
+            print(baseSpectrum.as_json(self.detector), file=json_file)
+        self.browser.reload()
 
-class SpectrumPlot(FigureCanvas):
-    """
-    Plots Spectrum
-    """
+    @pyqtSlot(bool)
+    def on_prevMaterialButton_clicked(self, checked):
+        if self.index > 0:
+            self.index = self.index - 1
+            self.plot_spectrum()
 
-    def __init__(self, counts, parent=None, width=5, height=4, dpi=100):
+    @pyqtSlot(bool)
+    def on_nextMaterialButton_clicked(self, checked):
+        if self.index < len(self.baseSpectra)-1:
+            self.index = self.index + 1
+            self.plot_spectrum()
 
-        self.counts = counts
 
-        fig = Figure(figsize=(width, height), dpi=dpi)
-        self.ax = fig.add_subplot(111)
+class SampleSpectraViewerDialog(ui_view_spectra_dialog.Ui_Dialog, QDialog):
+    def __init__(self, parent, scenario, detector, selected, file_list=None):
+        QDialog.__init__(self, parent)
+        self.setupUi(self)
+        self.scenario = scenario
+        self.detector = detector
+        self.selected = selected
+        self.session = Session()
+        self.json_file = os.path.join(get_bundle_dir(), "d3_resources", "spectrum.json")
+        self.index = selected
+        self.file_list = file_list
 
-        self.plot_initial_figure()
+        if not self.file_list:
+            sample_path = get_sample_dir(RaseSettings().getSampleDirectory(), self.detector, self.scenario.id)
+            self.file_list = glob.glob(os.path.join(sample_path, "*.n42"))
+            self.file_list.sort(key=natural_keys)
 
-        FigureCanvas.__init__(self, fig)
-        self.setParent(parent)
+        self.browser = WebSpectraView(self)
+        self.plot_spectrum()
 
-        FigureCanvas.setSizePolicy(self, QSizePolicy.Expanding, QSizePolicy.Expanding)
-        FigureCanvas.updateGeometry(self)
+        self.plot_layout = QVBoxLayout(self.widget)
+        self.plot_layout.addWidget(self.browser)
+        self.widget.setFocus()
 
-    def plot_initial_figure(self):
-        self.ax.set_yscale("log", nonposy='clip')
-        self.ax.plot(self.counts)
+    def plot_spectrum(self):
+        filepath = self.file_list[self.index]
+        status = []
+        sharedObject = SharedObject(True)
+        # FIXME: add error handling
+        v = readSpectrumFile(filepath, sharedObject, status, requireRASESen=False)
+        data = ReadFileObject(*v)
+
+        with open(self.json_file, "w") as json_file:
+            json_str = json.dumps([{"title": os.path.basename(filepath),
+                            "livetime": data.livetime,
+                            "realtime": data.realtime,
+                            "xeqn": [data.ecal[0], data.ecal[1], data.ecal[2]],
+                            "y": [float(c) for c in data.counts.split(',')],
+                            "yScaleFactor": 1,
+                            }])
+            print(json_str, file=json_file)
+        self.browser.reload()
+
+    @pyqtSlot(bool)
+    def on_prevMaterialButton_clicked(self, checked):
+        if self.index >= 0:
+            self.index = self.index - 1
+            self.plot_spectrum()
+
+    @pyqtSlot(bool)
+    def on_nextMaterialButton_clicked(self, checked):
+        if self.index < len(self.file_list)-1:
+            self.index = self.index + 1
+            self.plot_spectrum()
+
+
+class WebSpectraView(QWebEngineView):
+    def __init__(self, parent):
+        super(WebSpectraView, self).__init__(parent)
+        file_path = os.path.join(get_bundle_dir(), "d3_resources", "spectrum.html")
+        local_url = QUrl.fromLocalFile(file_path)
+        self.load(local_url)
 
 
 class ResultPlottingDialog(ui_results_plotting_dialog.Ui_Dialog, QDialog):

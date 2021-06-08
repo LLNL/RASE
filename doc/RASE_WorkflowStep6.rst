@@ -18,9 +18,10 @@ Cs-137 and Cs137 as "correct IDs"). This is not done when a material of this for
 considered as two separate identifications). For background materials, the equivalence must be enforced manually and on an isotope-by-isotope
 basis in the correspondence table.
 
-Detailed identification results for each individual spectrum can be reviewed by clicking on the scenario title in the
-first column of the "View Results" table. Detailed identification results are useful to identify spectra that provided unexpected results or to determine how to adjust the correspondence table comprehensions to better match the objectives of a specific study.
+**Detailed identification results** for each individual spectrum can be reviewed by double clicking on the row of interest in the "View Results" table. Detailed identification results are useful to identify spectra that provided unexpected results or to determine how to adjust the correspondence table comprehensions to better match the objectives of a specific study.
 Use Ctrl+C or right-click to copy the ID results and use the exact entries to modify the correspondence table comprehensions.
+
+For each scenario, RASE also computes the **frequency of identification results** from all the generated samples. This analysis can be accessed by right-clicking an entry in the "View Results" table and selecting the "Show Identification Results Frequency" menu.
 
 The tables in the "View Results" and "Detailed Results" dialogs can be exported as a \*.csv file and processed in Excel for plotting and extended analysis. The RASE-generated sampled spectra and replay tool outputs can be reviewed manually using programs like PeakEasy and Interspec.
 
@@ -40,8 +41,8 @@ The tables in the "View Results" and "Detailed Results" dialogs can be exported 
 
 |
 
-RASE uses the unweighted F-Score methodology based on the geometric mean of precision and recall to evaluate the identification
-performance of an algorithm. For more details on the F-Score see [AIP]_.
+RASE uses both an unweighted and weighted F-Score methodology based on the geometric mean of precision and recall to evaluate the identification
+performance of an algorithm. For more details on the F-Score see [AIP]_. 
 
 Confidence intervals in RASE are are determined using the Wilson Score approach. Wilson Score intervals are biased
 towards 0.5, and are asymmetric, but have been shown to have a more accurate performance than "exact" methods such as

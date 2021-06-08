@@ -272,6 +272,13 @@
         </property>
         <layout class="QVBoxLayout" name="verticalLayout_3">
          <item>
+          <widget class="QCheckBox" name="ckboxEnableAdvanced">
+           <property name="text">
+            <string>Enable advanced actions</string>
+           </property>
+          </widget>
+         </item>
+         <item>
           <widget class="QPushButton" name="btnGenScenario">
            <property name="text">
             <string>Run Scenario(s)</string>
@@ -299,25 +306,52 @@
           </spacer>
          </item>
          <item>
-          <widget class="QPushButton" name="btnGenerate">
-           <property name="text">
-            <string>Gen Sampled Spectra</string>
+          <layout class="QGridLayout" name="gridLayout">
+           <property name="leftMargin">
+            <number>0</number>
            </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QPushButton" name="btnRunReplay">
-           <property name="text">
-            <string>Run Replay Tool</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QPushButton" name="btnImportIDResults">
-           <property name="text">
-            <string>Import Replay Results...</string>
-           </property>
-          </widget>
+           <item row="0" column="0">
+            <widget class="QPushButton" name="btnGenerate">
+             <property name="text">
+              <string>Generate
+Spectra</string>
+             </property>
+            </widget>
+           </item>
+           <item row="0" column="1">
+            <widget class="QPushButton" name="btnImportSpectra">
+             <property name="enabled">
+              <bool>true</bool>
+             </property>
+             <property name="minimumSize">
+              <size>
+               <width>0</width>
+               <height>0</height>
+              </size>
+             </property>
+             <property name="text">
+              <string>Import
+Spectra...</string>
+             </property>
+            </widget>
+           </item>
+           <item row="1" column="0">
+            <widget class="QPushButton" name="btnRunReplay">
+             <property name="text">
+              <string>Run
+Replay Tool</string>
+             </property>
+            </widget>
+           </item>
+           <item row="1" column="1">
+            <widget class="QPushButton" name="btnImportIDResults">
+             <property name="text">
+              <string>Import
+Replay Results...</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
          </item>
          <item>
           <widget class="QPushButton" name="btnRunResultsTranslator">
@@ -344,7 +378,7 @@
            <property name="sizeHint" stdset="0">
             <size>
              <width>20</width>
-             <height>40</height>
+             <height>10</height>
             </size>
            </property>
           </spacer>
@@ -391,6 +425,8 @@
     <addaction name="actionReplay_Software"/>
     <addaction name="actionCorrespondence_Table"/>
     <addaction name="actionModify_Scenario_Groups"/>
+    <addaction name="actionModify_Detector_Influences"/>
+    <addaction name="actionModify_Material_Weights"/>
    </widget>
    <widget class="QMenu" name="menuFile">
     <property name="title">
@@ -507,6 +543,16 @@
   <action name="actionModify_Scenario_Groups">
    <property name="text">
     <string>Modify Scenario Groups...</string>
+   </property>
+  </action>
+  <action name="actionModify_Detector_Influences">
+   <property name="text">
+    <string>Modify Detector Influences...</string>
+   </property>
+  </action>
+  <action name="actionModify_Material_Weights">
+   <property name="text">
+    <string>Weighted F-score Manager...</string>
    </property>
   </action>
  </widget>

@@ -1,5 +1,5 @@
 ###############################################################################
-# Copyright (c) 2018 Lawrence Livermore National Security, LLC.
+# Copyright (c) 2018-2021 Lawrence Livermore National Security, LLC.
 # Produced at the Lawrence Livermore National Laboratory
 #
 # Written by J. Chavez, S. Czyz, G. Kosinovsky, V. Mozin, S. Sangiorgio
@@ -34,6 +34,7 @@ This module defines the main UI of RASE
 
 import csv
 import subprocess
+import traceback
 
 from PyQt5.QtCore import QPoint, Qt, QSize, QObject, pyqtSlot, pyqtSignal
 from PyQt5.QtGui import QFont, QTextDocument, QAbstractTextDocumentLayout, QColor
@@ -50,22 +51,25 @@ import pandas as pd
 from src.correspondence_table_dialog import CorrespondenceTableDialog
 from src.detector_dialog import DetectorDialog
 from src.rase_functions import *
-from src.rase_functions import _getCountsDoseAndSensitivity
+from src.rase_functions import _getCountsDoseAndSensitivity, secondary_type
 from src.progressbar_dialog import ProgressBar
 from src.rase_settings import RaseSettings
 from src.replay_dialog import ReplayDialog
 from src.scenario_dialog import ScenarioDialog
 from src.settings_dialog import SettingsDialog
-from src.table_def import IdentificationSet, ScenarioGroup, ScenarioMaterial, \
-    scen_infl_assoc_tbl, CorrespondenceTableElement, CorrespondenceTable
+from src.table_def import ScenarioGroup, ScenarioMaterial, \
+    scen_infl_assoc_tbl, CorrespondenceTableElement, CorrespondenceTable, DetectorInfluence
 from src.view_results_dialog import ViewResultsDialog
+from src.manage_influences_dialog import ManageInfluencesDialog
+from src.manage_weights_dialog import ManageWeightsDialog
 from src.help_dialog import HelpDialog
 from src.qt_utils import QSignalWait
+from src.plotting import SampleSpectraViewerDialog
 
 rcParams['backend'] = 'Qt5Agg'
 from src.ui_generated import ui_rase, ui_about_dialog, ui_input_random_seed
 from src.table_def import Scenario, Detector, Session, ResultsTranslator, Replay, SampleSpectraSeed, \
-    BackgroundSpectrum, Material
+    BackgroundSpectrum, MaterialWeight
 
 from src.manage_replays_dialog import ManageReplaysDialog
 from src.random_seed_dialog import RandomSeedDialog
@@ -96,6 +100,8 @@ class Rase(ui_rase.Ui_MainWindow, QMainWindow):
         # random seed and "random seed fixed" boolean not retained across sessions
         self.settings.setRandomSeed(self.settings.getRandomSeedDefault())
         self.settings.setRandomSeedFixed(self.settings.getRandomSeedFixedDefault())
+        self.settings.setUseConfidencesInCalcs(self.settings.getUseConfidencesInCalcs())
+        self.settings.setUseMWeightsInCalcs(self.settings.getUseMWeightsInCalcs())
         self.help_dialog = None
         self.addIsotopeToCorrTable = False
         self.new_replay = None
@@ -157,6 +163,14 @@ class Rase(ui_rase.Ui_MainWindow, QMainWindow):
         self.btnImportScenariosCSV.clicked.connect(lambda: self.handleScenarioImport('csv'))
         self.btnGenScenario.clicked.connect(self.genScenario)
 
+        self.setImportButtonVisibile(False)
+        self.ckboxEnableAdvanced.stateChanged.connect(self.setImportButtonVisibile)
+
+    @pyqtSlot(int)
+    def setImportButtonVisibile(self, state=1):
+        self.btnImportSpectra.setVisible(state)
+        self.btnImportIDResults.setVisible(state)
+
     def handleInstrumentExport(self):
         """
         Exports Instrument to CSV
@@ -200,6 +214,8 @@ class Rase(ui_rase.Ui_MainWindow, QMainWindow):
                 # TODO: Obtain the scenario group name and description from the user
                 scenarios = import_scenarios(path[0], file_format)
             except Exception as e:
+                traceback.print_exc()
+                logging.exception("Handled Exception", exc_info=True)
                 QMessageBox.critical(self, 'Import Failed', f'Failed to import scenarios<br><br>{str(e)}')
                 session.rollback()
             else:
@@ -275,35 +291,90 @@ class Rase(ui_rase.Ui_MainWindow, QMainWindow):
             allowed_list += allowed_ids
             correct_list.append(correct_ids)
 
-        return correct_list, allowed_list
+        return [i[0] for i in isoPairList], correct_list, allowed_list
 
-    def getTpFpFn(self, results, correct_list, allowed_list):
+
+    def getMaterialWeightsData(self, assoc_table):
+        session = Session()
+        mat_weights = {}
+        for mat in list(session.query(MaterialWeight).all()):
+            mat_weights[mat.name] = (mat.TPWF, mat.FPWF, mat.FNWF)
+
+        for key in self.getCorrHash().keys() | assoc_table.keys():
+            if (key not in mat_weights) or not (self.settings.getUseMWeightsInCalcs()):
+                mat_weights[key] = (1, 1, 1)
+
+        return mat_weights
+
+
+    def getTpFpFn(self, results, allowed_list, assoc_table, mats_with_weights):
         """
         calculates True Positives, False Positives, False Negatives
         :return: True Positives, False Positives, False Negatives
         """
-        Tp = 0
         iso_id_required = 0
-        FP_candidates = results
+        result_keys = set(results.keys())
+        FP_candidates = result_keys
 
-        for correct_ids in correct_list:
+        found_isotopes = {}
+        not_found = {}
+
+        Tp = 0
+        wTp = 0
+        for material, correct_ids in assoc_table.items():
             # if the correct_id list for this isotope is empty,
             # then we interpret it as if this isotope does not need to be identified
-            if correct_ids: iso_id_required += 1
+            if correct_ids:
+                iso_id_required += 1
 
             # check if any of the correct IDs are within the ID results
-            found = [r for r in results if r in correct_ids]
-            if found: Tp += 1
+            found = [r for r in result_keys if r in correct_ids]
+            confidences = [results[key] for key in found]
+
+            weights = mats_with_weights[material]
+
+            if found:
+                found_isotopes[material] = tuple([w * max(confidences) for w in weights])
+                wTp += found_isotopes[material][0]
+                Tp += 1
+            # if the correspondence table row is blank or has allowed isotopes
+            elif assoc_table[material] and not [r for r in result_keys if r in allowed_list]:
+                not_found[material] = weights
 
             # whatever was not found is a potential false positive
             FP_candidates = list(set(FP_candidates) - set(found))
+
+        for key in not_found.keys():
+            if key in found_isotopes.keys():
+                not_found[key].pop()
 
         # Now remove the allowed isotopes from the false positive candidates
         FP_list = [iso for iso in FP_candidates if iso not in allowed_list]
 
         # now compute Fn, Fp
-        Fn = iso_id_required - Tp
-        Fp = len(FP_list)
+        Fn = 0
+        wFn = 0
+        if not_found:
+            wFn = sum([weight[2] for weight in not_found.values()])
+            Fn = len(not_found)
+
+        Fp = 0
+        wFp = 0
+        weights = None
+        for id_iso in FP_list:
+            for mat, [correct, _] in self.corrHash.items():
+                if id_iso in correct:
+                    if weights is not None:
+                        weights = tuple([max(a, b) for a, b in zip(weights, mats_with_weights[mat])])
+                    else:
+                        weights = mats_with_weights[mat]
+
+            if weights is not None:
+                wFp += weights[1] * results[id_iso]
+                Fp += 1
+            else:
+                wFp += 1
+                Fp += 1
 
         # print some debugging
         # print("FP final= ", FP_list)
@@ -316,7 +387,7 @@ class Rase(ui_rase.Ui_MainWindow, QMainWindow):
         # print("# False Positives = ", Fp)
         # print("# False Negatives = ", Fn)
 
-        return Tp, Fn, Fp
+        return Tp, Fn, Fp, wTp, wFn, wFp
 
     def setTableHeaders(self):
         self.scenarioHorizontalHeaderLabels = ['ID', 'Sources', 'Backgrounds',
@@ -464,20 +535,17 @@ class Rase(ui_rase.Ui_MainWindow, QMainWindow):
             detector = session.query(Detector).get(detTxt)
             toolTip = None
 
-            detectorColor = 'green'
+            detectorColor = 'black'
             procphase = ''
             for scenID in selScenarioIds:
                 scenario = session.query(Scenario).filter_by(id=scenID).first()
-                if (detectorColor == 'green' and session.query(IdentificationSet).filter_by(
-                                                    scenario=scenario, detector=detector).first() and
-                    files_exist(get_results_dir(self.settings.getSampleDirectory(), detector, scenario.id))):
+                if (files_exist(get_results_dir(self.settings.getSampleDirectory(), detector, scenario.id))):
                     procphase = 'Replay'
+                    detectorColor = 'green'
                 elif scenario and files_exist(get_sample_dir(
-                        self.settings.getSampleDirectory(), detector, scenario.id)) and detectorColor != 'black':
+                        self.settings.getSampleDirectory(), detector, scenario.id)) and detectorColor != 'green':
                     detectorColor = 'orange'
                     procphase = 'Spectrum generation'
-                else:
-                    detectorColor = 'black'
 
             if len(selScenarioIds) != 0 and detectorColor != 'black':
                 detTxt = '<font color=' + detectorColor + '>' + detector.name + '</font>'
@@ -513,19 +581,26 @@ class Rase(ui_rase.Ui_MainWindow, QMainWindow):
         session = Session()
         selDetectorNames = self.getSelectedDetectorNames()
 
+        det_mats_d = {}
+        det_mats_f = {}
+        det_infl = {}
+
+        for det_index, detector_name in enumerate(selDetectorNames):
+            detector = session.query(Detector).filter_by(name=detector_name).first()
+            if detector:
+                det_mats_d[detector_name] = set(baseSpectrum.material.name for baseSpectrum in detector.base_spectra if
+                                 isinstance(baseSpectrum.rase_sensitivity, float))
+                det_mats_f[detector_name] = set(baseSpectrum.material.name for baseSpectrum in detector.base_spectra if
+                                 isinstance(baseSpectrum.flux_sensitivity, float))
+                det_infl[detector_name] = [detInfluence.name for detInfluence in detector.influences]
+
         for row in range(self.tblScenario.rowCount()):
 
             s_item = self.tblScenario.item(row, SCENARIO_ID)
             scenario = session.query(Scenario).get(s_item.data(Qt.UserRole))
-            cTxt = 'g'  # color text (for scenario)
-            mbicTxt = False  # material, background, influence color text
             mat_toolTip = []
-            bg_toolTip = []
             inf_toolTip = []
             s_toolTip = []
-            hold_matColor = [False] * len(scenario.scen_materials)
-            hold_bgColor = [False] * len(scenario.scen_bckg_materials)
-            hold_inflColor = [False] * len(scenario.influences)
 
             if not selDetectorNames:
                 item = self.tblScenario.item(row, MATER_EXPOS)
@@ -563,110 +638,89 @@ class Rase(ui_rase.Ui_MainWindow, QMainWindow):
                 s_item.setToolTip('')
 
             else:
-                for det_index, detector_name in enumerate(selDetectorNames):
-                    detector = session.query(Detector).filter_by(name=detector_name).first()
-                    if detector:
-                        det_mats_d = set(baseSpectrum.material.name for baseSpectrum in detector.base_spectra if
-                                         isinstance(baseSpectrum.rase_sensitivity, float))
-                        det_mats_f = set(baseSpectrum.material.name for baseSpectrum in detector.base_spectra if
-                                         isinstance(baseSpectrum.flux_sensitivity, float))
-                        detInfluences = [detInfluence.influence for detInfluence in detector.influences]
+                # set materials/exposure
+                det_missing_mat = set()
+                mat_missing_det = set()
+                for col, materials in zip([MATER_EXPOS, BCKRND],
+                                          [scenario.scen_materials, scenario.scen_bckg_materials]):
+                    item_text = []
+                    item = self.tblScenario.item(row, col)
 
-                        # TODO: combine this and background into one loop
-                        # set material/exposure
-                        item = self.tblScenario.item(row, MATER_EXPOS)
-                        txtExp = []
-                        for index, scenMat in enumerate(scenario.scen_materials):
-                            if not (((scenMat.material_name in det_mats_d) and scenMat.fd_mode == 'DOSE') or
-                                    ((scenMat.material_name in det_mats_f) and scenMat.fd_mode == 'FLUX')):
-                                mbicTxt = True
-                                expColor = True
-                                if detector:
-                                    mat_toolTip.append(detector.name + ' is missing base spectra for this scenario')
-                                    s_toolTip.append(detector.name + ' is missing base spectra for this scenario')
-                            else:
-                                expColor = False or hold_matColor[index]
-                            if det_index == len(selDetectorNames) - 1:
-                                scenExpTxt = '<font color="red">' + scenMat.material.name + '</font>' if expColor \
-                                    else scenMat.material.name
-                                if scenMat.fd_mode == 'DOSE':
-                                    txtExp.append(f'{scenExpTxt}({scenMat.dose:.5g})')
-                                else:
-                                    txtExp.append('<i>' + f'{scenExpTxt}({scenMat.dose:.5g})' + '</i>')
-                            hold_matColor[index] = expColor
-                        if det_index == len(selDetectorNames) - 1:
-                            item.setText(', '.join(txtExp))
-                            item.setToolTip(',\n'.join(mat_toolTip))
-
-                        # set background material/exposure
-                        item = self.tblScenario.item(row, BCKRND)
-                        txtExp = []
-                        for index, scenMat in enumerate(scenario.scen_bckg_materials):
-                            if not (((scenMat.material_name in det_mats_d) and scenMat.fd_mode == 'DOSE') or
-                                    ((scenMat.material_name in det_mats_f) and scenMat.fd_mode == 'FLUX')):
-                                mbicTxt = True
-                                expColor = True
-                                bg_toolTip.append(detector.name + ' is missing background spectra for this scenario')
-                                s_toolTip.append(detector.name + ' is missing background spectra for this scenario')
-                            else:
-                                expColor = False or hold_bgColor[index]
-                            if det_index == len(selDetectorNames) - 1:
-                                scenExpTxt = '<font color="red">' + scenMat.material.name + '</font>' if expColor \
-                                    else scenMat.material.name
-                                if scenMat.fd_mode == 'DOSE':
-                                    txtExp.append(f'{scenExpTxt}({scenMat.dose:.5g})')
-                                else:
-                                    txtExp.append('<i>' + f'{scenExpTxt}({scenMat.dose:.5g})' + '</i>')
-                            hold_bgColor[index] = expColor
-                        if det_index == len(selDetectorNames) - 1:
-                            item.setText(', '.join(txtExp))
-                            item.setToolTip(',\n'.join(bg_toolTip))
-
-                        # set influences
-                        item = self.tblScenario.item(row, INFLUENCES)
-                        txtExp = []
-                        for index, scenInfluence in enumerate(scenario.influences):
-                            if scenInfluence not in detInfluences:
-                                mbicTxt = True
-                                expColor = True
-                                inf_toolTip.append(detector.name + ' is missing influences for this scenario')
-                                s_toolTip.append(detector.name + ' is missing influences for this scenario')
-                            else:
-                                expColor = False or hold_inflColor[index]
-                            if det_index == len(selDetectorNames) - 1:
-                                scenExpTxt = '<font color="red">' + scenInfluence.name + '</font>' if expColor else \
-                                    scenInfluence.name
-                                txtExp.append(scenExpTxt)
-                            hold_inflColor[index] = expColor
-                        if det_index == len(selDetectorNames) - 1:
-                            item.setText(', '.join(txtExp))
-                            item.setToolTip(',\n'.join(inf_toolTip))
-
-                        # set scenario
-                        if (session.query(IdentificationSet).filter_by(scenario=scenario,
-                                                                       detector=detector).first() and
-                            files_exist(get_results_dir(self.settings.getSampleDirectory(), detector, scenario.id))):
-                            s_toolTip.append('Identification results available for ' + detector.name +
-                                             ' and this scenario')
-                        elif files_exist(get_sample_dir(self.settings.getSampleDirectory(), detector, scenario.id)) \
-                                and cTxt != 'k':
-                            cTxt = 'o'
-                            s_toolTip.append('Sample spectra available for ' + detector.name + ' and this scenario')
+                    scen_mats = set((scenMat.material.name, scenMat.fd_mode, scenMat.dose) for scenMat in materials)
+                    for instance in scen_mats:
+                        for detector_name in det_mats_d.keys():
+                            if (instance[1] == 'DOSE' and instance[0] not in det_mats_d[detector_name]) or \
+                                    (instance[1] == 'FLUX' and instance[0] not in det_mats_f[detector_name]):
+                                det_missing_mat.update([detector_name])
+                                mat_missing_det.update([instance])
+                        if instance in mat_missing_det:
+                            mat_text = '<font color="red">' + instance[0] + '</font>'
                         else:
-                            cTxt = 'k'
-                        if det_index == len(selDetectorNames) - 1:
-                            if cTxt == 'g':
-                                scenTxt = '<font color="green">' + scenario.id + '</font>'
-                            elif cTxt == 'o':
-                                scenTxt = '<font color="orange">' + scenario.id + '</font>'
-                            else:
-                                scenTxt = scenario.id
-                            s_item.setText(scenTxt)
-                            s_item.setToolTip(',\n'.join(s_toolTip))
+                            mat_text = instance[0]
+                        if instance[1] == 'DOSE':
+                            item_text.append(f'{mat_text}({instance[2]:.5g})')
+                        else:
+                            item_text.append('<i>' + f'{mat_text}({instance[2]:.5g})' + '</i>')
+                    item.setText(', '.join(item_text))
 
-                if mbicTxt:
+                for detector_name in det_missing_mat:
+                    mat_toolTip.append(detector_name + ' is missing base spectra for this scenario')
+                    s_toolTip.append(detector_name + ' is missing base spectra for this scenario')
+                for col in [MATER_EXPOS, BCKRND]:
+                    item = self.tblScenario.item(row, col)
+                    item.setToolTip(',\n'.join(mat_toolTip))
+
+
+                # set influences
+                det_missing_infl = set()
+                infl_missing_det = set()
+                item_text = []
+                item = self.tblScenario.item(row, INFLUENCES)
+
+                scen_infl = set(influence.name for influence in scenario.influences)
+                for infl in scen_infl:
+                    for detector_name in det_infl.keys():
+                        if infl not in det_infl[detector_name]:
+                            det_missing_infl.update([detector_name])
+                            infl_missing_det.update([infl])
+                    if infl in infl_missing_det:
+                        item_text.append('<font color="red">' + infl + '</font>')
+                    else:
+                        item_text.append(infl)
+
+                for detector_name in det_missing_infl:
+                    inf_toolTip.append(detector_name + ' is missing influences for this scenario')
+                    s_toolTip.append(detector_name + ' is missing influences for this scenario')
+                item.setText(', '.join(item_text))
+                item.setToolTip(',\n'.join(inf_toolTip))
+
+
+                # set scenarios
+                det_results = set()
+                det_spectra = set()
+                for detector_name in det_mats_d.keys():
+                    detector = session.query(Detector).filter_by(name=detector_name).first()
+                    if files_exist(get_results_dir(self.settings.getSampleDirectory(), detector, scenario.id)):
+                        det_results.update([detector_name])
+
+                    if files_exist(get_sample_dir(self.settings.getSampleDirectory(), detector, scenario.id)):
+                        det_spectra.update([detector_name])
+
+                for detector_name in det_results:
+                    s_toolTip.append('Identification results available for {} and this scenario'.format(detector_name))
+                for detector_name in det_spectra:
+                    s_toolTip.append('Sample spectra available for {} and this scenario'.format(detector_name))
+
+                if len(det_results) > 0:
+                    scenTxt = '<font color="green">' + scenario.id + '</font>'
+                elif len(det_spectra) > 0:
+                    scenTxt = '<font color="orange">' + scenario.id + '</font>'
+                elif len(det_missing_infl) + len(det_missing_mat) > 0:
                     scenTxt = '<font color="red">' + scenario.id + '</font>'
-                    s_item.setText(scenTxt)
+                else:
+                    scenTxt = scenario.id
+                s_item.setText(scenTxt)
+                s_item.setToolTip(',\n'.join(s_toolTip))
 
         self.updateActionButtons()
 
@@ -679,40 +733,41 @@ class Rase(ui_rase.Ui_MainWindow, QMainWindow):
         scenIds = self.getSelectedScenarioIds()
         selDetectorNames = self.getSelectedDetectorNames()
 
+        # clear buttons
+        buttons = [self.btnGenScenario, self.btnGenerate, self.btnRunReplay, self.btnViewResults,
+                   self.btnRunResultsTranslator, self.btnImportIDResults, self.btnImportSpectra]
+        [button.setEnabled(False) for button in buttons]
         if not (len(scenIds) and len(selDetectorNames)):
-            # clear buttons
-            for button in [self.btnGenScenario, self.btnGenerate, self.btnRunReplay, self.btnViewResults,
-                           self.btnRunResultsTranslator, self.btnImportIDResults]:
-                button.setEnabled(False)
-                button.setToolTip('Must choose scenario and instrument')
+            [button.setToolTip('Must choose scenario and instrument') for button in buttons]
             return
-        for button in [self.btnGenScenario, self.btnGenerate, self.btnRunReplay, self.btnViewResults,
-                       self.btnRunResultsTranslator, self.btnImportIDResults]:
-            button.setEnabled(False)
-            button.setToolTip('')
+        [button.setToolTip('') for button in buttons]
 
         session = Session()
 
-        prev_replay_fail = False
-        prev_transl_fail = False
-        prev_det_result = False
-
+        replay_defined = []
+        replay_commandline = []
+        results_translators_defined = []
+        samplesExists = []
+        replayInputSamplesExists = []
+        replayOutputExists = []
+        resultsExists = []
+        detMissingSpectra = []
+        detMissingInfluence = []
         for det_index, detector_name in enumerate(selDetectorNames):
 
-            detMissingSpectra = []
-            detMissingInfluence = []
             detector = session.query(Detector).filter_by(name=detector_name).first()
 
-            if detector:
-                det_mats_d = set(baseSpectrum.material.name for baseSpectrum in detector.base_spectra if
-                                isinstance(baseSpectrum.rase_sensitivity, float))
-                det_mats_f = set(baseSpectrum.material.name for baseSpectrum in detector.base_spectra if
-                                    isinstance(baseSpectrum.flux_sensitivity, float))
-                det_infl = set(detInfl.influence.name for detInfl in detector.influences)
-            samplesExists = []
-            templatedSamplesExists = []
-            replayOutputExists = []
-            resultsExists = []
+            replay_defined.append((detector.replay and detector.replay.exe_path))
+            replay_commandline.append((detector.replay and detector.replay.exe_path and detector.replay.is_cmd_line))
+            if detector.resultsTranslator:  # not all replay tools require a translator
+                results_translators_defined.append((detector.resultsTranslator.exe_path
+                                                   and detector.resultsTranslator.is_cmd_line))
+
+            det_mats_d = set(baseSpectrum.material.name for baseSpectrum in detector.base_spectra if
+                            isinstance(baseSpectrum.rase_sensitivity, float))
+            det_mats_f = set(baseSpectrum.material.name for baseSpectrum in detector.base_spectra if
+                                isinstance(baseSpectrum.flux_sensitivity, float))
+            det_infl = set(detInfl.name for detInfl in detector.influences)
 
             for scenId in scenIds:
                 scenario = session.query(Scenario).filter_by(id=scenId).first()
@@ -733,99 +788,84 @@ class Rase(ui_rase.Ui_MainWindow, QMainWindow):
 
                     samplesExists.append(
                         files_exist(get_sample_dir(self.settings.getSampleDirectory(), detector, scenId)))
-                    templatedSamplesExists.append(
-                        files_exist(get_sample_dir(self.settings.getSampleDirectory(), detector, scenId)))
+                    replayInputSamplesExists.append(
+                        files_exist(get_replay_input_dir(self.settings.getSampleDirectory(), detector, scenId)))
                     # Replay tool output files and results files are expected to end in ".n42" or ".res".
                     # Check explicitly in case other output is present (e.g. from replay tool or translator)
                     output_dir = get_replay_output_dir(self.settings.getSampleDirectory(), detector, scenId)
-                    replayOutputExists.append(files_endswith_exists(output_dir, (".n42", ".res")))
+                    replayOutputExists.append(files_endswith_exists(output_dir, (".n42", ".res", ".rslt")))
                     results_dir = get_results_dir(self.settings.getSampleDirectory(), detector, scenId)
                     resultsExists.append(files_endswith_exists(results_dir, (".n42", ".res")))
 
-            if detMissingSpectra or detMissingInfluence:
-                # generate sample is possible only if no missing base spectra or influences
-                missingScenarios = missingInfluences = ''
-                if detMissingSpectra:
-                    missingScenarios = "Missing base spectra for scenarios:<br>" + '<br>'.join(detMissingSpectra)
-                if detMissingInfluence:
-                    missingInfluences = "<br>Missing influences for scenarios:<br>" + '<br>'.join(detMissingInfluence)
-                self.btnGenScenario.setEnabled(False)
-                self.btnGenScenario.setToolTip(missingScenarios + missingInfluences)
-                self.btnGenerate.setEnabled(False)
-                self.btnGenerate.setToolTip(missingScenarios + missingInfluences)
-                self.btnRunReplay.setEnabled(False)
-                self.btnRunReplay.setToolTip(missingScenarios + missingInfluences)
-                self.btnRunResultsTranslator.setEnabled(False)
-                self.btnRunResultsTranslator.setToolTip('')
-                self.btnImportIDResults.setEnabled(False)
-                self.btnImportIDResults.setToolTip('Select only one scenario and generate sample spectra')
-                if not prev_det_result:
-                    self.btnViewResults.setEnabled(False)
-                    self.btnViewResults.setToolTip('No results available')
-            else:
-                # generate samples button:
-                self.btnGenerate.setEnabled(True)
-                self.btnGenerate.setToolTip('')
-                if not detector.replay:
-                    self.btnGenScenario.setEnabled(False)
-                    self.btnGenScenario.setToolTip('No replay tool defined')
-                elif not detector.replay.exe_path or not detector.replay.is_cmd_line:
-                    self.btnGenScenario.setEnabled(False)
-                    self.btnGenScenario.setToolTip('Replay tool is not command line, must execute workflow manually')
-                else:
-                    self.btnGenScenario.setEnabled(True)
-                    self.btnGenScenario.setToolTip('')
+        if detMissingSpectra or detMissingInfluence:
+            # generate sample is possible only if no missing base spectra or influences
+            missingScenarios = missingInfluences = ''
+            if detMissingSpectra:
+                missingScenarios = "Missing base spectra for scenarios:<br>" + '<br>'.join(detMissingSpectra)
+            if detMissingInfluence:
+                missingInfluences = "<br>Missing influences for scenarios:<br>" + '<br>'.join(detMissingInfluence)
 
-                # run replay button:
-                if not prev_replay_fail:
-                    if not all(samplesExists) or (
-                            (detector.replay and detector.replay.n42_template_path) and not all(templatedSamplesExists)):
-                        self.btnRunReplay.setEnabled(False)
-                        self.btnRunReplay.setToolTip('Sample spectra have not yet been generated or translated')
-                        prev_replay_fail = True
-                    # FIXME: the following does not consider the case of a replay tool not from the command line
-                    elif not (detector.replay and detector.replay.exe_path):
-                        self.btnRunReplay.setEnabled(False)
-                        self.btnRunReplay.setToolTip('No replay tool defined')
-                        prev_replay_fail = True
-                    else:
-                        self.btnRunReplay.setEnabled(True)
-                        self.btnRunReplay.setToolTip('')
+        # Run scenario button
+        if detMissingSpectra or detMissingInfluence:
+            self.btnGenScenario.setEnabled(False)
+            self.btnGenScenario.setToolTip(missingScenarios + missingInfluences)
+        elif not all(replay_commandline):
+            self.btnGenScenario.setEnabled(False)
+            self.btnGenScenario.setToolTip('Command-line replay tool undefined for one or more instruments')
+        else:
+            self.btnGenScenario.setEnabled(True)
+            self.btnGenScenario.setToolTip('')
 
-                # run results translator button:
-                if not prev_transl_fail:
-                    if not (detector.resultsTranslator and detector.resultsTranslator.exe_path
-                            and detector.resultsTranslator.is_cmd_line and all(replayOutputExists)):
-                        self.btnRunResultsTranslator.setEnabled(False)
-                        self.btnRunResultsTranslator.setToolTip('No command line resultsTranslator for selected instrument')
-                        prev_transl_fail = True
-                    else:
-                        self.btnRunResultsTranslator.setEnabled(True)
-                        self.btnRunResultsTranslator.setToolTip('')
+        # generate samples button
+        if detMissingSpectra or detMissingInfluence:
+            self.btnGenerate.setEnabled(False)
+            self.btnGenerate.setToolTip(missingScenarios + missingInfluences)
+        else:
+            self.btnGenerate.setEnabled(True)
+            self.btnGenerate.setToolTip('')
 
-                # import results button:
-                if not (len(selDetectorNames) == 1 and len(scenIds) == 1):
-                    self.btnImportIDResults.setEnabled(False)
-                    self.btnImportIDResults.setToolTip('Can only import one scenario at a time')
-                elif not all(samplesExists):
-                    self.btnImportIDResults.setEnabled(False)
-                    self.btnImportIDResults.setToolTip('Generate samples first')
-                else:
-                    self.btnImportIDResults.setEnabled(True)
-                    self.btnImportIDResults.setToolTip('')
+        # run replay button:
+        if not any(replayInputSamplesExists):
+            self.btnRunReplay.setEnabled(False)
+            self.btnRunReplay.setToolTip('Sample spectra have not yet been generated, translated or imported')
+        # FIXME: the following does not consider the case of a replay tool not from the command line
+        elif not any(replay_defined):
+            self.btnRunReplay.setEnabled(False)
+            self.btnRunReplay.setToolTip('No replay tool defined')
+        else:
+            self.btnRunReplay.setEnabled(True)
+            self.btnRunReplay.setToolTip('')
 
-                #view results button
-                if detector.resultsTranslator and detector.resultsTranslator.exe_path:
-                    if any(resultsExists):
-                        self.btnViewResults.setEnabled(True)
-                        self.btnViewResults.setToolTip('Results are available')
-                        prev_det_result = True
-                elif any(replayOutputExists):
-                    self.btnViewResults.setEnabled(True)
-                    self.btnViewResults.setToolTip('Results are available')
-                    prev_det_result = True
-                elif not prev_det_result:
-                    self.btnViewResults.setToolTip('No results available')
+        # import results button and import sample spectra button:
+        if len(selDetectorNames) == 1 and len(scenIds) == 1:
+            self.btnImportIDResults.setEnabled(True)
+            self.btnImportSpectra.setEnabled(True)
+            self.btnImportIDResults.setToolTip('')
+            self.btnImportSpectra.setToolTip('')
+        else:
+            self.btnImportSpectra.setEnabled(False)
+            self.btnImportIDResults.setEnabled(False)
+            self.btnImportSpectra.setToolTip('Can only import one scenario at a time')
+            self.btnImportIDResults.setToolTip('Can only import one scenario at a time')
+
+        # run results translator button:
+        if not (results_translators_defined and any(results_translators_defined)):
+            self.btnRunResultsTranslator.setEnabled(False)
+            self.btnRunResultsTranslator.setToolTip('No instruments have a command-line results translator defined ')
+        elif not any(replayOutputExists):
+            self.btnRunResultsTranslator.setEnabled(False)
+            self.btnRunResultsTranslator.setToolTip('All scenarios are missing replay tool output')
+        else:
+            self.btnRunResultsTranslator.setEnabled(True)
+            self.btnRunResultsTranslator.setToolTip('')
+
+        # view results button
+        if any(resultsExists):
+            self.btnViewResults.setEnabled(True)
+            self.btnViewResults.setToolTip('Results are available')
+        else:
+            self.btnViewResults.setEnabled(False)
+            self.btnViewResults.setToolTip('No results available')
 
     def getSelectedScenarioIds(self):
         """
@@ -932,10 +972,10 @@ class Rase(ui_rase.Ui_MainWindow, QMainWindow):
             delete_scenario(scenIds, self.settings.getSampleDirectory())
             self.populateAll()
 
-    def focusInEvent(self, e):
-        self.updateDetectorColors()
-        self.updateScenarioColors()
-        self.updateActionButtons()
+    # def focusInEvent(self, e):
+    #     self.updateDetectorColors()
+    #     self.updateScenarioColors()
+    #     self.updateActionButtons()
 
     @pyqtSlot(QPoint)
     def on_tblDetectorReplay_customContextMenuRequested(self, point):
@@ -962,7 +1002,12 @@ class Rase(ui_rase.Ui_MainWindow, QMainWindow):
                 sssDelete = session.query(SampleSpectraSeed).filter(SampleSpectraSeed.det_name == name)
                 sssDelete.delete()
                 detReplayDelete = session.query(Detector).filter(Detector.name == name)
+                detReplayDelete.first().influences.clear()
                 detReplayDelete.delete()
+                detBaseRelationDelete = session.query(BaseSpectrum).filter(BaseSpectrum.detector_name == name)
+                detBaseRelationDelete.delete()
+                detBackRelationDelete = session.query(BackgroundSpectrum).filter(BackgroundSpectrum.detector_name == name)
+                detBackRelationDelete.delete()
                 session.commit()
                 self.populateAll()
             elif action == editAction:
@@ -1007,6 +1052,8 @@ class Rase(ui_rase.Ui_MainWindow, QMainWindow):
 
         replications = 0
         checked = False
+        ill_defined_scen = 0
+
         # Check if any sample spectra may be overwritten
         for detName, scenId in detector_scenarios:
             detector = session.query(Detector).filter_by(name=detName).first()
@@ -1041,12 +1088,25 @@ class Rase(ui_rase.Ui_MainWindow, QMainWindow):
                         detector_scenarios.remove((detName, scenId))
 
             replications += scenario.replication
+
+            if (detector.includeSecondarySpectrum and detector.secondary_type == secondary_type['scenario'] and not scenario.scen_bckg_materials):
+                ill_defined_scen += 1
+
         session.close()
+
+        if ill_defined_scen:
+            QMessageBox.information(self, 'Not all scenarios were processed', 'At least one selected scenario '
+                                                          'lacks the background definition required to generate '
+                                                          'a secondary spectrum, and will not be processed.')
+            if ill_defined_scen == len(detector_scenarios):
+                return True
 
         # Test one single first to make sure things are working
         try:
             SampleSpectraGeneration(detector_scenarios, True).work()
         except Exception as e:
+            traceback.print_exc()
+            logging.exception("Handled Exception", exc_info=True)
             QMessageBox.critical(self, 'Error!', 'Sample generation failed for ' + detName
                                  + '<br> If n42 template is set, please verify it is formatted correctly.<br><br>'
                                  + str(e))
@@ -1098,6 +1158,8 @@ class Rase(ui_rase.Ui_MainWindow, QMainWindow):
                         if not os.path.exists(sampleDir):
                             # TODO: eventually we will generate samples directly from here.
                             pass
+                        if not files_endswith_exists(sampleDir, ('.n42',)):
+                            continue
                         try:
                             resultsDir = get_replay_output_dir(sampleRootDir, detector, scenId)
                             settingsList = detector.replay.settings.split(" ")
@@ -1132,10 +1194,11 @@ class Rase(ui_rase.Ui_MainWindow, QMainWindow):
                             # if error:
                             #     QMessageBox.critical(self, 'Error','error message: ' + error)
                             #     return
-                            importResultsDirectory(resultsDir, scenId, detName)
                         except Exception as e:
                             if dispProg:
                                 progress.setValue(len(scenIds) + 1)
+                            traceback.print_exc()
+                            logging.exception("Handled Exception", exc_info=True)
                             QMessageBox.critical(self, 'Replay failed', 'Could not execute replay for instrument '
                                                  + detName + ' and scenario ' + scenId + '<br><br>' + str(e))
                             shutil.rmtree(resultsDir)
@@ -1148,11 +1211,12 @@ class Rase(ui_rase.Ui_MainWindow, QMainWindow):
                         if not os.path.exists(sampleDir):
                             # TODO: eventually we will generate samples directly from here.
                             pass
+                        if not files_endswith_exists(sampleDir, ('.n42',)):
+                            continue
                         resultsDir = get_replay_output_dir(sampleRootDir, detector, scenId)
                         if os.path.exists(resultsDir):
                             shutil.rmtree(resultsDir)
                         os.makedirs(resultsDir, exist_ok=True)
-                        importResultsDirectory(resultsDir, scenId, detName)
                         # FIXME: this works only on Windows
                         os.startfile(detector.replay.exe_path)
 
@@ -1185,8 +1249,6 @@ class Rase(ui_rase.Ui_MainWindow, QMainWindow):
         """
         # user directory
         session = Session()
-        # scenIds = self.getSelectedScenarioIds()
-        # detNames = self.getSelectedDetectorNames()
         sampleRootDir = self.settings.getSampleDirectory()
         if dispProg:
             progress = QProgressDialog('Translation in progress...', None, 0, len(scenIds) + 1, self)
@@ -1215,8 +1277,9 @@ class Rase(ui_rase.Ui_MainWindow, QMainWindow):
                     output_dir = get_results_dir(sampleRootDir, detector, scenId)
 
                     if not files_exist(input_dir):
-                        QMessageBox.critical(self, 'Insufficient Data', 'Must Run Replay First')
-                        return False
+                        continue
+                        # QMessageBox.critical(self, 'Insufficient Data', 'Must Run Replay First')
+                        # return False
 
                     command = [resultsTranslator.exe_path]
                     if resultsTranslator.exe_path.endswith('.py'):
@@ -1258,6 +1321,8 @@ class Rase(ui_rase.Ui_MainWindow, QMainWindow):
                         shutil.rmtree(output_dir, ignore_errors=True)
                         return False
                     except Exception as e:
+                        traceback.print_exc()
+                        logging.exception("Handled Exception", exc_info=True)
                         if dispProg:
                             progress.setValue(len(scenIds) + 1)
                         QMessageBox.critical(self, 'Error!',
@@ -1290,8 +1355,22 @@ class Rase(ui_rase.Ui_MainWindow, QMainWindow):
         Launches Correspondence Table Dialog
         """
         CorrespondenceTableDialog().exec_()
-        # self.isAfterCorrespondenceTableCall = True
         self.settings.setIsAfterCorrespondenceTableCall(True)
+
+    @pyqtSlot(bool)
+    def on_actionModify_Detector_Influences_triggered(self, checked):
+        """
+        Launches detector influence table for modification
+        """
+        if ManageInfluencesDialog(modify_flag=True).exec_():
+            self.populateScenarios()
+
+    @pyqtSlot(bool)
+    def on_actionModify_Material_Weights_triggered(self, checked):
+        """
+        Launches detector influence table for modification
+        """
+        ManageWeightsDialog().exec_()
 
     @pyqtSlot(bool)
     def on_btnImportIDResults_clicked(self, checked):
@@ -1315,7 +1394,33 @@ class Rase(ui_rase.Ui_MainWindow, QMainWindow):
                     shutil.rmtree(resultsDir)
                 shutil.copytree(dirpath, resultsDir)
 
-            importResultsDirectory(resultsDir, scenId, detName)
+            self.updateScenarioColors()
+            self.updateActionButtons()
+
+    @pyqtSlot(bool)
+    def on_btnImportSpectra_clicked(self, checked):
+        """
+        Imports measured (or otherwise generated) sampled spectra by copying files
+        to their expected location within RASE file structure
+        """
+        session = Session()
+        scenId = self.getSelectedScenarioIds()[0]
+        detName = self.getSelectedDetectorNames()[0]
+        detector = session.query(Detector).filter_by(name=detName).first()
+        options = QFileDialog.ShowDirsOnly
+        if sys.platform.startswith('win'): options = QFileDialog.DontUseNativeDialog
+        dirpath = QFileDialog.getExistingDirectory(self, 'Select folder of sampled spectra for scenario: ' + scenId +
+                                                   ' and instrument: ' + detName,
+                                                   self.settings.getSampleDirectory(),
+                                                   options)
+        if dirpath:
+            outDir = get_replay_input_dir(self.settings.getSampleDirectory(), detector, scenId)
+            if os.path.normpath(dirpath) != os.path.normpath(outDir):
+                if os.path.exists(outDir):
+                    shutil.rmtree(outDir)
+                os.makedirs(outDir, exist_ok=True)
+                for file in glob.glob(os.path.join(dirpath, "*.n42")):
+                    shutil.copy(file, outDir)
 
             self.updateScenarioColors()
             self.updateActionButtons()
@@ -1362,7 +1467,7 @@ class Rase(ui_rase.Ui_MainWindow, QMainWindow):
     @pyqtSlot(bool)
     def on_btnAddDetector_clicked(self, checked):
         """
-        Handles adding new Detetor
+        Handles adding new Detector
         """
         if DetectorDialog(self).exec_():
             self.populateDetectorReplays()
@@ -1419,18 +1524,27 @@ class Rase(ui_rase.Ui_MainWindow, QMainWindow):
             # The action to open the sample folders shows up only
             # if the sample folders exists and a detector is selected
             sampleDirs = []
+            sampleDirs_only_replays = []
             for scen in scenIds:
                 for detName in detNames:
                     detector = session.query(Detector).filter_by(name=detName).first()
                     dir = get_sample_dir(self.settings.getSampleDirectory(), detector, scen)
-                    if files_exist(dir):
+                    if files_endswith_exists(dir, ('.n42',)):
                         sampleDirs.append(dir)
-            if len(sampleDirs) > 1:
+                    elif os.path.exists(get_replay_output_dir(self.settings.getSampleDirectory(), detector, scen)):
+                        sampleDirs_only_replays.append(dir)
+            if (len(sampleDirs) + len(sampleDirs_only_replays)) > 1:
                 action_label = 'Go To Sample Folders'
+                viewSampleSpectraAction = False
             else:
                 action_label = 'Go To Sample Folder'
+                viewSampleSpectraAction = QAction('View Sample Spectra', self)
+
             goToFolderAction = QAction(action_label, self)
-            if sampleDirs: menu.addAction(goToFolderAction)
+            if sampleDirs and viewSampleSpectraAction:
+                menu.addAction(viewSampleSpectraAction)
+            if sampleDirs or sampleDirs_only_replays:
+                menu.addAction(goToFolderAction)
 
             # execute actions
             action = menu.exec_(self.tblScenario.mapToGlobal(point))
@@ -1438,7 +1552,7 @@ class Rase(ui_rase.Ui_MainWindow, QMainWindow):
                 delete_scenario(scenIds, self.settings.getSampleDirectory())
                 self.populateAll()
             elif action == goToFolderAction:
-                for dir in sampleDirs:
+                for dir in sampleDirs + sampleDirs_only_replays:
                     fileBrowser = 'explorer' if sys.platform.startswith('win') else 'open'
                     subprocess.Popen([fileBrowser, dir])
             elif action == editAction:
@@ -1447,6 +1561,10 @@ class Rase(ui_rase.Ui_MainWindow, QMainWindow):
                 self.duplicate_scen(scenIds[0])
             elif action == assignAction:
                 self.assign_to_group(scenIds)
+            elif action == viewSampleSpectraAction:
+                scenario = session.query(Scenario).filter_by(id=scenIds[0]).first()
+                detector = session.query(Detector).filter_by(name=detNames[0]).first()
+                SampleSpectraViewerDialog(self, scenario, detector, 0).exec_()
 
 
     @pyqtSlot(bool)
@@ -1525,7 +1643,8 @@ class Rase(ui_rase.Ui_MainWindow, QMainWindow):
         scen_det_list = t_scen_det_list
 
         columns = ['Det', 'Replay', 'Mat_Dose', 'Bkg_Mat_Dose', 'Mat_Flux', 'Bkg_Mat_Flux', 'Infl', 'AcqTime', 'Repl',
-                   'PID', 'PID_L', 'PID_H', 'TP', 'FP', 'FN', 'C&C', 'C&C_L', 'C&C_H', 'Precision', 'Recall', 'F_Score']
+                   'PID', 'PID_L', 'PID_H', 'C&C', 'C&C_L', 'C&C_H', 'TP', 'FP', 'FN', 'Precision', 'Recall',
+                   'F_Score', 'wTP', 'wFP', 'wFN', 'wPrecision', 'wRecall', 'wF_Score']
 
         index = [scen_det[0] + "*" + scen_det[1] for scen_det in scen_det_list]
         self.scenario_stats_df = pd.DataFrame(index=index, columns=columns)
@@ -1557,35 +1676,54 @@ class Rase(ui_rase.Ui_MainWindow, QMainWindow):
                 fc_fileList = []
 
             pid_total = 0
-            tp_perc_total = 0
+            tp_total = 0
+            wtp_total = 0
             fp_total = 0
+            wfp_total = 0
             fn_total = 0
+            wfn_total = 0
             CandCtotal = 0
             precision_total = 0
+            wprecision_total = 0
             recall_total = 0
+            wrecall_total = 0
             Fscore_total = 0
+            wFscore_total = 0
             num_files = 0
 
             result_map = {}
-            correct_ids_list, allowed_ids_list = self.getCorrTableData(scen_mats, scen_bckg_mats)
+            isotopes, correct_ids_list, allowed_ids_list = self.getCorrTableData(scen_mats, scen_bckg_mats)
+            assoc_table = dict(zip(isotopes, correct_ids_list))
+            mats_with_weights = self.getMaterialWeightsData(assoc_table)
+
             num_required_ids = len([i for i in correct_ids_list if i])
             for file in fc_fileList:
                 result_list = []
                 num_files = num_files + 1
-                results = []
                 try:
-                    results = readTranslatedResultFile(file)
+                    trans_results, trans_confidences = readTranslatedResultFile(file, self.settings.getUseConfidencesInCalcs())
+                    results = {}
+                    for r, c in zip(trans_results, trans_confidences):
+                        if r in results.keys():
+                            results[r] = max([results[r], c])
+                        else:
+                            results[r] = c
                 except ResultsFileFormatException as ex:
+                    traceback.print_exc()
+                    logging.exception("Handled Exception", exc_info=True)
                     print(f"{str(ex)} in file {ntpath.basename(file)}")
-                Tp, Fn, Fp = self.getTpFpFn(set(results), correct_ids_list, allowed_ids_list)
+                Tp, Fn, Fp, wTp, wFn, wFp = self.getTpFpFn(results, allowed_ids_list, assoc_table, mats_with_weights)
                 result_list.append(str(Tp))
                 result_list.append(str(Fn))
                 result_list.append(str(Fp))
 
                 pid = 0
                 precision = 0
+                wprecision = 0
                 recall = 0
+                wrecall = 0
                 Fscore = 0
+                wFscore = 0
                 CandC = 0
 
                 if Tp == num_required_ids:
@@ -1594,23 +1732,37 @@ class Rase(ui_rase.Ui_MainWindow, QMainWindow):
                     recall = Tp / (Tp + Fn)
                 if (Tp + Fp > 0):
                     precision = Tp / (Tp + Fp)
+                if (wTp + wFn > 0):
+                    wrecall = wTp / (wTp + wFn)
+                if (wTp + wFp > 0):
+                    wprecision = wTp / (wTp + wFp)
                 if (precision + recall > 0):
                     Fscore = 2 * precision * recall / (precision + recall)
                     if Fscore == 1:
                         CandC = Fscore
+                if (wprecision + wrecall > 0):
+                    wFscore = 2 * wprecision * wrecall / (wprecision + wrecall)
 
                 pid_total = pid_total + pid
-                if num_required_ids:
-                    tp_perc_total = tp_perc_total + Tp / num_required_ids
+                tp_total = tp_total + Tp
+                wtp_total = wtp_total + wTp
                 fp_total = fp_total + Fp
+                wfp_total = wfp_total + wFp
                 fn_total = fn_total + Fn
+                wfn_total = wfn_total + wFn
                 CandCtotal = CandC + CandCtotal
                 precision_total = precision_total + precision
                 result_list.append(str(round(precision, 2)))
+                wprecision_total = wprecision_total + wprecision
+                # result_list.append(str(round(wprecision, 2)))
                 recall_total = recall_total + recall
                 result_list.append(str(round(recall, 2)))
+                wrecall_total = wrecall_total + wrecall
+                # result_list.append(str(round(wrecall, 2)))
                 Fscore_total = Fscore_total + Fscore
                 result_list.append(str(round(Fscore, 2)))
+                wFscore_total = wFscore_total + wFscore
+                # result_list.append(str(round(wFscore, 2)))
                 result_list.append('; '.join(results))
                 result_map[file] = result_list
 
@@ -1618,14 +1770,20 @@ class Rase(ui_rase.Ui_MainWindow, QMainWindow):
             # FIXME: is it possible that num_files becomes zero, thus resulting in an error?
             pid_freq = pid_total / num_files
             (P_CI_p, P_CI_n) = calc_result_uncertainty(pid_freq, num_files)
-            tp_freq = tp_perc_total / num_files
+            tp_freq = tp_total / num_files
+            wtp_freq = wtp_total / num_files
             fp_freq = fp_total / num_files
+            wfp_freq = wfp_total / num_files
             fn_freq = fn_total / num_files
+            wfn_freq = wfn_total / num_files
             CandC_freq = CandCtotal / num_files
             (C_CI_p,C_CI_n) = calc_result_uncertainty(CandC_freq, num_files)
             precision_freq = precision_total / num_files
+            wprecision_freq = wprecision_total / num_files
             recall_freq = recall_total / num_files
+            wrecall_freq = wrecall_total / num_files
             Fscore_freq = Fscore_total / num_files
+            wFscore_freq = wFscore_total / num_files
 
 
             mat_dose_dict = {scen_mat.material.name: scen_mat.dose for scen_mat in scenario.scen_materials if
@@ -1638,16 +1796,19 @@ class Rase(ui_rase.Ui_MainWindow, QMainWindow):
                                  scen_mat.fd_mode == 'FLUX'}
             # mat_dose_dict = {scen_mat.material.name: scen_mat.dose for scen_mat in scenario.scen_materials}
             # mat_dose_bkg_dict = {scen_mat.material.name: scen_mat.dose for scen_mat in scenario.scen_bckg_materials}
-            self.scenario_stats_df.loc[result_super_map_key] = [detector.name, detector.replay.name,
+            self.scenario_stats_df.loc[result_super_map_key] = [detector.name,
+                                                                  [detector.replay.name if detector.replay else None][0],
                                                                   mat_dose_dict, mat_dose_bkg_dict,
                                                                   mat_flux_dict, mat_flux_bkg_dict,
                                                                   [infl.name for infl in scenario.influences],
                                                                   scenario.acq_time,
                                                                   scenario.replication,
                                                                   pid_freq, P_CI_n, P_CI_p,
-                                                                  tp_freq, fp_freq, fn_freq,
                                                                   CandC_freq, C_CI_n, C_CI_p,
-                                                                  precision_freq, recall_freq, Fscore_freq]
+                                                                  tp_freq, fp_freq, fn_freq,
+                                                                  precision_freq, recall_freq, Fscore_freq,
+                                                                  wtp_freq, wfp_freq, wfn_freq,
+                                                                  wprecision_freq, wrecall_freq, wFscore_freq]
 
 
         MatDose_df = self.scenario_stats_df['Mat_Dose'].apply(pd.Series).fillna(0)
@@ -1774,6 +1935,9 @@ class SampleSpectraGeneration(QObject):
             replay_input_dir = get_replay_input_dir(self.sampleDir, detector, scenId)
             scenario = session.query(Scenario).filter_by(id=scenId).first()
 
+            if (detector.includeSecondarySpectrum and detector.secondary_type == secondary_type['scenario'] and not scenario.scen_bckg_materials):
+                continue
+
             os.makedirs(sample_dir, exist_ok=True)
             os.makedirs(replay_input_dir, exist_ok=True)
 
@@ -1792,6 +1956,31 @@ class SampleSpectraGeneration(QObject):
             countsDoseAndSensitivity = _getCountsDoseAndSensitivity(scenario, detector)
             secondary_spectrum = (session.query(BackgroundSpectrum).filter_by(detector_name=detector.name)).first()
 
+            if (detector.includeSecondarySpectrum and detector.secondary_type == secondary_type['scenario']):    # utilize background defined in the scenario for secondary background
+                spec_info = []
+                for background, spectrum in product(scenario.scen_bckg_materials, detector.base_spectra):
+                    if background.material_name == spectrum.material_name:
+                        cnts = spectrum.get_counts_as_np()
+                        sens = spectrum.rase_sensitivity if background.fd_mode == 'DOSE' else spectrum.flux_sensitivity
+                        spec_info.append([cnts, spectrum.livetime, spectrum.realtime, sens, background.dose])
+
+                if len(spec_info) == 1:
+                    secondary_spectrum.baseCounts = ','.join([str(c) for c in spec_info[0][0]])
+                    secondary_spectrum.livetime = spectrum.livetime
+                    secondary_spectrum.realtime = spectrum.realtime
+                else:
+                    sumspec = np.zeros(len(spec_info[0][0]))
+                    for info in spec_info:
+                        # A ratio of (total_counts/sens_fact) for the first spectrum and the nth spectrum,
+                        # multiplied by the ratio of the user supplied dose rates for the nth spectrum and the first
+                        # spectrum, multiplied by the counts in each bin
+                        sumspec += ((sum(spec_info[0][0])/spec_info[0][3]) / (sum(info[0])/info[3]) *
+                                    (info[4] / spec_info[0][4]) * np.array(info[0]))
+
+                    secondary_spectrum.baseCounts = ','.join([str(c) for c in sumspec])
+                    secondary_spectrum.livetime = spec_info[0][1]
+                    secondary_spectrum.realtime = spec_info[0][2]
+
             n42_template = None
             if detector.replay and detector.replay.n42_template_path:
                 n42_template = Template(filename=detector.replay.n42_template_path, input_encoding='utf-8')
@@ -1800,6 +1989,16 @@ class SampleSpectraGeneration(QObject):
             reps = 1 if self.test else scenario.replication
             for filenum in range(reps):
                 # This is where the downsampling happens
+
+                degradations = []
+                for influence in scenario.influences:
+                    influences = session.query(DetectorInfluence).filter_by(influence_name=influence.name).first()
+                    degradations.append([a * (filenum) for a in [influences.degrade_infl0, influences.degrade_infl1,
+                                    influences.degrade_infl2, influences.degrade_f_smear, influences.degrade_l_smear]])
+                    # If there is some degradation, we pass them in to apply degradations without doing it exponentially
+                if not all(v == 0 for deg in degradations for v in deg):
+                    countsDoseAndSensitivity = _getCountsDoseAndSensitivity(scenario, detector, degradations)
+
                 sampleCounts = self.sampling_algo(scenario, detector, countsDoseAndSensitivity, seed + filenum)
 
                 # write out to RASE n42 file

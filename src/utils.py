@@ -1,5 +1,5 @@
 ###############################################################################
-# Copyright (c) 2018 Lawrence Livermore National Security, LLC.
+# Copyright (c) 2018-2021 Lawrence Livermore National Security, LLC.
 # Produced at the Lawrence Livermore National Laboratory
 #
 # Written by J. Chavez, S. Czyz, G. Kosinovsky, V. Mozin, S. Sangiorgio.
@@ -31,8 +31,9 @@
 """
 This module defines profileit() and compress_counts() utility functions
 """
-
+import os
 import re
+import sys
 
 PROFILE = False
 
@@ -95,3 +96,12 @@ def natural_keys(text):
     (See Toothy's implementation in the comments)
     '''
     return [atoi(c) for c in re.split(r'(\d+)', text)]
+
+
+def get_bundle_dir():
+    if getattr(sys, 'frozen', False):
+        # we are running in a pyinstaller bundle
+        return sys._MEIPASS
+    else:
+        # we are running in a normal Python environment
+        return os.getcwd()

@@ -1,4 +1,4 @@
-Copyright (c) 2020 Lawrence Livermore National Security, LLC.
+Copyright (c) 2018-2021 Lawrence Livermore National Security, LLC.
 Produced at the Lawrence Livermore National Laboratory
 
 Written by J. Brodsky, J. Chavez, S. Czyz, G. Kosinovsky, V. Mozin, S. Sangiorgio. RASE-support@llnl.gov.
@@ -6,6 +6,8 @@ Written by J. Brodsky, J. Chavez, S. Czyz, G. Kosinovsky, V. Mozin, S. Sangiorgi
 LLNL-CODE-819515
 
 All rights reserved.
+
+RASE is released under an MIT license.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of
 this software and associated documentation files (the "Software"), to deal in

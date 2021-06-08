@@ -34,6 +34,24 @@ The directory containing data associated with the specific scenario can be acces
 "Scenarios" table. An instrument must be selected in order for this option to become available.
 
 
+Advanced actions: Importing sample spectra and experimental data
+================================================================
+
+If the user clicks the "Enable advanced actions" checkbox, two buttons will appear alongside the "Generate Spectra" and "Run Replay Tool": the "Import Spectra" and
+"Import Replay Results" buttons. Importing spectra allows the user to import experimental data into the RASE workflow for direct comparison to simulated data. To do
+this, simply select a detector and a scenario and press the "Import Spectra" button. This will bring up a directory dialog; navigate to the directory that contains
+the set of spectra to be imported into RASE and press "Okay". These spectra will be imported into RASE and from that point forward is treated identically to sample
+spectra created within RASE. By importing experimental spectra into a scenario for one detector and simulating the spectra using another detector, the user may easily
+compare replay results on experimental data with simulated results created via sampling from base spectra. RASE does not mark scenarios or detectors to identify them
+as having imported spectra associated with them, so it is left to the user to keep track of which scenarios/detectors have experimentally imported spectra. It is not
+necessary to define a separate instrument exclusively for experimental spectra: imported spectra and sampled spectra may co-exist associated with a single instrument.
+
+Note that there are no checks in place that prevent the user from importing spectra that are incorrect. It falls to the user to verify that the live times, dwell times,
+dose rates, etc, are the same as those defined in the scenario setup. It also falls to the user to verify that the spectra imported for a detector/scenario combination
+is compatible with the replay tool in the same manner as spectra generated in RASE should be. RASE does not check to verify that the number of spectra imported is in
+agreement with the number of replications defined by the user, but provided that the number of replications defined for a scenario is greater than the number of spectra
+imported for that scenario the RASE workflow should operate normally and correctly.
+
 .. _rase-WorkflowStep4:
 
 .. figure:: _static/rase_WorkflowStep4.png

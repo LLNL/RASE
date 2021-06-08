@@ -1,5 +1,5 @@
 ###############################################################################
-# Copyright (c) 2018 Lawrence Livermore National Security, LLC.
+# Copyright (c) 2018-2021 Lawrence Livermore National Security, LLC.
 # Produced at the Lawrence Livermore National Laboratory
 #
 # Written by J. Chavez, S. Czyz, G. Kosinovsky, V. Mozin, S. Sangiorgio.
@@ -36,26 +36,28 @@ instrument/scenario combination
 import csv
 
 from PyQt5.QtWidgets import QTableWidgetItem, QDialog, QFileDialog, \
-    QHeaderView, QAction, QMenu, QApplication
+    QHeaderView, QAction, QMenu, QApplication, QMessageBox
 from PyQt5.QtCore import QPoint, Qt, pyqtSlot
 from PyQt5.QtGui import QKeySequence
 
-
-
-from .table_def import Session
+from src.table_def import Session
+from src.plotting import SampleSpectraViewerDialog
+from .rase_functions import get_sample_dir, count_files_endwith
 from .ui_generated import ui_detailed_results_dialog
 from src.rase_settings import RaseSettings
 from .utils import natural_keys
 
 
 class DetailedResultsDialog(ui_detailed_results_dialog.Ui_dlgDetailedResults, QDialog):
-    def __init__(self, resultMap):
+    def __init__(self, resultMap, scenario, detector):
         QDialog.__init__(self)
         self.setupUi(self)
         self.settings = RaseSettings()
         self.headerLabels = ['File', 'Tp', 'Fn', 'Fp', 'Precision', 'Recall', 'Fscore', 'IDs']
         self.NUM_COLS = len(self.headerLabels)
         self.session = Session()
+        self.scenario = scenario
+        self.detector = detector
         self.tblDetailedResults.setContextMenuPolicy(Qt.CustomContextMenu)
         self.tblDetailedResults.setColumnCount(self.NUM_COLS)
         self.tblDetailedResults.setHorizontalHeaderLabels(self.headerLabels)
@@ -123,6 +125,19 @@ class DetailedResultsDialog(ui_detailed_results_dialog.Ui_dlgDetailedResults, QD
         action = menu.exec_(self.tblDetailedResults.mapToGlobal(point))
         if action == copy_action:
             QApplication.clipboard().setText(self.get_selected_cells_as_text())
+
+    @pyqtSlot(int, int)
+    def on_tblDetailedResults_cellDoubleClicked(self, row, col):
+        """
+        Listens for cell double click and launches sample spectra viewer
+        """
+        # FIXME: Note plotting order is guaranteed only if filenames of results files match sample spectra filenames
+        if count_files_endwith(get_sample_dir(self.settings.getSampleDirectory(), self.detector, self.scenario.id),
+                                 (".n42",)) > row:
+            SampleSpectraViewerDialog(self, self.scenario, self.detector, row).exec_()
+        else:
+            QMessageBox.information(self, 'Information', 'Unable to display spectra.<br>'
+                                                         'No sampled spectra available in native RASE format')
 
     def closeSelected(self):
         """

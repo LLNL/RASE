@@ -1,5 +1,5 @@
 ###############################################################################
-# Copyright (c) 2018 Lawrence Livermore National Security, LLC.
+# Copyright (c) 2018-2021 Lawrence Livermore National Security, LLC.
 # Produced at the Lawrence Livermore National Laboratory
 #
 # Written by J. Chavez, S. Czyz, G. Kosinovsky, V. Mozin, S. Sangiorgio.
@@ -34,19 +34,22 @@ This module specifies the base spectra, influences, and other detector info
 
 from PyQt5.QtCore import Qt, pyqtSlot, QRegExp
 from PyQt5.QtGui import QRegExpValidator, QDoubleValidator
-from PyQt5.QtWidgets import QDialog, QTableWidgetItem, QFileDialog, QMessageBox, QItemDelegate, QLineEdit, QComboBox, QHeaderView
+from PyQt5.QtWidgets import QDialog, QTableWidgetItem, QFileDialog, QMessageBox, QItemDelegate, QLineEdit, QComboBox, \
+    QHeaderView, QInputDialog
 
 from decimal import Decimal
 from .base_spectra_dialog import BaseSpectraDialog
-from .rase_functions import importDistortionFile
+from .rase_functions import importDistortionFile, secondary_type
 from .replay_dialog import ReplayDialog
 from .table_def import Session, Replay, ResultsTranslator, Detector, Influence, DetectorInfluence, BackgroundSpectrum
 from .ui_generated import ui_add_detector_dialog
 from .utils import profileit
 from .manage_replays_dialog import ManageReplaysDialog
-from .plotting import SpectraViewerDialog
+from .manage_influences_dialog import ManageInfluencesDialog
+from .plotting import BaseSpectraViewerDialog
 from src.rase_settings import RaseSettings
 
+SECONDARY_TYPE_BACKGROUND, SECONDARY_TYPE_INTERNAL = 0, 1
 
 class DetectorDialog(ui_add_detector_dialog.Ui_Dialog, QDialog):
     def __init__(self, parent, detectorName=None):
@@ -57,40 +60,36 @@ class DetectorDialog(ui_add_detector_dialog.Ui_Dialog, QDialog):
         self.detector = None
         self.settings = RaseSettings()
         self.newBaseSpectra = []
-        self.newBackgroundSpectra = []
+        self.newBackgroundSpectrum = None
         self.replay = None
+        self.internal_secondary = 'None'
         self.resultsTranslator = None
         self.settingProgramatically = False
         self.detectorInfluences = []
+
+        # background combo_box
+        self.back_combo = {'base_spec': 0, 'scenario': 1, 'file': 2}
+
         self.session = session = Session()
-        # set influence table properties
-        self.tblInfluences.setItemDelegate(self.FloatLineDelegate(self))
-        self.tblInfluences.setItemDelegateForColumn(0, self.InfluenceDelegate(self.tblInfluences))
-        self.tblInfluences.setRowCount(10)
-        self.tblInfluences.verticalHeader().hide()
-        self.tblInfluences.setColumnWidth(0, 150)
-        self.tblInfluences.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
 
-
-        for row in range(self.tblInfluences.rowCount()):
-            for col in range(self.tblInfluences.columnCount()):
-                self.tblInfluences.setItem(row, col, QTableWidgetItem())
-            self.tblInfluences.setRowHeight(row, 22)
-        self.tblInfluences.cellChanged.connect(self.onInfluenceCellChanged)
+        self.secondaryIsBackgroundRadio.toggled.connect(self.setSecondarySpecEnable)
+        self.combo_typesecondary.currentIndexChanged.connect(self.enableComboBase)
 
         self.cmbReplay.addItem('')
         self.cmbReplay.addItems([replay.name for replay in session.query(Replay)])
 
-        self.includeSecondarySpectrumCheckBox.setChecked(False)
         self.includeSecondarySpectrumCheckBox.setEnabled(False)
 
+        self.btnAddInfluences.clicked.connect(lambda: self.influenceManagement(False))
+        self.btnModifyInfluences.clicked.connect(lambda: self.influenceManagement(True))
+        self.btnDeleteInfluences.clicked.connect(self.deleteInfluencesFromDetector)
         self.manageReplays.clicked.connect(self.replayManagement)
         self.lstBaseSpectra.doubleClicked.connect(self.showSpectrum)
 
         # case that this is an edit of an existing detector
         if detectorName:
             self.setWindowTitle('Edit Detector')
-            self.detector = detector = session.query(Detector).filter_by(name = detectorName).first()
+            self.detector = detector = session.query(Detector).filter_by(name=detectorName).first()
 
             # populate details
             self.txtDetector           .setText(detector.name)
@@ -102,12 +101,8 @@ class DetectorDialog(ui_add_detector_dialog.Ui_Dialog, QDialog):
             self.txtClassCode          .setText(detector.class_code)
 
             # populate influences
-            for row, detInfluence in enumerate(detector.influences):
-                for (col, text) in [(0, detInfluence.influence_name),
-                                    (1, str(detInfluence.infl_0)),
-                                    (2, str(detInfluence.infl_1)),
-                                    (3, str(detInfluence.infl_2))]:
-                    self.tblInfluences.item(row, col).setText(text)
+            if self.detector.influences:
+                self.listInfluences.addItems(sorted([influence.name for influence in self.detector.influences]))
 
             # populate ecal
             self.txtEcal0.setText('%E' % Decimal(detector.ecal0) if detector.ecal0 else '0')
@@ -121,19 +116,37 @@ class DetectorDialog(ui_add_detector_dialog.Ui_Dialog, QDialog):
                 self.cmbReplay.setCurrentText(detector.replay.name)
 
             # populate materials
-            self.lstBaseSpectra.addItems([baseSpectrum.material_name for baseSpectrum in detector.base_spectra])
+            self.lstBaseSpectra.addItems(sorted([baseSpectrum.material_name for baseSpectrum in detector.base_spectra]))
 
-            # secondary spectrum checkboxes
-            self.bckgndSpecFileDisplay.setText("No secondary spectrum found")
-            secondary_spectrum = (session.query(BackgroundSpectrum).filter_by(detector_name=detector.name)).first()
-            if secondary_spectrum:
+            if detector.includeSecondarySpectrum:
                 self.includeSecondarySpectrumCheckBox.setEnabled(True)
-                self.bckgndSpecFileDisplay.setText("Secondary Spectrum from: " + detector.bckg_spectra[0].material.name)
-            self.includeSecondarySpectrumCheckBox.setChecked(detector.includeSecondarySpectrum)
-            if detector.secondary_type == 1:
-                self.secondaryIsBackgroundRadio.setChecked(True)
-            elif detector.secondary_type == 2:
-                self.secondaryIsCalibrationRadio.setChecked(True)
+
+                # secondary spectrum checkboxes
+                if detector.secondary_type == secondary_type['internal']:
+                    self.secondaryIsCalibrationRadio.setEnabled(True)
+                    self.secondaryIsCalibrationRadio.setChecked(True)
+                    self.bckgndSpecFileDisplay.setText("Secondary Spectrum from: " + detector.bckg_spectra[0].material_name)
+                else:
+                    self.secondaryIsCalibrationRadio.setChecked(False)
+                    self.secondaryIsCalibrationRadio.setEnabled(False)
+                    self.bckgndSpecFileDisplay.clear()
+
+                if detector.secondary_type != secondary_type['internal']:
+                    self.secondaryIsBackgroundRadio.setChecked(True)
+                    self.combo_typesecondary.setEnabled(True)
+                    for key, val in secondary_type.items():
+                        if val == detector.secondary_type:
+                            self.combo_typesecondary.setCurrentIndex(self.back_combo[key])
+                            break
+                    self.setBackgroundIsoCombo(detector.secondary_type == secondary_type['base_spec'])
+
+                    if self.detector.secondary_type != secondary_type['file']:
+                        self.combo_typesecondary.removeItem(self.back_combo['file'])
+                    if detector.secondary_type == secondary_type['base_spec']:
+                        self.populateComboBase(sorted([baseSpec.material_name for baseSpec in detector.base_spectra]))
+
+                    self.combo_basesecondary.setCurrentText(detector.bckg_spectra[0].material_name)
+
 
     def replayManagement(self):
         """
@@ -142,14 +155,29 @@ class DetectorDialog(ui_add_detector_dialog.Ui_Dialog, QDialog):
         manageRepDialog = ManageReplaysDialog(self)
         manageRepDialog.exec_()
 
+    def influenceManagement(self, modify_flag=False):
+        """
+        Opens the Influences Dialog
+        """
+        self._make_detector()
+        manageInflDialog = ManageInfluencesDialog(self, modify_flag)
+        manageInflDialog.exec_()
+
+    def deleteInfluencesFromDetector(self):
+        """
+        Removes influences from influence list
+        """
+        for influence in self.listInfluences.selectedItems():
+            self.listInfluences.takeItem(self.listInfluences.row(influence))
+
     def showSpectrum(self):
         """
-        Lists loaded base spectra
+        Plot loaded base spectra
         """
         spectra = self.newBaseSpectra
         if not self.newBaseSpectra:
             spectra = self.detector.base_spectra
-        d = SpectraViewerDialog(self, self.session, spectra, self.lstBaseSpectra.currentItem().text())
+        d = BaseSpectraViewerDialog(self, spectra, self.detector, self.lstBaseSpectra.currentItem().text())
         d.exec_()
 
 
@@ -160,11 +188,19 @@ class DetectorDialog(ui_add_detector_dialog.Ui_Dialog, QDialog):
         """
         if self.lstBaseSpectra is not None:
             self.lstBaseSpectra.clear()
+            self.combo_typesecondary.setCurrentIndex(0)
+            self.setBackgroundIsoCombo(False)
+            self.combo_basesecondary.clear()
         if self.detector is not None:
             if self.detector.base_spectra is not None:
                 self.detector.base_spectra.clear()
             if self.detector.bckg_spectra is not None:
                 self.detector.bckg_spectra.clear()
+        self.includeSecondarySpectrumCheckBox.setEnabled(False)
+        self.secondaryIsCalibrationRadio.setChecked(False)
+        self.secondaryIsBackgroundRadio.setChecked(False)
+        if self.combo_typesecondary.count() < 3:
+            self.combo_typesecondary.addItem("Use secondary defined in base spectra files")
 
     @pyqtSlot(bool)
     def on_btnAddBaseSpectra_clicked(self, checked, dlg = None):
@@ -188,35 +224,42 @@ class DetectorDialog(ui_add_detector_dialog.Ui_Dialog, QDialog):
 
             # set base spectra list
             self.newBaseSpectra = dialog.baseSpectra
-            for baseSpectrum in dialog.baseSpectra:
-                self.lstBaseSpectra.addItem(baseSpectrum.material.name)
+            self.lstBaseSpectra.addItems(sorted([baseSpec.material.name for baseSpec in dialog.baseSpectra]))
 
-            #initialize newBackgroundSpectra
-            self.newBackgroundSpectra = dialog.backgroundSpectra
-            if self.newBackgroundSpectra[0] is not None and dialog.backgroundSpectraType:
+            #initialize newBackgroundSpectrum
+            self.newBackgroundSpectrum = dialog.backgroundSpectrum
+            if self.newBackgroundSpectrum is not None:
+                self.internal_secondary = dialog.backgroundSpectrum.material.name
                 self.includeSecondarySpectrumCheckBox.setEnabled(True)
-                self.includeSecondarySpectrumCheckBox.setChecked(True)
-                self.secondaryIsBackgroundRadio.setChecked(dialog.backgroundSpectraType == 1)
-                self.secondaryIsCalibrationRadio.setChecked(dialog.backgroundSpectraType == 2)
-                self.bckgndSpecFileDisplay.setText("Secondary spectrum from: "+dialog.backgroundSpectra[0].material.name)
-            else:
-                self.includeSecondarySpectrumCheckBox.setChecked(False)
-                self.bckgndSpecFileDisplay.setText("No secondary spectrum found")
+                if dialog.backgroundSpectrumType == SECONDARY_TYPE_BACKGROUND:
+                    self.secondaryIsBackgroundRadio.setChecked(True)
+                    self.combo_typesecondary.setEnabled(True)
+                    self.populateComboBase(sorted([baseSpec.material.name for baseSpec in dialog.baseSpectra]))
+                    self.setDefaultSecondary(sorted([baseSpec.material.name for baseSpec in dialog.baseSpectra]))
+                    self.setBackgroundIsoCombo(True)
+                else:
+                    self.secondaryIsCalibrationRadio.setEnabled(True)
+                    self.secondaryIsCalibrationRadio.setChecked(True)
 
-    @pyqtSlot(bool)
-    def on_btnImportInfluences_clicked(self, checked):
-        """
-        Impoerts Influences
-        """
-        filepath = QFileDialog.getOpenFileName(self, 'Distortion File', self.settings.getDataDirectory())[0]
-        if filepath:
-            self.tblInfluences.clearContents()
-            self.detectorInfluences = importDistortionFile(filepath)
-            for row, detInf in enumerate(self.detectorInfluences):
-                self.tblInfluences.setItem(row, 0, QTableWidgetItem(detInf[0]))
-                self.tblInfluences.setItem(row, 1, QTableWidgetItem(str(detInf[1][0])))
-                self.tblInfluences.setItem(row, 2, QTableWidgetItem(str(detInf[1][1])))
-                self.tblInfluences.setItem(row, 3, QTableWidgetItem(str(detInf[1][2])))
+                    self.bckgndSpecFileDisplay.setText("Secondary spectrum from: " + self.internal_secondary)
+            else:
+                self.bckgndSpecFileDisplay.setText("No secondary spectrum found")
+            self._make_detector()
+
+    # @pyqtSlot(bool)
+    # def on_btnImportInfluences_clicked(self, checked):
+    #     """
+    #     Imports Influences
+    #     """
+    #     filepath = QFileDialog.getOpenFileName(self, 'Distortion File', self.settings.getDataDirectory())[0]
+    #     if filepath:
+    #         self.tblInfluences.clearContents()
+    #         self.detectorInfluences = importDistortionFile(filepath)
+    #         for row, detInf in enumerate(self.detectorInfluences):
+    #             self.tblInfluences.setItem(row, 0, QTableWidgetItem(detInf[0]))
+    #             self.tblInfluences.setItem(row, 1, QTableWidgetItem(str(detInf[1][0])))
+    #             self.tblInfluences.setItem(row, 2, QTableWidgetItem(str(detInf[1][1])))
+    #             self.tblInfluences.setItem(row, 3, QTableWidgetItem(str(detInf[1][2])))
 
     @pyqtSlot(bool)
     def on_btnNewReplay_clicked(self, checked):
@@ -242,29 +285,56 @@ class DetectorDialog(ui_add_detector_dialog.Ui_Dialog, QDialog):
         self.replay = self.session.query(Replay).filter_by(name = replayName).first()
         self.resultsTranslator = self.session.query(ResultsTranslator).filter_by(name = replayName).first()
 
-    # @pyqtSlot(int, int)
-    def onInfluenceCellChanged(self, row, col):
-        """
-        listens for change in influence values
-        """
-        influenceName = self.tblInfluences.item(row, col).text().lower()
-        for influence in self.session.query(Influence):
-            if influence.name.lower() == influenceName:
-                self.tblInfluences.item(row, col).setText(influence.name)
+
+    def setBackgroundIsoCombo(self, switch=False):
+        self.label_basesecondary.setEnabled(switch)
+        self.combo_basesecondary.setEnabled(switch)
+
+    def setSecondarySpecEnable(self, checked=False):
+        if checked:
+            self.combo_typesecondary.setEnabled(True)
+            self.setBackgroundIsoCombo(self.combo_typesecondary.currentIndex() == self.back_combo['base_spec'])
+            self.bckgndSpecFileDisplay.clear()
+        else:
+            self.combo_typesecondary.setEnabled(False)
+            self.setBackgroundIsoCombo(False)
+            if self.detector and len(self.detector.bckg_spectra):
+                self.bckgndSpecFileDisplay.setText("Secondary Spectrum from: " + self.detector.bckg_spectra[0].material_name)
+            else:
+                self.bckgndSpecFileDisplay.setText("Secondary Spectrum from: " + self.internal_secondary)
+
+    def enableComboBase(self, comboindex):
+        if comboindex == self.back_combo['base_spec']:
+            self.setBackgroundIsoCombo(True)
+            self.populateComboBase([self.lstBaseSpectra.item(i).text() for i in range(self.lstBaseSpectra.count())])
+            if self.detector and len(self.detector.bckg_spectra) and self.detector.bckg_spectra[0].material_name != 'Mix':
+                self.combo_basesecondary.setCurrentText(self.detector.bckg_spectra[0].material_name)
+            else:
+                self.setDefaultSecondary([self.lstBaseSpectra.item(i).text() for i in range(self.lstBaseSpectra.count())])
+        else:
+            self.setBackgroundIsoCombo(False)
+            self.combo_basesecondary.clear()
+
+    def populateComboBase(self, isotopes):
+        self.combo_basesecondary.addItems(isotopes)
+
+    def setDefaultSecondary(self, isotopes):
+        for bgndisotope in ['Bgnd', 'Bgnd-Lab', 'NORM', 'NORM-Lab']:
+            if bgndisotope in isotopes:
+                self.combo_basesecondary.setCurrentIndex(self.combo_basesecondary.findText(bgndisotope))
                 break
 
-    # @profileit
-    @pyqtSlot()
-    def accept(self):
+    def _make_detector(self):
+        """ Create detector object with basic entries """
         if not self.detector:
             # create new detector
             name =  self.txtDetector.text()
-            if not name:
-                QMessageBox.warning(self, 'No Detector Name Specified', 'Must Specify Detector Name')
-                return
-            if self.session.query(Detector).filter_by(name = name).first():
-                QMessageBox.warning(self, 'Detector Already Exists', 'Detector Name Already Exists.  Please Change Name.')
-                return
+            while not name or self.session.query(Detector).filter_by(name=name).first() is not None:
+                name, ok = QInputDialog.getText(self, "Detector Name", "Detector Unique Name")
+                print(name, self.session.query(Detector).filter_by(name=name).first())
+
+            self.txtDetector.setText(name)
+            self.txtDetector.setReadOnly(True)
             self.detector = Detector(name=name)
             self.session.add(self.detector)
 
@@ -290,51 +360,70 @@ class DetectorDialog(ui_add_detector_dialog.Ui_Dialog, QDialog):
         self.detector.resultsTranslator       = self.resultsTranslator
         self.detector.description  = self.txtDetectorDescription.toPlainText()
 
+    # @profileit
+    @pyqtSlot()
+    def accept(self):
+        # set basic detector parameter
+        self._make_detector()
+
         # set influences
-        for row in range(self.tblInfluences.rowCount()):
-            # check of valid row of values
-            try:
-                inflName = self.tblInfluences.item(row, 0).text()
-                infl_0   = float(self.tblInfluences.item(row, 1).text())
-                infl_1   = float(self.tblInfluences.item(row, 2).text())
-                infl_2   = float(self.tblInfluences.item(row, 3).text())
-            except (ValueError, AttributeError): continue
-
-            # check if database already has this detector influence
-            for detInfluence in self.detector.influences:
-                if self.tblInfluences.item(row, 0).text() == detInfluence.influence_name:
-                    break
-            else: # create a new one
-                # see if Influence in database or create new one
-                influence = self.session.query(Influence).filter_by(name=inflName).first()
-                if not influence:
-                    influence = Influence(name=inflName)
-                detInfluence = DetectorInfluence(influence=influence)
-                self.detector.influences.append(detInfluence)
-
-            detInfluence.infl_0 = infl_0
-            detInfluence.infl_1 = infl_1
-            detInfluence.infl_2 = infl_2
+        self.detector.influences.clear()
+        if self.listInfluences.count() > 0:
+            for infl_name in [self.listInfluences.item(index).text() for index in range(self.listInfluences.count())]:
+                influence = self.session.query(Influence).filter_by(name=infl_name).first()
+                self.detector.influences.append(influence)
 
         # add base spectra
         for baseSpectra in self.newBaseSpectra:
             self.detector.base_spectra.append(baseSpectra)
 
-        # add background spectra
-        for backgroundSpectra in self.newBackgroundSpectra:
-            if backgroundSpectra is not None:
-                self.detector.bckg_spectra.append(backgroundSpectra)
+        self.detector.includeSecondarySpectrum = self.includeSecondarySpectrumCheckBox.isEnabled()
+
+        if self.detector.includeSecondarySpectrum:
+
+            # if there has been a modification to the secondary spectrum of choice
+            if self.newBackgroundSpectrum is None:
+                self.newBackgroundSpectrum = self.detector.bckg_spectra[0]
+
+            if self.includeSecondarySpectrumCheckBox.isEnabled() and self.secondaryIsBackgroundRadio.isChecked():
+                if self.combo_typesecondary.currentIndex() == self.back_combo['base_spec']:
+                    for spec in self.detector.base_spectra:
+                        if spec.material.name == self.combo_basesecondary.currentText():
+                            self.newBackgroundSpectrum.baseCounts = spec.baseCounts
+                            self.newBackgroundSpectrum.filename = spec.filename
+                            self.newBackgroundSpectrum.id = spec.id
+                            self.newBackgroundSpectrum.livetime = spec.livetime
+                            self.newBackgroundSpectrum.material = spec.material
+                            self.newBackgroundSpectrum.material_name = spec.material_name
+                            self.newBackgroundSpectrum.realtime = spec.realtime
+                            self.newBackgroundSpectrum.metadata = spec.metadata
+                            break
+                elif self.combo_typesecondary.currentIndex() == self.back_combo['scenario']:
+                    self.newBackgroundSpectrum.baseCounts = '0'
+                    self.newBackgroundSpectrum.material_name = 'Mix'
+
+            self.detector.bckg_spectra.clear()
+            self.detector.bckg_spectra.append(self.newBackgroundSpectrum)
+
 
         # set the boolean for including secondary spectrum in generated spectra
         # and secondary spectrum type
-        self.detector.includeSecondarySpectrum = self.includeSecondarySpectrumCheckBox.isChecked()
-        if self.secondaryIsBackgroundRadio.isChecked():
-            self.detector.secondary_type = 1
-        elif self.secondaryIsCalibrationRadio.isChecked():
-            self.detector.secondary_type = 2
+        if self.includeSecondarySpectrumCheckBox.isEnabled():
+            if self.secondaryIsCalibrationRadio.isChecked():
+                self.detector.secondary_type = secondary_type['internal']
+            elif self.secondaryIsBackgroundRadio.isChecked():
+                for key, val in self.back_combo.items():
+                    if val == self.combo_typesecondary.currentIndex():
+                        self.detector.secondary_type = secondary_type[key]
+                        break
 
         self.session.commit()
         return QDialog.accept(self)
+
+    @pyqtSlot()
+    def reject(self):
+        self.session.rollback()
+        return QDialog.reject(self)
 
     class FloatLineDelegate(QItemDelegate):
         def __init__(self, parent):

@@ -15,7 +15,24 @@ base spectra metadata and import details, then press “OK”.
 
 The RASE software will automatically recognize if a second spectral data entry is present in the base spectra. Secondary spectra are sometimes required by certain replay tools.  The user will be prompted
 to select whether the secondary spectrum is a background spectrum (as in the ORTEC HPGe hand-held instruments) or an intrinsic calibration source spectrum (as in the FLIR IdentiFinder-2 instrument).
-The checkbox “Include secondary spectrum in sampled spectra” with the associated radio button will be automatically selected.
+If the secondary spectrum is set as a background, the user may proceed in one of three manners:
+
+    1: The user may select one of the base spectra that has been associated with the detector to serve as the secondary spectrum. This option can be used in cases where the user would like to simulate taking a
+    specific background prior to executing the measurement campaign, which might be in a different location and consequently have a different background.
+
+    2: The secondary spectrum will be automatically populated by the background(s) that are used to define a "scenario" (combinations of sources and backgrounds that can be paired with an instrument to simulate
+    spectra; scenarios are described in more detail in the next section). If the user defines more than one source of background, the secondary spectrum will be a combination of the multiple sources, weighted
+    according to their respectively defined intensities. In this case, the secondary spectrum will be different for each scenario (as opposed to the same across all scenarios simulated for a certain detector).
+    If this option is selected, the user may not run a scenario where background is not defined.
+
+    3: The secondary spectrum will simply be a direct copy-and-paste of the secondary spectrum from one of the isotopes included in the base spectra set. If the base spectra have different secondary backgrounds, RASE
+    will select one of the base spectra and use the background in that file for all spectra generated for that detector. As the spectra loaded into RASE are usually background subtracted, the secondary spectrum found
+    in the base spectra files often provides no useful information. As there is a possibility that the secondary background is used by an algorithm for background subtraction, this option is usually not recommended.
+
+If the user selects "internal calibration spectrum", the secondary spectrum will be sampled and contribute counts (weighted appropriately) to any sample spectra generated for that detector. This does not occur if the
+user selects the secondary spectrum as background.
+
+Once base spectra are loaded, they can be quickly reviewed within RASE by double-clicking on a material name within the "Edit Detector" dialog. A separate plotting dialog will be displayed.
 
 All other entries in the “Add Instrument” dialog can be modified later in the workflow and are covered later in this documentation.
 

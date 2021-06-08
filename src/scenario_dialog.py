@@ -1,5 +1,5 @@
 ###############################################################################
-# Copyright (c) 2018 Lawrence Livermore National Security, LLC.
+# Copyright (c) 2018-2021 Lawrence Livermore National Security, LLC.
 # Produced at the Lawrence Livermore National Laboratory
 #
 # Written by J. Chavez, S. Czyz, G. Kosinovsky, V. Mozin, S. Sangiorgio.
@@ -355,7 +355,6 @@ class ScenarioDialog(ui_create_scenario_dialog.Ui_ScenarioDialog, QDialog):
             else:
                 # clear the existing scenario first
                 self.scenario_delete()
-                self.session.commit()
 
         # replication and influences
         replication = int(self.txtReplication_2.text())
@@ -456,8 +455,9 @@ class ScenarioDialog(ui_create_scenario_dialog.Ui_ScenarioDialog, QDialog):
         matDelete = self.session.query(ScenarioMaterial).filter(ScenarioMaterial.scenario_id == self.id)
         bckgMatDelete = self.session.query(ScenarioBackgroundMaterial).filter(
             ScenarioBackgroundMaterial.scenario_id == self.id)
-        scenGroupDelete = scenDelete.first()
-        scenGroupDelete.scenario_groups.clear()
+        scenTableAssocDelete = scenDelete.first()
+        scenTableAssocDelete.scenario_groups.clear()
+        scenTableAssocDelete.influences.clear()
         matDelete.delete()
         bckgMatDelete.delete()
         scenDelete.delete()

@@ -1,5 +1,5 @@
 ###############################################################################
-# Copyright (c) 2018 Lawrence Livermore National Security, LLC.
+# Copyright (c) 2018-2021 Lawrence Livermore National Security, LLC.
 # Produced at the Lawrence Livermore National Laboratory
 #
 # Written by J. Chavez, S. Czyz, G. Kosinovsky, V. Mozin, S. Sangiorgio.
@@ -31,19 +31,23 @@
 """
 This module displays the complete summary of replay results and subsequent analysis
 """
-
+import logging
 import traceback
 import re
 import pandas as pd
-from PyQt5.QtCore import pyqtSlot, QAbstractTableModel, Qt, QSize
-from PyQt5.QtGui import QColor, QAbstractTextDocumentLayout, QTextDocument
+from collections import Counter
+
+from PyQt5.QtCore import pyqtSlot, QAbstractTableModel, Qt, QSize, QPoint
+from PyQt5.QtGui import QColor, QAbstractTextDocumentLayout, QTextDocument, QKeySequence
 from PyQt5.QtWidgets import QDialog, QMessageBox, QHeaderView, QFileDialog, QCheckBox, QVBoxLayout, QDialogButtonBox, \
-    QStyledItemDelegate, QApplication, QStyle
+    QStyledItemDelegate, QApplication, QStyle, QAction, QMenu, QTableWidget, QTableWidgetItem
 
 from src.plotting import ResultPlottingDialog
+from src.table_def import Scenario, Detector, Session
 from .ui_generated import ui_results_dialog
 from src.detailed_results_dialog import DetailedResultsDialog
 from src.correspondence_table_dialog import CorrespondenceTableDialog
+from src.manage_weights_dialog import ManageWeightsDialog
 from src.rase_settings import RaseSettings
 
 NUM_COL = 16
@@ -80,8 +84,8 @@ class ResultsTableModel(QAbstractTableModel):
         bkg_cols = [s for s in self._data.columns.to_list() if (s.startswith('BkgDose_') or s.startswith('BkgFlux_'))]
 
         cols = ['Det/Replay', 'Scen Desc'] + mat_cols + bkg_cols + ['Infl', 'AcqTime', 'Repl',
-                   'PID', 'PID CI', 'TP', 'FP', 'FN', 'C&C', 'C&C CI',
-                   'Precision', 'Recall', 'F_Score']
+                   'PID', 'PID CI', 'C&C', 'C&C CI', 'TP', 'FP', 'FN', 'Precision', 'Recall', 'F_Score',
+                                                     'wTP', 'wFP', 'wFN', 'wPrecision', 'wRecall', 'wF_Score']
 
 
         if self.col_settings:
@@ -120,7 +124,7 @@ class ResultsTableModel(QAbstractTableModel):
 
         if role == Qt.DecorationRole:
             # stopchart blocks
-            if self._data.columns[index.column()] in ['PID', 'C&C', 'F_Score']:
+            if self._data.columns[index.column()] in ['PID', 'C&C', 'F_Score', 'wF_Score']:
                 value = self._data.iloc[index.row(), index.column()]
                 if value < 0: value = 0
                 if value > 1: value = 1
@@ -178,11 +182,13 @@ class ViewResultsDialog(ui_results_dialog.Ui_dlgResults, QDialog):
         self.setupUi(self)
         self.parent = parent
         comboList = ['', 'Det', 'Replay', 'Source Dose', 'Source Flux', 'Background Dose', 'Background Flux', 'Infl',
-                     'AcqTime', 'Repl', 'PID', 'TP', 'FP', 'FN', 'C&C', 'Precision', 'Recall', 'F_Score']
+                     'AcqTime', 'Repl', 'PID', 'C&C', 'TP', 'FP', 'FN', 'Precision', 'Recall', 'F_Score', 'wTP', 'wFP',
+                     'wFN', 'wPrecision', 'wRecall', 'wF_Score']
         self.cmbXaxis.addItems(comboList)
         self.cmbYaxis.addItems(comboList)
         comboList = ['', 'Det', 'Replay', 'Source Material', 'Background Material', 'Infl', 'AcqTime', 'Repl',
-                     'PID', 'TP', 'FP', 'FN', 'C&C', 'Precision', 'Recall', 'F_Score']
+                     'PID', 'C&C', 'TP', 'FP', 'FN', 'Precision', 'Recall', 'F_Score', 'wTP', 'wFP', 'wFN',
+                     'wPrecision', 'wRecall', 'wF_Score']
         self.cmbZaxis.addItems(comboList)
 
         self.matNames_dose = ["".join(s.split("_")[1:]) for s in self.parent.scenario_stats_df.columns.to_list()
@@ -201,10 +207,12 @@ class ViewResultsDialog(ui_results_dialog.Ui_dlgResults, QDialog):
         self.btnClose.clicked.connect(self.closeSelected)
         self.buttonExport.clicked.connect(self.handleExport)
         self.buttonCorrTable.clicked.connect(lambda: self.openCorrTable(scenIds, detNames))
+        self.buttonManageWeights.clicked.connect(lambda: self.openWeightsTable(scenIds, detNames))
 
         self.results_model = ResultsTableModel(self.parent.scenario_stats_df)
         self.tblResView.setModel(self.results_model)
         self.tblResView.doubleClicked.connect(self.showDetailView)
+        self.tblResView.setContextMenuPolicy(Qt.CustomContextMenu)
         self.tblResView.setSortingEnabled(True)
         if self.results_model.scenario_desc_col_index() is not None:
             self.tblResView.setItemDelegateForColumn(self.results_model.scenario_desc_col_index(), HtmlDelegate())
@@ -217,6 +225,15 @@ class ViewResultsDialog(ui_results_dialog.Ui_dlgResults, QDialog):
         """
         CorrespondenceTableDialog().exec_()
         self.parent.settings.setIsAfterCorrespondenceTableCall(True)
+        self.parent.calculateScenarioStats(caller=self, selected_scenarios=scenIds,
+                                           selected_detectors=detNames)
+        self.results_model.reset_data(self.parent.scenario_stats_df)
+
+    def openWeightsTable(self, scenIds, detNames):
+        """
+        Launches Correspondence Table Dialog
+        """
+        ManageWeightsDialog().exec_()
         self.parent.calculateScenarioStats(caller=self, selected_scenarios=scenIds,
                                            selected_detectors=detNames)
         self.results_model.reset_data(self.parent.scenario_stats_df)
@@ -240,7 +257,37 @@ class ViewResultsDialog(ui_results_dialog.Ui_dlgResults, QDialog):
     def showDetailView(self, index):
         scen_det_key = self.results_model.headerData(index.row(), Qt.Vertical, Qt.UserRole)
         resultMap = self.parent.result_super_map[scen_det_key]
-        DetailedResultsDialog(resultMap).exec_()
+        scen_id = scen_det_key.split('*')[0]
+        det_name = "".join(scen_det_key.split('*')[1:])
+        scenario = Session().query(Scenario).filter_by(id=scen_id).first()
+        detector = Session().query(Detector).filter_by(name=det_name).first()
+        DetailedResultsDialog(resultMap, scenario, detector).exec_()
+
+    @pyqtSlot(QPoint)
+    def on_tblResView_customContextMenuRequested(self, point):
+        """
+        Handles right click selections on the results table
+        """
+        index = self.tblResView.indexAt(point)
+        # show the context menu only if on an a valid part of the table
+        if index:
+            detail_view_action = QAction('Show Detailed Results Table', self)
+            show_freq_action = QAction('Show Identification Results Frequency', self)
+            menu = QMenu(self.tblResView)
+            menu.addAction(detail_view_action)
+            menu.addAction(show_freq_action)
+            action = menu.exec_(self.tblResView.mapToGlobal(point))
+            if action == show_freq_action:
+                scen_det_key = self.results_model.headerData(index.row(), Qt.Vertical, Qt.UserRole)
+                result_map = self.parent.result_super_map[scen_det_key]
+                # compute sorted frequency of all result strings
+                result_string_counter = Counter([x.strip() for res in result_map.values() for x in res[-1].split(';')])
+                freq_result_dict = {k: v / len(result_map) for k, v in sorted(result_string_counter.items(),
+                                                                              key=lambda item: item[1], reverse=True)}
+                freq_result_table = FrequencyTableDialog(self, freq_result_dict)
+                freq_result_table.exec_()
+            elif action == detail_view_action:
+                self.showDetailView(index)
 
     @pyqtSlot(str)
     def on_cmbXaxis_currentTextChanged(self, text):
@@ -374,8 +421,8 @@ class ViewResultsDialog(ui_results_dialog.Ui_dlgResults, QDialog):
                         if ax_vars[1] in ['PID', 'C&C']:
                             y_err.append([(l, h) for (l, h) in zip(df[f'{ax_vars[1]}_L_err'], df[f'{ax_vars[1]}_H_err'])])
         except Exception as e:
-            # TODO: log the error instead of printing
-            print(traceback.format_exc())
+            traceback.print_exc()
+            logging.exception("Handled Exception", exc_info=True)
             QMessageBox.information(self, "Info", "Sorry, the requested plot cannot be generated.")
             return
 
@@ -409,8 +456,8 @@ class ResultsTableSettings(QDialog):
     def __init__(self, parent):
         QDialog.__init__(self, parent)
         cols_list = ['Det/Replay', 'Scen Desc', 'Dose', 'Flux', 'Background Dose', 'Background Flux',
-                     'Infl', 'AcqTime', 'Repl', 'PID', 'PID CI', 'TP', 'FP', 'FN', 'C&C', 'C&C CI',
-                     'Precision', 'Recall', 'F_Score']
+                     'Infl', 'AcqTime', 'Repl', 'PID', 'PID CI', 'C&C', 'C&C CI', 'TP', 'FP', 'FN',
+                     'Precision', 'Recall', 'F_Score', 'wTP', 'wFP', 'wFN', 'wPrecision', 'wRecall', 'wF_Score']
         # QT treats the ampersand symbol as a special character, so it needs special treatment
         self.cb_list = [QCheckBox(v.replace('&', '&&')) for v in cols_list]
         layout = QVBoxLayout()
@@ -489,3 +536,68 @@ class HtmlDelegate(QStyledItemDelegate):
         document.setDefaultFont(option.font)
         document.setHtml(index.model().data(index, Qt.DisplayRole))
         return QSize(document.idealWidth() + 20, fm.height())
+
+
+class FrequencyTableDialog(QDialog):
+    """Display a table of data from an input dictionary
+
+    :param data: the input dictionary data
+    :param parent: the parent dialog
+    """
+    def __init__(self, parent, data):
+        QDialog.__init__(self, parent)
+
+        self.data = data
+        self.tableWidget = QTableWidget()
+        self.tableWidget.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.tableWidget.customContextMenuRequested.connect(self.show_context_menu)
+        self.setData()
+
+        self.buttonBox = QDialogButtonBox(self)
+        self.buttonBox.setStandardButtons(QDialogButtonBox.Ok)
+        self.buttonBox.accepted.connect(self.accept)
+        self.layout = QVBoxLayout()
+        self.layout.addWidget(self.tableWidget)
+        self.layout.addWidget(self.buttonBox)
+        self.setLayout(self.layout)
+
+    def setData(self):
+        self.tableWidget.setRowCount(len(self.data.keys()))
+        self.tableWidget.setColumnCount(2)
+        for n, k in enumerate(self.data.keys()):
+            for col, value in enumerate([k, str(self.data[k])]):
+                item = QTableWidgetItem(value)
+                item.setTextAlignment(Qt.AlignCenter)
+                item.setFlags(item.flags() ^ Qt.ItemIsEditable);
+                self.tableWidget.setItem(n, col, item)
+        self.tableWidget.setHorizontalHeaderLabels(['Material', 'Frequency'])
+
+    def get_selected_cells_as_text(self):
+        """
+        Returns the selected cells of the table as plain text
+        """
+        selected_rows = self.tableWidget.selectedIndexes()
+        text = ""
+        # show the context menu only if on an a valid part of the table
+        if selected_rows:
+            cols = set(index.column() for index in self.tableWidget.selectedIndexes())
+            for row in set(index.row() for index in self.tableWidget.selectedIndexes()):
+                text += "\t".join([self.tableWidget.item(row, col).text() for col in cols])
+                text += '\n'
+        return text
+
+    def keyPressEvent(self, e):
+        if e.key() == Qt.Key_Copy or e.key == QKeySequence(QKeySequence.Copy) or e.key() == 67:
+            QApplication.clipboard().setText(self.get_selected_cells_as_text())
+
+    @pyqtSlot(QPoint)
+    def show_context_menu(self, point):
+        """
+        Handles "Copy" right click selections on the table
+        """
+        copy_action = QAction('Copy', self)
+        menu = QMenu(self.tableWidget)
+        menu.addAction(copy_action)
+        action = menu.exec_(self.tableWidget.mapToGlobal(point))
+        if action == copy_action:
+            QApplication.clipboard().setText(self.get_selected_cells_as_text())

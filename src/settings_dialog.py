@@ -1,5 +1,5 @@
 ###############################################################################
-# Copyright (c) 2018 Lawrence Livermore National Security, LLC.
+# Copyright (c) 2018-2021 Lawrence Livermore National Security, LLC.
 # Produced at the Lawrence Livermore National Laboratory
 #
 # Written by J. Chavez, S. Czyz, G. Kosinovsky, V. Mozin, S. Sangiorgio.
@@ -95,7 +95,6 @@ class SettingsDialog(ui_prefs_dialog.Ui_Dialog, QDialog):
     def accept(self):
         if self.dataDirectoryChanged:
             self.settings.setDataDirectory(os.path.normpath(self.txtDataDir.text()))
-            QMessageBox.warning(self,"Restart Needed", "Please restart RASE in order for the changes to take effect")
         idx = self.downSapmplingAlgoComboBox.currentIndex()
         if self. algorithmSelected:
             self.settings.setSamplingAlgo(self.algoDictionary[idx])

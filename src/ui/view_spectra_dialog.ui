@@ -6,21 +6,14 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>658</width>
-    <height>484</height>
+    <width>1021</width>
+    <height>766</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>Spectra Viewer</string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
-   <item alignment="Qt::AlignHCenter">
-    <widget class="QLabel" name="label">
-     <property name="text">
-      <string>TextLabel</string>
-     </property>
-    </widget>
-   </item>
    <item>
     <widget class="QWidget" name="widget" native="true">
      <property name="minimumSize">
@@ -35,9 +28,6 @@
     <layout class="QHBoxLayout" name="horizontalLayout">
      <item>
       <widget class="QPushButton" name="prevMaterialButton">
-       <property name="enabled">
-        <bool>false</bool>
-       </property>
        <property name="text">
         <string>&lt;&lt; Previous Material</string>
        </property>
@@ -45,9 +35,6 @@
      </item>
      <item>
       <widget class="QPushButton" name="nextMaterialButton">
-       <property name="enabled">
-        <bool>false</bool>
-       </property>
        <property name="text">
         <string>Next Material &gt;&gt;</string>
        </property>

@@ -1,5 +1,5 @@
 ###############################################################################
-# Copyright (c) 2018 Lawrence Livermore National Security, LLC.
+# Copyright (c) 2018-2021 Lawrence Livermore National Security, LLC.
 # Produced at the Lawrence Livermore National Laboratory
 #
 # Written by J. Chavez, S. Czyz, G. Kosinovsky, V. Mozin, S. Sangiorgio.
@@ -56,6 +56,12 @@ RANDOM_SEED_FIXED_DEFAULT = False
 IS_AFTER_CORRESPONDENCE_TABLE_CALL_KEY = "Is After Correspondence Table Call"
 IS_AFTER_CORRESPONDENCE_TABLE_CALL_DEFAULT = False
 
+CONFIDENCE_USED_IN_CALCS_KEY = "Confidence Used In F-score Calcs"
+CONFIDENCE_USED_IN_CALCS_DEFAULT = True
+
+MWEIGHTS_USED_IN_CALCS_KEY = "Material Weights Used In F-Score Calcs"
+MWEIGHTS_USED_IN_CALCS_DEFAULT = True
+
 RESULTS_TBL_COLS_KEY = "Results Table Columns"
 RESULTS_TBL_COLS_DEFAULT = []
 
@@ -87,6 +93,12 @@ class RaseSettings:
 
         if not self.settings.value(RANDOM_SEED_FIXED_KEY):
             self.settings.setValue(RANDOM_SEED_FIXED_KEY, RANDOM_SEED_FIXED_DEFAULT)
+
+        if self.settings.value(CONFIDENCE_USED_IN_CALCS_KEY):
+            self.settings.setValue(CONFIDENCE_USED_IN_CALCS_KEY, CONFIDENCE_USED_IN_CALCS_DEFAULT)
+
+        if self.settings.value(MWEIGHTS_USED_IN_CALCS_KEY):
+            self.settings.setValue(MWEIGHTS_USED_IN_CALCS_KEY, MWEIGHTS_USED_IN_CALCS_DEFAULT)
 
         if not self.settings.value(RESULTS_TBL_COLS_KEY):
             self.settings.setValue(RESULTS_TBL_COLS_KEY, RESULTS_TBL_COLS_DEFAULT)
@@ -194,6 +206,42 @@ class RaseSettings:
         Sets Is After Correspondence Table Call boolean
         """
         self.settings.setValue(IS_AFTER_CORRESPONDENCE_TABLE_CALL_KEY, isAfterCorrespondenceTableCall)
+
+    def getUseConfidencesInCalcs(self):
+        """
+        Returns Use Confidences In Calculations boolean
+        """
+        return self.settings.value(CONFIDENCE_USED_IN_CALCS_KEY, type=bool)
+
+    def setUseConfidencesInCalcs(self, is_checked):
+        """
+        Sets Use Confidences In Calculations boolean
+        """
+        self.settings.setValue(CONFIDENCE_USED_IN_CALCS_KEY, is_checked)
+
+    def getUseConfidencesInCalcsDefault(self):
+        """
+        Returns Use Confidences In Calculations default boolean value
+        """
+        return CONFIDENCE_USED_IN_CALCS_DEFAULT
+
+    def getUseMWeightsInCalcs(self):
+        """
+        Returns Use Confidences In Calculations boolean
+        """
+        return self.settings.value(MWEIGHTS_USED_IN_CALCS_KEY, type=bool)
+
+    def setUseMWeightsInCalcs(self, is_checked):
+        """
+        Sets Use Confidences In Calculations boolean
+        """
+        self.settings.setValue(MWEIGHTS_USED_IN_CALCS_KEY, is_checked)
+
+    def getUseMWeightsInCalcsDefault(self):
+        """
+        Returns Use Confidences In Calculations default boolean value
+        """
+        return MWEIGHTS_USED_IN_CALCS_DEFAULT
 
     def getRandomSeedFixedDefault(self):
         """
