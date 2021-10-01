@@ -104,8 +104,7 @@ class GroupSettings(QDialog):
         if okPressed and (newgroup != '' and newgroup not in collist):
             self.checklayout.addWidget(QCheckBox(newgroup))
             self.setLayout(self.layout)
-            self.session.add(ScenarioGroup(name=newgroup))
-            self.session.commit()
+            self.add_groups(self.session, newgroup)
 
     def delGroup(self):
         del_groups = [cb.text() for cb in self._cb_list() if cb.isChecked()]
@@ -122,13 +121,23 @@ class GroupSettings(QDialog):
         ans_hold = answer.exec()
         if ans_hold == QMessageBox.Yes:
             for group in del_groups:
-                group_delete = self.session.query(ScenarioGroup).filter(ScenarioGroup.name == group)
-                group_delete.delete()
-                self.session.commit()
+                self.delete_groups(self.session, group)
             for cb in self._cb_list():
                 if cb.text() in del_groups:
                     self.checklayout.removeWidget(cb)
                     cb.deleteLater()
+
+    @staticmethod
+    def delete_groups(session, group):
+        group_delete = session.query(ScenarioGroup).filter(ScenarioGroup.name == group)
+        group_delete.delete()
+        session.commit()
+
+    @staticmethod
+    def add_groups(session, group):
+        session.add(ScenarioGroup(name=group))
+        session.commit()
+
 
     @pyqtSlot()
     def accept(self):

@@ -1,0 +1,9 @@
+FROM ubuntu:latest
+
+RUN apt-get update && apt-get install -y libboost-filesystem-dev
+
+COPY PCSOffline.deb / 
+RUN dpkg -i /PCSOffline.deb
+
+COPY KromekD5_replaytool_wrapper.sh /usr/bin/
+RUN chmod +x /usr/bin/KromekD5_replaytool_wrapper.sh

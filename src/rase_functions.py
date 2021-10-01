@@ -47,10 +47,9 @@ from mako import exceptions
 from sqlalchemy.engine import create_engine
 
 from src.scenarios_io import ScenariosIO
-from src.table_def import BaseSpectrum, BackgroundSpectrum, Detector, Scenario, \
-    Session, Base, DetectorInfluence, ScenarioMaterial, ScenarioBackgroundMaterial
-from src.utils import compress_counts
-
+from src.table_def import BaseSpectrum, BackgroundSpectrum, Detector, Scenario, SampleSpectraSeed, \
+    Session, Base, DetectorInfluence, ScenarioMaterial, ScenarioBackgroundMaterial, Material
+from src.utils import compress_counts, indent
 
 # Key variables used in several places
 secondary_type = {'internal': 2, 'base_spec': 0,  'scenario': 1, 'file': 3}
@@ -179,6 +178,8 @@ def readTranslatedResultFile(filename, use_confs):
             if idname.text:
                 results.append(idname.text.strip())
                 confidence = identification.find('IDConfidence')
+            else:
+                confidence = None
             if use_confs and confidence is not None:
                 try:
                     # 0 - 3 = low, 4 - 6 = medium, 7 - 10 = high
@@ -643,7 +644,7 @@ def create_n42_file_from_template(n42_mako_template, filename, scenario, detecto
     template_data = dict(
         scenario=scenario,
         detector=detector,
-        # TODO: we may want to create a 'sample_counts' class with methods to return it in different formatting
+        sample_counts_array=sample_counts,
         sample_counts=' '.join('{:d}'.format(x) for x in sample_counts),    # FIXME: this is forced to integers
         compressed_sample_counts=' '.join('{:d}'.format(x) for x in compress_counts(sample_counts)),
     )
@@ -664,6 +665,31 @@ def create_n42_file_from_template(n42_mako_template, filename, scenario, detecto
 
     with open(filename, 'w', newline='') as f:
         f.write(templated_content)
+
+
+def write_results(results_array, out_filepath):
+    """
+    Write a RASE-formatted results file from results data
+    :param results_array: list of (isotope, confidence level) tuples
+    :param out_filepath: full pathname of output file
+    :return: None
+    """
+    root = ET.Element('IdentificationResults')
+
+    if not results_array:
+        results_array.append(('', 0))
+
+    for iso, conf in results_array:
+        identification = ET.SubElement(root, 'Identification')
+        isotope = ET.SubElement(identification, 'IDName')
+        isotope.text = iso
+        confidence = ET.SubElement(identification, 'IDConfidence')
+        confidence.text = conf
+
+    indent(root)
+    tree = ET.ElementTree(root)
+    tree.write(out_filepath, encoding='utf-8', xml_declaration=True, method='xml')
+    return
 
 
 def strip_xml_tag(str):
@@ -766,6 +792,27 @@ def delete_scenario(scenario_ids, sample_root_dir):
         session.commit()
 
     session.close()
+
+
+def delete_instrument(session, name):
+    sssDelete = session.query(SampleSpectraSeed).filter(SampleSpectraSeed.det_name == name)
+    sssDelete.delete()
+    detReplayDelete = session.query(Detector).filter(Detector.name == name)
+    detReplayDelete.first().influences.clear()
+    detReplayDelete.delete()
+    detBaseRelationDelete = session.query(BaseSpectrum).filter(BaseSpectrum.detector_name == name)
+    detBaseRelationDelete.delete()
+    detBackRelationDelete = session.query(BackgroundSpectrum).filter(BackgroundSpectrum.detector_name == name)
+    detBackRelationDelete.delete()
+    session.commit()
+
+
+def get_or_create_material(session, matname):
+    material = session.query(Material).get(matname)
+    if not material:
+        material = Material(name=matname)
+        session.commit()
+    return material
 
 
 def export_scenarios(scenarios_ids, file_path):

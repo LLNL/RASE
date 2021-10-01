@@ -4,7 +4,7 @@
 Notice to Users
 ***************
 
-RASE v 2.1 - Copyright (c) 2017-2021, Lawrence Livermore National Security, LLC. All rights reserved. LLNL-CODE-819515, LLNL-SM-823092
+RASE v2.2 - Copyright (c) 2017-2021, Lawrence Livermore National Security, LLC. All rights reserved. LLNL-CODE-819515, LLNL-SM-823092
 
 NOTICE
 ~~~~~~

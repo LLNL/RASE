@@ -12,7 +12,10 @@ if not os.path.exists(distpath):
 translators = ['ORTEC-CmdLineReplayTool-ResultsTranslator.py',
                'ORTEC-StndAloneGUIReplayTool-ResultsTranslator.py',
                'FLIR-IdentiFinder-ResultsTranslator.py',
-               'Smith_RadSeeker_ResultsTranslator.py']
+               'GADRAS_CL_ResultsTranslator-v2.py',
+               'KromekD5-ResultsTranslator.py',
+               'Smith_RadSeeker_ResultsTranslator.py',
+               'Symetrica-ResultsTranslator.py']
 translators = map(lambda x: os.path.join(dirname, x), translators)
 
 for translator in translators:

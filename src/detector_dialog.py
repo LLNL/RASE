@@ -328,37 +328,44 @@ class DetectorDialog(ui_add_detector_dialog.Ui_Dialog, QDialog):
         """ Create detector object with basic entries """
         if not self.detector:
             # create new detector
-            name =  self.txtDetector.text()
+            name = self.txtDetector.text()
             while not name or self.session.query(Detector).filter_by(name=name).first() is not None:
                 name, ok = QInputDialog.getText(self, "Detector Name", "Detector Unique Name")
                 print(name, self.session.query(Detector).filter_by(name=name).first())
 
             self.txtDetector.setText(name)
             self.txtDetector.setReadOnly(True)
-            self.detector = Detector(name=name)
-            self.session.add(self.detector)
+            self._set_detector_name(self.session, name)
 
-        # set ecal and chan count
-        chanCnt  = self.txtChannelCount.text()
-        txtEcal0 = self.txtEcal0.text()
-        txtEcal1 = self.txtEcal1.text()
-        txtEcal2 = self.txtEcal2.text()
-        txtEcal3 = self.txtEcal3.text()
+        self._set_ch_counts_ecal(self.txtChannelCount.text(), self.txtEcal0.text(), self.txtEcal1.text(),
+                                 self.txtEcal2.text(), self.txtEcal3.text())
+        self._set_detector_params(self.txtManufacturer.text(), self.txtInstrumentId.text(), self.txtClassCode.text(),
+                                  self.txtHardwareVersion.text(), self.replay, self.resultsTranslator,
+                                  self.txtDetectorDescription.toPlainText())
 
+    # set detector name and add to session
+    def _set_detector_name(self, session, name):
+        self.detector = Detector(name=name)
+        session.add(self.detector)
+
+    # set channel and calibration data
+    def _set_ch_counts_ecal(self, chanCnt, txtEcal0, txtEcal1, txtEcal2, txtEcal3):
         self.detector.chan_count   = float(chanCnt) if chanCnt else None
         self.detector.ecal0        = float(txtEcal0) if txtEcal0 else '0'
         self.detector.ecal1        = float(txtEcal1) if txtEcal1 else '0'
         self.detector.ecal2        = float(txtEcal2) if txtEcal2 else '0'
         self.detector.ecal3        = float(txtEcal3) if txtEcal3 else '0'
 
-        # set detector description items
-        self.detector.manufacturer = self.txtManufacturer.text()
-        self.detector.instr_id     = self.txtInstrumentId.text()
-        self.detector.class_code   = self.txtClassCode.text()
-        self.detector.hardware_version = self.txtHardwareVersion.text()
-        self.detector.replay       = self.replay
-        self.detector.resultsTranslator       = self.resultsTranslator
-        self.detector.description  = self.txtDetectorDescription.toPlainText()
+    # set detector description items
+    def _set_detector_params(self, txtManufacturer, txtInstrumentId, txtClassCode, txtHardwareVersion, replay,
+                             resultsTranslator, txtDetectorDescription):
+        self.detector.manufacturer = txtManufacturer
+        self.detector.instr_id = txtInstrumentId
+        self.detector.class_code = txtClassCode
+        self.detector.hardware_version = txtHardwareVersion
+        self.detector.replay = replay
+        self.detector.resultsTranslator = resultsTranslator
+        self.detector.description = txtDetectorDescription
 
     # @profileit
     @pyqtSlot()

@@ -2,18 +2,7 @@ import os
 import xml.etree.ElementTree as ET
 import re
 
-def FileListing(TargetDirectory):
-    """
-    Retrieve directory listing of *.res files to be translated
-
-    :param TargetDirectory: Path to directory with the RASE sampled spectra
-    :return:
-    """
-    inSpecraFiles = []
-    for file in os.listdir(TargetDirectory):
-        if file.endswith('.res'):
-            inSpecraFiles.append(file)
-    return inSpecraFiles
+from src.rase_functions import write_results
 
 
 def retrieveResults(filepath):
@@ -28,7 +17,7 @@ def retrieveResults(filepath):
     # Element.find() finds the child with a particular tag so the following
     # finds the first spectrum which is the item spectrum in RASE base spectra files
 
-    resultsArray = [[],[]]
+    resultsArray = [[], []]
 
     nuclideID = root.find('Isotope')
     confidenceValue = root.find('ConfidenceIndex')
@@ -41,61 +30,16 @@ def retrieveResults(filepath):
     return resultsArray
 
 
-def indent(elem, level=0):
-  i = "\n" + level*"  "
-  if len(elem):
-    if not elem.text or not elem.text.strip():
-      elem.text = i + "  "
-    if not elem.tail or not elem.tail.strip():
-      elem.tail = i
-    for elem in elem:
-      indent(elem, level+1)
-    if not elem.tail or not elem.tail.strip():
-      elem.tail = i
-  else:
-    if level and (not elem.tail or not elem.tail.strip()):
-      elem.tail = i
-
-
-def writeResults(resultsArray, outFilepath):
-    """
-
-    :param :
-    :return:
-    """
-
-    # create XML
-    root = ET.Element('IdentificationResults')
-
-    for iso, conf in zip(resultsArray[0],resultsArray[1]):
-        identification = ET.SubElement(root, 'Identification')
-        isotope = ET.SubElement(identification, 'IDName')
-        isotope.text = iso
-        confidence = ET.SubElement(identification, 'IDConfidence')
-        confidence.text = conf
-
-    indent(root)
-    tree = ET.ElementTree(root)
-    # write entire XML out to new file
-    tree.write(outFilepath, encoding='utf-8', xml_declaration=True, method='xml')
-
-    return
-
-def main(input_dir, output_dir, template_dir="./"):
-
-    inSpecraFiles = FileListing(input_dir)
+def main(input_dir, output_dir):
+    in_files = [f for f in os.listdir(input_dir) if f.lower().endswith(".res")]
 
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
-    for fname in inSpecraFiles:
-
+    for fname in in_files:
         ResultsArray = retrieveResults(os.path.join(input_dir, fname))
-
         newFileName = os.path.join(output_dir, fname[:-4] + '.n42')
-
-        writeResults(ResultsArray, newFileName)
-
+        write_results(ResultsArray, newFileName)
     return
 
 
@@ -107,6 +51,5 @@ if __name__ == "__main__":
         print("ERROR: Need input and output folder!")
         sys.exit(1)
 
-    cwd = os.path.dirname(sys.argv[0])
-    main(sys.argv[1], sys.argv[2], cwd)
+    main(sys.argv[1], sys.argv[2])
 #   main('./ORTEC CmdLine_results','./ORTEC CmdLine_translatedResults')

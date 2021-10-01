@@ -793,7 +793,10 @@ class Rase(ui_rase.Ui_MainWindow, QMainWindow):
                     # Replay tool output files and results files are expected to end in ".n42" or ".res".
                     # Check explicitly in case other output is present (e.g. from replay tool or translator)
                     output_dir = get_replay_output_dir(self.settings.getSampleDirectory(), detector, scenId)
-                    replayOutputExists.append(files_endswith_exists(output_dir, (".n42", ".res", ".rslt")))
+                    if detector.replay:
+                        replayOutputExists.append(files_endswith_exists(output_dir, (".n42", ".res", ".rslt", detector.replay.input_filename_suffix)))
+                    else:
+                        replayOutputExists.append(files_endswith_exists(output_dir, (".n42", ".res", ".rslt")))
                     results_dir = get_results_dir(self.settings.getSampleDirectory(), detector, scenId)
                     resultsExists.append(files_endswith_exists(results_dir, (".n42", ".res")))
 
@@ -915,8 +918,10 @@ class Rase(ui_rase.Ui_MainWindow, QMainWindow):
         """
         Launches Instrument Dialog
         """
-        if DetectorDialog(self, detectorName).exec_():
+        self.d_dialog = DetectorDialog(self, detectorName)  # attribute of RASE for testing purposes
+        if self.d_dialog.exec_():
             self.populateDetectorReplays()
+        self.d_dialog = None
 
 
     def duplicate_scen(self, id):
@@ -999,16 +1004,7 @@ class Rase(ui_rase.Ui_MainWindow, QMainWindow):
                     QMessageBox.critical(self, 'Scenario Selected',
                                          'Please Unselect All Scenarios Prior to Deleting Instrument')
                     return
-                sssDelete = session.query(SampleSpectraSeed).filter(SampleSpectraSeed.det_name == name)
-                sssDelete.delete()
-                detReplayDelete = session.query(Detector).filter(Detector.name == name)
-                detReplayDelete.first().influences.clear()
-                detReplayDelete.delete()
-                detBaseRelationDelete = session.query(BaseSpectrum).filter(BaseSpectrum.detector_name == name)
-                detBaseRelationDelete.delete()
-                detBackRelationDelete = session.query(BackgroundSpectrum).filter(BackgroundSpectrum.detector_name == name)
-                detBackRelationDelete.delete()
-                session.commit()
+                delete_instrument(session, name)
                 self.populateAll()
             elif action == editAction:
                 self.edit_detector(name)
@@ -1158,16 +1154,15 @@ class Rase(ui_rase.Ui_MainWindow, QMainWindow):
                         if not os.path.exists(sampleDir):
                             # TODO: eventually we will generate samples directly from here.
                             pass
-                        if not files_endswith_exists(sampleDir, ('.n42',)):
+                        if not files_endswith_exists(sampleDir, ('.n42', detector.replay.input_filename_suffix)):
                             continue
                         try:
                             resultsDir = get_replay_output_dir(sampleRootDir, detector, scenId)
                             settingsList = detector.replay.settings.split(" ")
-                            # FIXME: the following assumes that INPUTDIR and OUTPUTDIR are present only one time each in the settings
-                            if "INPUTDIR" in settingsList:
-                                settingsList[settingsList.index("INPUTDIR")] = sampleDir
-                            if "OUTPUTDIR" in settingsList:
-                                settingsList[settingsList.index("OUTPUTDIR")] = resultsDir
+                            for index in [idx for idx, s in enumerate(settingsList) if 'INPUTDIR' in s]:
+                                settingsList[index] = settingsList[index].replace('INPUTDIR', sampleDir)
+                            for index in [idx for idx, s in enumerate(settingsList) if 'OUTPUTDIR' in s]:
+                                settingsList[index] = settingsList[index].replace('OUTPUTDIR', resultsDir)
 
                             if os.path.exists(resultsDir):
                                 shutil.rmtree(resultsDir)
@@ -1458,19 +1453,21 @@ class Rase(ui_rase.Ui_MainWindow, QMainWindow):
         """
         Handles adding new Scenario
         """
-        dialog = ScenarioDialog(self)
+        self.s_dialog = ScenarioDialog(self)
         self.populateScenarioGroupCombo()
-        if dialog.exec_():
+        if self.s_dialog.exec_():
             self.populateScenarios()
-
+        self.s_dialog = None
 
     @pyqtSlot(bool)
     def on_btnAddDetector_clicked(self, checked):
         """
         Handles adding new Detector
         """
-        if DetectorDialog(self).exec_():
+        self.d_dialog = DetectorDialog(self)  # attribute of RASE for testing purposes
+        if self.d_dialog.exec_():
             self.populateDetectorReplays()
+        self.d_dialog = None
 
     @pyqtSlot(QPoint)
     def on_tblScenario_customContextMenuRequested(self, point):
@@ -1609,23 +1606,24 @@ class Rase(ui_rase.Ui_MainWindow, QMainWindow):
         for line in corrTableRows:
             corr_table_iso_set.add(line.isotope)
         isCorrTableUpdated = False
-        for bckgMaterial in bckg_material_set:
-            if bckgMaterial in corr_table_iso_set:
-                continue
-            print("BCKG NOT IN CORR TABLE")
-            cb = QCheckBox("Edit the Correspondence Table Now")
-            cb.setEnabled(True)
-            msgbox = QMessageBox(QMessageBox.Question, bckgMaterial + ' is currently not in Correspondence Table',
-                                 'Would you like to add ' + bckgMaterial + ' to the Correspondence Table?')
-            msgbox.addButton(QMessageBox.Yes)
-            msgbox.addButton(QMessageBox.No)
-            msgbox.setCheckBox(cb)
-            self.addIsotopeToCorrTable = msgbox.exec()
-            if self.addIsotopeToCorrTable == QMessageBox.Yes:
-                corrTsbleEntry = CorrespondenceTableElement(isotope=bckgMaterial, corrList1="", corrList2="")
-                corrTable.corr_table_elements.append(corrTsbleEntry)
-                # if "edit correspondence" table selected
-                if bool(cb.isChecked()): CorrespondenceTableDialog().exec_()
+        if not caller == 1:
+            for bckgMaterial in bckg_material_set:
+                if bckgMaterial in corr_table_iso_set:
+                    continue
+                print("BCKG NOT IN CORR TABLE")
+                cb = QCheckBox("Edit the Correspondence Table Now")
+                cb.setEnabled(True)
+                msgbox = QMessageBox(QMessageBox.Question, bckgMaterial + ' is currently not in Correspondence Table',
+                                     'Would you like to add ' + bckgMaterial + ' to the Correspondence Table?')
+                msgbox.addButton(QMessageBox.Yes)
+                msgbox.addButton(QMessageBox.No)
+                msgbox.setCheckBox(cb)
+                self.addIsotopeToCorrTable = msgbox.exec()
+                if self.addIsotopeToCorrTable == QMessageBox.Yes:
+                    corrTsbleEntry = CorrespondenceTableElement(isotope=bckgMaterial, corrList1="", corrList2="")
+                    corrTable.corr_table_elements.append(corrTsbleEntry)
+                    # if "edit correspondence" table selected
+                    if bool(cb.isChecked()): CorrespondenceTableDialog().exec_()
         session.commit()
 
         sampleRootDir = self.settings.getSampleDirectory()
@@ -1700,9 +1698,9 @@ class Rase(ui_rase.Ui_MainWindow, QMainWindow):
             for file in fc_fileList:
                 result_list = []
                 num_files = num_files + 1
+                results = {}
                 try:
                     trans_results, trans_confidences = readTranslatedResultFile(file, self.settings.getUseConfidencesInCalcs())
-                    results = {}
                     for r, c in zip(trans_results, trans_confidences):
                         if r in results.keys():
                             results[r] = max([results[r], c])
@@ -2068,7 +2066,7 @@ class HtmlDelegate(QStyledItemDelegate):
         document = QTextDocument()
         document.setDefaultFont(option.font)
         document.setHtml(index.model().data(index))
-        return QSize(document.idealWidth() + 20, fm.height())
+        return QSize(int(document.idealWidth()) + 20, int(fm.height()))
 
 
 class AboutRASEDialog(ui_about_dialog.Ui_aboutDialog, QDialog):

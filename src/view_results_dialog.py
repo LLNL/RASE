@@ -37,12 +37,17 @@ import re
 import pandas as pd
 from collections import Counter
 
+from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
+from matplotlib.backends.backend_qt5agg import FigureCanvas
+from matplotlib.figure import Figure
+import seaborn as sns
+
 from PyQt5.QtCore import pyqtSlot, QAbstractTableModel, Qt, QSize, QPoint
 from PyQt5.QtGui import QColor, QAbstractTextDocumentLayout, QTextDocument, QKeySequence
 from PyQt5.QtWidgets import QDialog, QMessageBox, QHeaderView, QFileDialog, QCheckBox, QVBoxLayout, QDialogButtonBox, \
-    QStyledItemDelegate, QApplication, QStyle, QAction, QMenu, QTableWidget, QTableWidgetItem
+    QStyledItemDelegate, QApplication, QStyle, QAction, QMenu, QTableWidget, QTableWidgetItem, QWidget
 
-from src.plotting import ResultPlottingDialog
+from src.plotting import ResultPlottingDialog, Result3DPlottingDialog
 from src.table_def import Scenario, Detector, Session
 from .ui_generated import ui_results_dialog
 from src.detailed_results_dialog import DetailedResultsDialog
@@ -186,10 +191,14 @@ class ViewResultsDialog(ui_results_dialog.Ui_dlgResults, QDialog):
                      'wFN', 'wPrecision', 'wRecall', 'wF_Score']
         self.cmbXaxis.addItems(comboList)
         self.cmbYaxis.addItems(comboList)
+        comboList = ['', 'PID', 'C&C', 'TP', 'FP', 'FN', 'Precision', 'Recall', 'F_Score', 'wTP', 'wFP', 'wFN',
+                     'wPrecision', 'wRecall', 'wF_Score']
+        self.cmbZaxis.addItems(comboList)
         comboList = ['', 'Det', 'Replay', 'Source Material', 'Background Material', 'Infl', 'AcqTime', 'Repl',
                      'PID', 'C&C', 'TP', 'FP', 'FN', 'Precision', 'Recall', 'F_Score', 'wTP', 'wFP', 'wFN',
                      'wPrecision', 'wRecall', 'wF_Score']
-        self.cmbZaxis.addItems(comboList)
+        self.cmbGroupBy.addItems(comboList)
+        self.cmbGroupBy.setEnabled(False)
 
         self.matNames_dose = ["".join(s.split("_")[1:]) for s in self.parent.scenario_stats_df.columns.to_list()
                          if s.startswith('Dose_')]
@@ -203,11 +212,13 @@ class ViewResultsDialog(ui_results_dialog.Ui_dlgResults, QDialog):
         self.names_dict = {'Source Dose':self.matNames_dose, 'Source Flux': self.matNames_flux,
                            'Background Dose': self.bkgmatNames_dose, 'Background Flux': self.bkgmatNames_flux}
         self.btnViewPlot.setEnabled(False)
+        self.btnFreqAnalysis.setEnabled(False)
 
         self.btnClose.clicked.connect(self.closeSelected)
         self.buttonExport.clicked.connect(self.handleExport)
         self.buttonCorrTable.clicked.connect(lambda: self.openCorrTable(scenIds, detNames))
         self.buttonManageWeights.clicked.connect(lambda: self.openWeightsTable(scenIds, detNames))
+        self.btnFreqAnalysis.clicked.connect(self.show_freq_results)
 
         self.results_model = ResultsTableModel(self.parent.scenario_stats_df)
         self.tblResView.setModel(self.results_model)
@@ -218,6 +229,8 @@ class ViewResultsDialog(ui_results_dialog.Ui_dlgResults, QDialog):
             self.tblResView.setItemDelegateForColumn(self.results_model.scenario_desc_col_index(), HtmlDelegate())
         self.tblResView.resizeColumnsToContents()
         self.tblResView.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
+        self.tblResViewSelect = self.tblResView.selectionModel()
+        self.tblResViewSelect.selectionChanged.connect(self.btnFreqAnalysis_change_status)
 
     def openCorrTable(self, scenIds, detNames):
         """
@@ -272,22 +285,44 @@ class ViewResultsDialog(ui_results_dialog.Ui_dlgResults, QDialog):
         # show the context menu only if on an a valid part of the table
         if index:
             detail_view_action = QAction('Show Detailed Results Table', self)
-            show_freq_action = QAction('Show Identification Results Frequency', self)
+            show_freq_action = QAction(f'Show Identification Results Frequency of Selected Row'
+                                       f'{"s"  if len(self.tblResViewSelect.selectedRows()) > 1 else ""}', self)
             menu = QMenu(self.tblResView)
             menu.addAction(detail_view_action)
             menu.addAction(show_freq_action)
             action = menu.exec_(self.tblResView.mapToGlobal(point))
             if action == show_freq_action:
-                scen_det_key = self.results_model.headerData(index.row(), Qt.Vertical, Qt.UserRole)
-                result_map = self.parent.result_super_map[scen_det_key]
-                # compute sorted frequency of all result strings
-                result_string_counter = Counter([x.strip() for res in result_map.values() for x in res[-1].split(';')])
-                freq_result_dict = {k: v / len(result_map) for k, v in sorted(result_string_counter.items(),
-                                                                              key=lambda item: item[1], reverse=True)}
-                freq_result_table = FrequencyTableDialog(self, freq_result_dict)
-                freq_result_table.exec_()
+                self.show_freq_results()
             elif action == detail_view_action:
                 self.showDetailView(index)
+
+    def show_freq_results(self):
+        """
+        Compute sorted frequency of all identification result strings for the selected rows and loads dialog
+        """
+        if self.tblResViewSelect.hasSelection():
+            result_strings = []
+            num_entries = 0
+            for i in self.tblResViewSelect.selectedRows():
+                scen_det_key = self.results_model.headerData(i.row(), Qt.Vertical, Qt.UserRole)
+                result_map = self.parent.result_super_map[scen_det_key]
+                result_strings += [x.strip() for res in result_map.values() for x in res[-1].split(';')]
+                num_entries += len(result_map)
+            result_string_counter = Counter(result_strings)
+            freq_result_dict = {k: f'{v / num_entries:.4g}' for k, v in sorted(result_string_counter.items(),
+                                                                      key=lambda item: item[1], reverse=True)}
+            freq_result_table = FrequencyTableDialog(self, freq_result_dict)
+            freq_result_table.exec_()
+
+    def btnFreqAnalysis_change_status(self):
+        """
+        Enables or disables the Frequency Analysis button
+        """
+        if self.tblResViewSelect.hasSelection():
+            self.btnFreqAnalysis.setEnabled(True)
+        else:
+            self.btnFreqAnalysis.setEnabled(False)
+
 
     @pyqtSlot(str)
     def on_cmbXaxis_currentTextChanged(self, text):
@@ -295,7 +330,11 @@ class ViewResultsDialog(ui_results_dialog.Ui_dlgResults, QDialog):
         Listens for X column change
         """
         self.show_material_cmb('X', text)
-        self.btnViewPlot_change_status()
+        for cmb in [self.cmbYaxis, self.cmbGroupBy]:
+            cmb.setEnabled(True if text else False)
+            if not text:
+                cmb.setCurrentIndex(0)
+        self.btnViewPlot.setEnabled(True if text else False)
 
     @pyqtSlot(str)
     def on_cmbYaxis_currentTextChanged(self, text):
@@ -303,7 +342,19 @@ class ViewResultsDialog(ui_results_dialog.Ui_dlgResults, QDialog):
         Listens for Y column change
         """
         self.show_material_cmb('Y', text)
-        self.btnViewPlot_change_status()
+        self.cmbZaxis.setEnabled(True if text else False)
+        if not text: self.cmbZaxis.setCurrentIndex(0)
+        self.cmbGroupBy.setEnabled(True)
+
+    @pyqtSlot(str)
+    def on_cmbZaxis_currentTextChanged(self, text):
+        """
+        Listens for Z column change
+        """
+        if text:
+            self.cmbGroupBy.setCurrentIndex(0)
+        self.cmbGroupBy.setEnabled(False if text else True)
+        self.cb_removezero.setEnabled(True if text else False)
 
     def show_material_cmb(self, axis, text):
         """
@@ -321,18 +372,9 @@ class ViewResultsDialog(ui_results_dialog.Ui_dlgResults, QDialog):
         elif text in ['Source Dose', 'Source Flux', 'Background Dose', 'Background Flux']:
             cmbMat.clear()
             names = self.names_dict[text]
-            cmbMat.addItems([''] + names)
+            cmbMat.addItems(names)
             cmbMat.show()
             txtMat.show()
-
-    def btnViewPlot_change_status(self):
-        """
-        Enables or disables the ViewPlot button
-        """
-        if self.cmbXaxis.currentText() and self.cmbYaxis.currentText():
-            self.btnViewPlot.setEnabled(True)
-        else:
-            self.btnViewPlot.setEnabled(False)
 
     @pyqtSlot(bool)
     def on_btnViewPlot_clicked(self, checked):
@@ -340,6 +382,7 @@ class ViewResultsDialog(ui_results_dialog.Ui_dlgResults, QDialog):
         Prepares data for plotting and launches the plotting dialog
         """
         df = self.parent.scenario_stats_df
+        unappended_titles = []
         titles = []
         ax_vars = []
         x = []
@@ -348,30 +391,36 @@ class ViewResultsDialog(ui_results_dialog.Ui_dlgResults, QDialog):
         y_err = []
         repl = []
 
-        for axis in ['X', 'Y']:
+        for axis in ['X', 'Y', 'Z']:
             cmbAxis = getattr(self, 'cmb' + axis + 'axis').currentText()
-            matName = getattr(self, 'cmb' + axis + 'mat').currentText()
+            matName = getattr(self, 'cmb' + axis + 'mat').currentText() if axis in ['X', 'Y'] else ''
 
             if cmbAxis in ['Source Dose']:
                 title = 'Dose' + f" {matName}"
+                unappended_title = 'Dose_' + f"{matName}"
                 ax_var = 'Dose' + f"_{matName}"
             elif cmbAxis in ['Source Flux']:
                 title = 'Flux' + f" {matName}"
+                unappended_title = 'Flux_' + f"{matName}"
                 ax_var = 'Flux' + f"_{matName}"
             elif cmbAxis in ['Background Dose']:
                 title = 'BkgDose' + f" {matName}"
+                unappended_title = 'BkgDose_' + f"{matName}"
                 ax_var = 'BkgDose' + f"_{matName}"
             elif cmbAxis in ['Background Flux']:
                 title = 'BkgFlux' + f" {matName}"
+                unappended_title = 'BkgFlux_' + f"{matName}"
                 ax_var = 'BkgFlux' + f"_{matName}"
             else:
                 title = cmbAxis
+                unappended_title = cmbAxis
                 ax_var = cmbAxis
 
-            ax_vars.append(ax_var)
+            unappended_titles.append(unappended_title)
             titles.append(title)
+            ax_vars.append(ax_var)
 
-        if len(titles) >= 2:
+        if len(titles) >= 3:
             for i, ax_title in enumerate(titles):
                 if ax_title.startswith('Dose') or ax_title.startswith('BkgDose'):
                     titles[i] = ax_title + (' (\u00B5Sv/h)')
@@ -379,55 +428,71 @@ class ViewResultsDialog(ui_results_dialog.Ui_dlgResults, QDialog):
                     titles[i] = ax_title + (' (\u03B3/(cm\u00B2s))')
 
         try:
-            cat = self.cmbZaxis.currentText()
-            categories = []
-            if cat:
-                if self.cmbZaxis.currentText() == 'Source Material':
-                    categories = [s for s in df.columns.to_list() if s.startswith('Dose_') or s.startswith('Flux_')]
-                elif self.cmbZaxis.currentText() == 'Background Material':
-                    categories = [s for s in df.columns.to_list() if
-                                  s.startswith('BkgDose_') or s.startswith('BkgFlux_')]
+            if self.cmbZaxis.currentText():     # 3D plotting case
+                if self.cb_removezero.isChecked():
+                    df_3dplot = df.loc[~((df[unappended_titles[0]] == 0) |
+                                         (df[unappended_titles[1]] == 0))].pivot(values=unappended_titles[2],
+                                                                                index=unappended_titles[0],
+                                                                                columns=unappended_titles[1])
                 else:
-                    categories = pd.unique(df[cat].values).tolist()
+                    df_3dplot = df.pivot(values=unappended_titles[2],
+                                        index=unappended_titles[0],
+                                        columns=unappended_titles[1])
 
-            for v in ['PID','C&C']:
-                df[f'{v}_H_err'] = (df[v] - df[f'{v}_H']).abs()
-                df[f'{v}_L_err'] = (df[v] - df[f'{v}_L']).abs()
-
-            if not cat:
-                x.append(df[ax_vars[0]].to_list())
-                if ax_vars[0] in ['PID', 'C&C']:
-                    x_err.append([(l, h) for (l, h) in zip(df[f'{ax_vars[0]}_L_err'], df[f'{ax_vars[0]}_H_err'])])
-                if ax_vars[1]:
-                    y.append(self.parent.scenario_stats_df[ax_vars[1]].to_list())
-                    if ax_vars[1] in ['PID', 'C&C']:
-                        y_err.append([(l, h) for (l, h) in zip(df[f'{ax_vars[1]}_L_err'], df[f'{ax_vars[1]}_H_err'])])
-                    repl.append(df['Repl'].tolist())
-            else:
-                for cat_label in categories:
-                    if isinstance(cat_label, str) and \
-                            (cat_label.startswith('Dose') or cat_label.startswith('Flux') or
-                             cat_label.startswith('BkgDose') or cat_label.startswith('BkgFlux')):
-                        df = self.parent.scenario_stats_df.loc[self.parent.scenario_stats_df[cat_label] != 0]
-                        x.append(df[cat_label].to_list())
+                dialog = Result3DPlottingDialog(self, df_3dplot, titles)
+                dialog.exec_()
+            else:   # 1D and 2D plotting
+                cat = self.cmbGroupBy.currentText()
+                categories = []
+                if cat:
+                    if self.cmbGroupBy.currentText() == 'Source Material':
+                        categories = [s for s in df.columns.to_list() if s.startswith('Dose_') or s.startswith('Flux_')]
+                    elif self.cmbGroupBy.currentText() == 'Background Material':
+                        categories = [s for s in df.columns.to_list() if
+                                      s.startswith('BkgDose_') or s.startswith('BkgFlux_')]
                     else:
-                        df = self.parent.scenario_stats_df.loc[self.parent.scenario_stats_df[cat] == cat_label]
-                        x.append(df[ax_vars[0]].to_list())
-                        repl.append(df['Repl'].tolist())
-                        if ax_vars[0] in ['PID', 'C&C']:
-                            x_err.append([(l, h) for (l, h) in zip(df[f'{ax_vars[0]}_L_err'], df[f'{ax_vars[0]}_H_err'])])
+                        categories = pd.unique(df[cat].values).tolist()
+
+                for v in ['PID','C&C']:
+                    df[f'{v}_H_err'] = (df[v] - df[f'{v}_H']).abs()
+                    df[f'{v}_L_err'] = (df[v] - df[f'{v}_L']).abs()
+
+                if not cat:
+                    x.append(df[ax_vars[0]].to_list())
+                    if ax_vars[0] in ['PID', 'C&C']:
+                        x_err.append([(l, h) for (l, h) in zip(df[f'{ax_vars[0]}_L_err'], df[f'{ax_vars[0]}_H_err'])])
                     if ax_vars[1]:
-                        y.append(df[ax_vars[1]].to_list())
+                        y.append(self.parent.scenario_stats_df[ax_vars[1]].to_list())
                         if ax_vars[1] in ['PID', 'C&C']:
                             y_err.append([(l, h) for (l, h) in zip(df[f'{ax_vars[1]}_L_err'], df[f'{ax_vars[1]}_H_err'])])
+                        repl.append(df['Repl'].tolist())
+                else:
+                    for cat_label in categories:
+                        if isinstance(cat_label, str) and \
+                                (cat_label.startswith('Dose') or cat_label.startswith('Flux') or
+                                 cat_label.startswith('BkgDose') or cat_label.startswith('BkgFlux')):
+                            df = self.parent.scenario_stats_df.loc[self.parent.scenario_stats_df[cat_label] != 0]
+                            x.append(df[cat_label].to_list())
+                        else:
+                            df = self.parent.scenario_stats_df.loc[self.parent.scenario_stats_df[cat] == cat_label]
+                            x.append(df[ax_vars[0]].to_list())
+                            repl.append(df['Repl'].tolist())
+                            if ax_vars[0] in ['PID', 'C&C']:
+                                x_err.append([(l, h) for (l, h) in zip(df[f'{ax_vars[0]}_L_err'], df[f'{ax_vars[0]}_H_err'])])
+                        if ax_vars[1]:
+                            y.append(df[ax_vars[1]].to_list())
+                            if ax_vars[1] in ['PID', 'C&C']:
+                                y_err.append([(l, h) for (l, h) in zip(df[f'{ax_vars[1]}_L_err'], df[f'{ax_vars[1]}_H_err'])])
+
+                dialog = ResultPlottingDialog(self, x, y, titles, categories, repl, x_err, y_err)
+                dialog.exec_()
+
         except Exception as e:
             traceback.print_exc()
             logging.exception("Handled Exception", exc_info=True)
-            QMessageBox.information(self, "Info", "Sorry, the requested plot cannot be generated.")
+            QMessageBox.information(self, "Info", "Sorry, the requested plot cannot be generated because:\n" + str(e))
             return
 
-        dialog = ResultPlottingDialog(self, x, y, titles, categories, repl, x_err, y_err)
-        dialog.exec_()
 
     @pyqtSlot(bool)
     def on_btnSettings_clicked(self, checked):
@@ -546,6 +611,7 @@ class FrequencyTableDialog(QDialog):
     """
     def __init__(self, parent, data):
         QDialog.__init__(self, parent)
+        self.setWindowTitle("Results Frequency Analysis")
 
         self.data = data
         self.tableWidget = QTableWidget()
@@ -556,10 +622,23 @@ class FrequencyTableDialog(QDialog):
         self.buttonBox = QDialogButtonBox(self)
         self.buttonBox.setStandardButtons(QDialogButtonBox.Ok)
         self.buttonBox.accepted.connect(self.accept)
+
+        self.widget = QWidget(self)
+        self.widget.setMinimumSize(QSize(300, 300))
+        self.fig = Figure()
+        self.canvas = FigureCanvas(self.fig)
+        self.canvas.setParent(self.widget)
+        self.ax = self.fig.add_subplot(111)
+        self.navi_toolbar = NavigationToolbar(self.canvas, self.widget)
+
         self.layout = QVBoxLayout()
         self.layout.addWidget(self.tableWidget)
+        self.layout.addWidget(self.canvas)
+        self.layout.addWidget(self.navi_toolbar)
         self.layout.addWidget(self.buttonBox)
         self.setLayout(self.layout)
+
+        self.draw()
 
     def setData(self):
         self.tableWidget.setRowCount(len(self.data.keys()))
@@ -568,9 +647,20 @@ class FrequencyTableDialog(QDialog):
             for col, value in enumerate([k, str(self.data[k])]):
                 item = QTableWidgetItem(value)
                 item.setTextAlignment(Qt.AlignCenter)
-                item.setFlags(item.flags() ^ Qt.ItemIsEditable);
+                item.setFlags(item.flags() ^ Qt.ItemIsEditable)
                 self.tableWidget.setItem(n, col, item)
         self.tableWidget.setHorizontalHeaderLabels(['Material', 'Frequency'])
+
+    def draw(self):
+        """
+        Draws the bar plot with the frequency results
+        """
+        self.ax.clear()
+        values = [float(v)*100 for v in self.data.values()]
+        sns.barplot(x=values, y=list(self.data.keys()), ax=self.ax)
+        self.ax.set_xlabel('Frequency [%]')
+        self.ax.set_ylabel('ID Result Label')
+        self.canvas.draw()
 
     def get_selected_cells_as_text(self):
         """

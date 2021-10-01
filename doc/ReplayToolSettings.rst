@@ -73,8 +73,11 @@ R300 base spectra and the RASE analysis routine were tested with the 2018 versio
 
 FLIR R400 Replay Tool
 =====================
-R400 analysis uses the same replay tool and settings as the IdentiFinder-2 .
+R400 analysis uses the same replay tool and settings as the IdentiFinder-2.
 R400 base spectra and the RASE analysis routine were tested with the 2018 version of the replay tool.
+
+Note: Care should be taken with the selection of .n42 template, as the correct template depends on the dataset being used. If the base spectra set is taken from the INL 2018 measurement campaign, the FLIR_R400_UW-LGH_INL2018_template.n42 should be used. This template has a fixed internal calibration source spectrum that also includes the influence of background, and is necessary for the correct operation of the replay tool. Otherwise, the user may use the FLIR_R400_UW-LGH_template.n42 template, which sources the secondary spectrum from the scenario definition or one of the base spectra selected by the user (as described in the "second spectrum treatment" section of the :ref:`workflowStep1` page).
+
 
 **Settings**
 
@@ -209,6 +212,30 @@ The current implementation of the template makes use of a fixed background with 
     *  Command Line checkbox: checked
     *  Command Arguments: INPUTDIR OUTPUTDIR [this is a default entry]
 
+Kromek D5 Replay Tool
+================================================
+Kromek provides a replay tool for their D5 instrument, called :code:`PCSOffiline`, that is packaged for Linux operating systems.
+As of version 170.1.5.7, the replay tool only accepts a single file as input.  To facilitate use within RASE, which
+requires processing an entire folder, a wrapper shell script :code:`KromekD5_replaytool_wrapper.sh` is provided in the :code:`tools`.
+
+If you are not running RASE on a unix system, one way to run the replay tool on other machines is to dockerize it.
+To facilitate this process, we provide the :code:`Dockerfile-KromekD5` file in the :code:`tools` folder.
+Note that it assumes the :code:`PCSOffile.deb` package and the wrapper shell script are in the same directory as the :code:`Dockerfile`.
+To create the image, simply run :code:`docker build -t kromek-rt -f Dockerfile-KromekD5`.
+
+**Settings**
+
+* Replay Tool:
+    *  Executable: path to the docker executable e.g. :code:`/usr/local/bin/docker`
+    *  Command Line checkbox: checked
+    *  Command Arguments: :code:`run --rm -v INPUTDIR:/data/in -v OUTPUTDIR:/data/out kromek-rt KromekD5_replaytool_wrapper.sh /data/in/ /data/out`
+* Sampled Spectra n42 Template:
+    *  n42 Template File: :code:`Kromek_D5_template.n42`
+    *  Suffix of input files: :code:`.csv`
+* Identification Results Translator:
+    *  Executable: :code:`KromekD5-ResultsTranslator.exe`
+    *  Command Line checkbox: checked
+    *  Command Arguments: :code:`INPUTDIR OUTPUTDIR` [this is a default entry]
 
 
 GADRAS Isotope ID Replay Tool

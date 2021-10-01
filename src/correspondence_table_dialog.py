@@ -52,7 +52,6 @@ class CorrespondenceTableDialog(ui_correspondence_table_dialog.Ui_dlgCorrTable, 
         self.NUM_COLS = 3
         self.tableEdited = False
         self.session = Session()
-        # self.corTable = None
 
         # Query the entries in the current default table
         corTableRows = self.readCorrTableRows()
@@ -72,16 +71,8 @@ class CorrespondenceTableDialog(ui_correspondence_table_dialog.Ui_dlgCorrTable, 
         self.tblCCCLists.customContextMenuRequested.connect(self.openMenu)
         self.tblCCCLists.setSortingEnabled(False)
 
-        # for row in range(self.NUM_ROWS):
-        #    for col in range(self.NUM_COLS):
-        #        self.tblCCCLists.setItem(row, col, QTableWidgetItem())
         if corTableRows:
           for row, line in enumerate(corTableRows):
-            # if (row >= self.NUM_ROWS):
-            #     self.NUM_ROWS = self.NUM_ROWS + 1
-            #     self.tblCCCLists.setRowCount(self.NUM_ROWS)
-            #     for col in range(self.NUM_COLS):
-            #         self.tblCCCLists.setItem(row, col, QTableWidgetItem())
             self.tblCCCLists.setItem(row, 0, QTableWidgetItem(line.isotope))
             self.tblCCCLists.setItem(row, 1, QTableWidgetItem(line.corrList1))
             self.tblCCCLists.setItem(row, 2, QTableWidgetItem(line.corrList2))
@@ -89,7 +80,6 @@ class CorrespondenceTableDialog(ui_correspondence_table_dialog.Ui_dlgCorrTable, 
 
         self.buttonBox.accepted.connect(self.accept)
         self.buttonBox.rejected.connect(self.reject)
-        # self.pushButton.clicked.connect(self.addLines)
         self.btnAddRow.clicked.connect(self.addRow)
         self.populateDefaultComboBox()
         self.setSaveAsTableName()
@@ -194,23 +184,16 @@ class CorrespondenceTableDialog(ui_correspondence_table_dialog.Ui_dlgCorrTable, 
                                     'Please Specify New Table Name')
             return
 
-        corrTable = self.session.query(CorrespondenceTable).filter_by(name=table_name).one_or_none()
-        if corrTable is not None:
-            # table already exists, so delete first before overwriting
-            self.session.query(CorrespondenceTableElement).filter_by(
-                corr_table_name=self.txtCorrespondenceTable.text()).delete()
-            self.session.delete(corrTable)
-            self.session.commit()
+        self.delete_old_corr_table(self.session, table_name)
 
-        table = CorrespondenceTable(name=table_name, is_default=True)
-        self.session.add(table)
+        table = self.create_corr_table(self.session, table_name)
+
         for row in range(self.NUM_ROWS):
             iso = self.tblCCCLists.item(row, 0).text()
             l1 = self.tblCCCLists.item(row, 1).text()
             l2 = self.tblCCCLists.item(row, 2).text()
             if iso != '':
-                corrTsbleEntry = CorrespondenceTableElement(isotope=iso, corrList1=l1, corrList2=l2)
-                table.corr_table_elements.append(corrTsbleEntry)
+                table = self.add_corr_table_entry(table, iso, l1, l2)
             else:
                 break
         self.session.commit()
@@ -295,6 +278,27 @@ class CorrespondenceTableDialog(ui_correspondence_table_dialog.Ui_dlgCorrTable, 
                     self.tblCCCLists.setItem(row, col, QTableWidgetItem(rowMapItem[col]))
                 self.tblCCCLists.setItem(row, sortingCol, QTableWidgetItem(token))
                 row = row + 1
+
+    @staticmethod
+    def delete_old_corr_table(session, table_name):
+        corrTable = session.query(CorrespondenceTable).filter_by(name=table_name).one_or_none()
+        if corrTable is not None:
+            # table already exists, so delete first before overwriting
+            session.query(CorrespondenceTableElement).filter_by(corr_table_name=table_name).delete()
+            session.delete(corrTable)
+            session.commit()
+
+    @staticmethod
+    def create_corr_table(session, table_name):
+        table = CorrespondenceTable(name=table_name, is_default=True)
+        session.add(table)
+        return table
+
+    @staticmethod
+    def add_corr_table_entry(table, iso, l1='', l2=''):
+        corrTsbleEntry = CorrespondenceTableElement(isotope=iso, corrList1=l1, corrList2=l2)
+        table.corr_table_elements.append(corrTsbleEntry)
+        return table
 
 
 class Delegate(QItemDelegate):

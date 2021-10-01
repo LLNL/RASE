@@ -31,6 +31,7 @@
 
 import xml.etree.ElementTree as etree
 from src import rase_functions as Rf
+from src.utils import indent
 import numpy
 import copy
 import os.path
@@ -229,28 +230,6 @@ def build_base_ET(ET_orig, radid=None, uSievertsph=None, fluxValue=None, subtrac
     indent(ET.getroot())
 
     return ET
-
-
-def indent(elem, level=0):
-    '''
-    copy and paste from http://effbot.org/zone/element-lib.htm#prettyprint
-    it basically walks your tree and adds spaces and newlines so the tree is
-    printed in a nice way
-    '''
-
-    i = "\n" + level * "  "
-    if len(elem):
-        if not elem.text or not elem.text.strip():
-            elem.text = i + "  "
-        if not elem.tail or not elem.tail.strip():
-            elem.tail = i
-        for elem in elem:
-            indent(elem, level + 1)
-        if not elem.tail or not elem.tail.strip():
-            elem.tail = i
-    else:
-        if level and (not elem.tail or not elem.tail.strip()):
-            elem.tail = i
 
 
 def build_base_clean(ET_orig, radid=None, uSievertsph=None, fluxValue=None, subtraction_ET=None, subtraction_radid=None,

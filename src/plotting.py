@@ -38,6 +38,7 @@ import os
 import numpy as np
 import matplotlib
 from sqlalchemy.orm import Session
+import pandas as pd
 
 matplotlib.use("Qt5Agg")
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
@@ -56,7 +57,7 @@ from PyQt5.QtWidgets import QDialog, QVBoxLayout, QMessageBox
 from PyQt5.QtGui import QStandardItemModel, QStandardItem
 from PyQt5.QtWebEngineWidgets import QWebEngineView
 
-from .ui_generated import ui_view_spectra_dialog, ui_results_plotting_dialog
+from .ui_generated import ui_view_spectra_dialog, ui_results_plotting_dialog, ui_results_plotting_dialog_3d
 from src.rase_functions import calc_result_uncertainty, get_sample_dir, readSpectrumFile
 import src.s_curve_functions as sCurve
 from src.utils import get_bundle_dir, natural_keys
@@ -169,6 +170,59 @@ class WebSpectraView(QWebEngineView):
         self.load(local_url)
 
 
+class Result3DPlottingDialog(ui_results_plotting_dialog_3d.Ui_Dialog, QDialog):
+
+    def __init__(self, parent, df, titles):
+        QDialog.__init__(self)
+        self.setupUi(self)
+        self.df = df
+        self.titles = titles
+        self.colormap = matplotlib.pyplot.get_cmap('RdYlGn')
+
+        self.fig = Figure()
+        self.canvas = FigureCanvas(self.fig)
+        self.canvas.setParent(self.widget)
+        self.ax = self.fig.add_subplot(111)
+
+        self.navi_toolbar = NavigationToolbar(self.canvas, self.widget)
+
+        self.window_layout = QVBoxLayout(self.widget)
+        self.window_layout.addWidget(self.canvas)
+        self.window_layout.addWidget(self.navi_toolbar)
+
+        matplotlib.pyplot.colorbar(mappable=self.ax.imshow(
+                                                np.array(df.T, 'float'),
+                                                cmap=self.colormap,
+                                                vmin=df.min().min(),
+                                                vmax=df.max().max(),
+                                                interpolation='bicubic',
+                                                aspect='auto'
+                                            ), ax=self.ax)
+
+        self.ax.xaxis.set_ticks(np.arange(df.shape[0]))
+        self.ax.xaxis.set_ticklabels(df.index)
+        self.ax.tick_params(axis='x', labelsize=16)
+        self.ax.yaxis.set_ticks(np.arange(df.shape[1]))
+        self.ax.yaxis.set_ticklabels(df.columns)
+        self.ax.tick_params(axis='y', labelsize=16)
+
+        for x_val in range(df.shape[1]):
+            vals = np.array(df.iloc[:, x_val])
+            x = np.arange(df.shape[0])
+            y = x_val * np.ones_like(x)
+
+            self.ax.plot(x[vals >= .75], y[vals > .75], 'wo', markerfacecolor='none', markersize='16')
+            self.ax.plot(x[vals < .75], y[vals < .75], 'wx', markersize='16')
+
+        self.ax.invert_yaxis()
+        self.ax.set_xlabel(titles[0], size='16')
+        self.ax.set_ylabel(titles[1], size='16')
+        self.ax.set_title(titles[2], size='20')
+
+        self.canvas.draw()
+        self.widget.setFocus()
+
+
 class ResultPlottingDialog(ui_results_plotting_dialog.Ui_Dialog, QDialog):
 
     def __init__(self, parent, x, y, titles, labels, replications, x_err=None, y_err=None):
@@ -214,10 +268,13 @@ class ResultPlottingDialog(ui_results_plotting_dialog.Ui_Dialog, QDialog):
             self.lstCurves.hide()
             self.lblSelectCurves.hide()
 
-        if len(self.x[0]) < 4:
+        if len(self.x[0]) < 4 and self.y:
             self.groupBox.setEnabled(False)
             self.groupBox.setToolTip('Cannot plot s-curve with less than four data points.\n'
                                      'Please choose four or more data points to enable s-curve plotting.')
+
+        if not self.y:
+            self.groupBox.setEnabled(False)
 
         self.btnPlotData.clicked.connect(self.plotSelection)
 
@@ -253,7 +310,10 @@ class ResultPlottingDialog(ui_results_plotting_dialog.Ui_Dialog, QDialog):
                 self.ax.errorbar(self.x[0], self.y[0], yerr=y_err, xerr=x_err,
                                  color=color, ecolor=color, fmt='o', capsize=3)
         else:
-            QMessageBox.information(self, "Info", "Histogram plotting not yet implemented!")
+            # min_n_entries = min([len(k) for k in self.x])
+            # n_bins = 10 if min_n_entries <= 10 else int(np.sqrt(min_n_entries))
+            self.ax.hist(self.x, bins=10, label=self.labels)
+            self.ax.legend(fontsize='xx-small')
 
         self.ax.set_xlabel(self.titles[0])
         if (self.titles[0].startswith('Dose') or self.titles[0].startswith('BkgDose') or

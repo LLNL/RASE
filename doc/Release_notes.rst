@@ -4,6 +4,25 @@
 RASE Release Notes
 ******************
 
+RASE v2.2
+=========
+
+- Improved plotting capabilities
+
+  - 1D histograms
+  - 3D results heat maps
+
+- Isotope ID frequency analysis and plotting
+- Extensive update of base spectra collection guidance documentation
+- Added Kromek D5 replay tool documentation, template, and translator
+- Improvements to development and testing capabilities
+
+  - Unit test suite for developers
+
+- Various bug fixes
+- Documentation updates
+
+
 RASE v2.1
 =========
 

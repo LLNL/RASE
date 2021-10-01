@@ -1,0 +1,1 @@
+${scenario.id},Label2, ${scenario.acq_time}, ${','.join('{:d}'.format(x) for x in sample_counts_array)}

@@ -41,12 +41,14 @@ from PyQt5.QtCore import Qt, pyqtSlot, QModelIndex
 from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import QDialog, QFileDialog, QTableWidgetItem, QMessageBox, QHeaderView, QInputDialog, QApplication
 
-from .rase_functions import readSpectrumFile
+from .rase_functions import readSpectrumFile, get_or_create_material
 from .scenario_dialog import MaterialDoseDelegate
 from .table_def import Session, MaterialNameTranslation, Material, BaseSpectrum, BackgroundSpectrum
 from .ui_generated import ui_import_base_spectra_dialog
 from .utils import profileit
 from .rase_settings import RaseSettings
+
+
 
 class BaseSpectraDialog(ui_import_base_spectra_dialog.Ui_Dialog, QDialog):
     def __init__(self, session):
@@ -214,9 +216,7 @@ class BaseSpectraDialog(ui_import_base_spectra_dialog.Ui_Dialog, QDialog):
         for row in range(self.tblSpectra.rowCount()):
             # initialize a BaseSpectrum
             materialName = self.tblSpectra.item(row, 0).text()
-            material = self.session.query(Material).get(materialName)
-            if not material:
-                material = Material(name=materialName)
+            material = get_or_create_material(self.session, materialName)
             baseSpectraFilename = self.tblSpectra.item(row, 1).text()
             baseSpectraFilepath = self.dir + os.sep + baseSpectraFilename
             if "n42" not in baseSpectraFilepath and "N42" not in baseSpectraFilepath:
@@ -230,33 +230,25 @@ class BaseSpectraDialog(ui_import_base_spectra_dialog.Ui_Dialog, QDialog):
                         self.bckgrndCorrupted = True
                     else:
                         self.backgroundSpectrum = BackgroundSpectrum(material=material,
-                                                                filename=baseSpectraFilepath,
-                                                                realtime=rfo.realtimeBckg,
-                                                                livetime=rfo.livetimeBckg,
-                                                                baseCounts=rfo.countsBckg)
+                                                                     filename=baseSpectraFilepath,
+                                                                     realtime=rfo.realtimeBckg,
+                                                                     livetime=rfo.livetimeBckg,
+                                                                     baseCounts=rfo.countsBckg)
                 else:
                     if(self.bckgrndCorrupted == True):
                         self.backgroundSpectrum = None
-                    #if backgroundSpectrum.realtime != rfo.realtimeBckg:
-                        #backgroundSpectrum = None
                     if self.backgroundSpectrum.livetime != rfo.livetimeBckg:
                         if rfo.livetimeBckg > self.backgroundSpectrum.livetime:
                             self.backgroundSpectrum = BackgroundSpectrum(material=material,
-                                                                    filename=baseSpectraFilepath,
-                                                                    realtime=rfo.realtimeBckg,
-                                                                    livetime=rfo.livetimeBckg,
-                                                                    baseCounts=rfo.countsBckg)
-                        #backgroundSpectrum = None
-                    #if backgroundSpectrum.baseCounts != rfo.countsBckg:
-                        #backgroundSpectrum = None
+                                                                         filename=baseSpectraFilepath,
+                                                                         realtime=rfo.realtimeBckg,
+                                                                         livetime=rfo.livetimeBckg,
+                                                                         baseCounts=rfo.countsBckg)
 
-            baseSpectrum = BaseSpectrum(material=material,
-                                        filename=baseSpectraFilepath,
-                                        realtime=rfo.realtime,
-                                        livetime=rfo.livetime,
-                                        rase_sensitivity=rfo.rase_sensitivity,
-                                        flux_sensitivity=rfo.flux_sensitivity,
-                                        baseCounts=rfo.counts)
+            baseSpectrum = BaseSpectrum(material=material, filename=baseSpectraFilepath, realtime=rfo.realtime,
+                         livetime=rfo.livetime, rase_sensitivity=rfo.rase_sensitivity,
+                         flux_sensitivity=rfo.flux_sensitivity, baseCounts=rfo.counts)
+
             self.baseSpectra.append(baseSpectrum)
 
       except Exception as e:

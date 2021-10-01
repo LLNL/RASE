@@ -14,4 +14,10 @@ Troubleshooting
 
   * The main RASE log file ``rase.log`` resides in the same folder of the RASE executable and contains traceback information for unhandled exception causing the main code to crash
   * The output of the replay tool, if any, is saved in a file called ``replay_tool_output.log`` located in the sample directory for the specific scenario-instrument that is being replayed.
-  * In case of errors when executing a results translator, a file called ``results_translator_output.log`` is created containing the output log of the translator tool. The file is located in the sample directory for the specific  scenario-instrument that is being worked on.
+  * In case of errors when executing a results translator, a file called ``results_translator_output.log`` is created containing the output log of the translator tool. The file is located in the sample directory for the specific scenario-instrument that is being worked on.
+
+
+A Note for Developers
+=====================
+
+* If any additional development is done to the source code by the user, it is recommended that the unit test suite is run periodically. Simply run the "test_main.py" file, which will automatically test various aspects of the main RASE functionality. In addition to the other requirements, the user must have "pytest" installed on their system to run this suite. 

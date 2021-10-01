@@ -1,4 +1,4 @@
-The Dummy spectra folder has 7 spectra. They were sourced from a theoretical device that calls for a main and a secondary spectrum.
+The Dummy spectra folder has 8 spectra. They were sourced from a theoretical device that calls for a main and a secondary spectrum.
 
 The spectra are named for the type of dummy spec in each of the two spectrum spaces: the first name is for the primary spectrum, and the second name is for the secondary spectrum. So for example, "DUMMY_M001_Delta_Flat" contains a delta function in the main spectrum and a flat region 500 channels wide in the secondary spectrum.
 

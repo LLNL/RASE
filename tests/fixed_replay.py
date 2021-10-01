@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+#
 ###############################################################################
 # Copyright (c) 2018-2021 Lawrence Livermore National Security, LLC.
 # Produced at the Lawrence Livermore National Laboratory
@@ -29,87 +31,25 @@
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ###############################################################################
 """
-This module defines profileit(), compress_counts(), and other utility functions
+A dummy isotope identification algorithm that output identification results based
+on a random selection within a list of possible results
 """
-import os
-import re
+
+# To generate a windows executable version:
+# python -m PyInstaller -a -y -F --clean --noupx --distpath ..\dist --workpath ..\build demo_replay.py
+
 import sys
 
-PROFILE = False
+__author__ = 'sangiorgio1'
 
-
-def profileit(func):
-    """
-    wrapper for profiling specific functions
-    profiles only if global 'PROFILE' variable is set to True
-
-    :param func:
-    :return:
-    """
-
-    def wrapper(*args, **kwargs):
-        if PROFILE:
-            import cProfile
-            datafn = func.__module__ + "." + func.__name__ + ".profile"  # Name the data file sensibly
-            prof = cProfile.Profile()
-            retval = prof.runcall(func, *args, **kwargs)
-            prof.dump_stats(datafn)
-        else:
-            retval = func(*args, **kwargs)
-
-        return retval
-
-    return wrapper
-
-def compress_counts(counts):
-    """
-
-    :param counts:
-    :return:
-    """
-    compressedCounts = []
-
-    zeroTimes = 0
-    for count in counts:
-        if count == 0:
-            zeroTimes += 1
-        else:
-            if zeroTimes != 0:
-                compressedCounts.append(0)
-                compressedCounts.append(zeroTimes)
-                zeroTimes = 0
-            compressedCounts.append(count)
-    if counts[-1] == 0:
-        compressedCounts.append(0)
-        compressedCounts.append(zeroTimes)
-    return compressedCounts
-
-
-def atoi(text):
-    return int(text) if text.isdigit() else text
-
-
-def natural_keys(text):
-    '''
-    alist.sort(key=natural_keys) sorts in human order
-    http://nedbatchelder.com/blog/200712/human_sorting.html
-    (See Toothy's implementation in the comments)
-    '''
-    return [atoi(c) for c in re.split(r'(\d+)', text)]
-
-
-def get_bundle_dir():
-    if getattr(sys, 'frozen', False):
-        # we are running in a pyinstaller bundle
-        return sys._MEIPASS
-    else:
-        # we are running in a normal Python environment
-        return os.getcwd()
+import os
+import xml.etree.ElementTree as ET
+from random import randint
 
 
 def indent(elem, level=0):
     '''
-    imported from http://effbot.org/zone/element-lib.htm#prettyprint
+    copy and paste from http://effbot.org/zone/element-lib.htm#prettyprint
     it basically walks your tree and adds spaces and newlines so the tree is
     printed in a nice way
     '''
@@ -127,3 +67,46 @@ def indent(elem, level=0):
     else:
         if level and (not elem.tail or not elem.tail.strip()):
             elem.tail = i
+
+
+def random_ids():
+    isotopes = ['dummy_mat_1']
+    identifications = [(isotopes[randint(0, len(isotopes) - 1)], str(randint(0, 0))) for i in range(0, 1)]
+    return identifications
+
+
+def generate_id_report(scenario):
+    id_report = ET.Element('IdentificationResults')
+
+    for id_iso, id_conf in random_ids():
+        id_result = ET.SubElement(id_report, 'Identification')
+        id_name = ET.SubElement(id_result, 'IDName')
+        id_name.text = id_iso
+        id_confidence = ET.SubElement(id_result, 'IDConfidence')
+        id_confidence.text = id_conf
+        # id_reported = SubElement(id_result, 'Reported')
+        # id_reported.text = 'true'
+    indent(id_report)
+    return id_report
+
+
+def get_file_list(in_folder):
+    return [f for f in os.listdir(in_folder) if f.endswith(".n42")]
+
+
+if __name__ == '__main__':
+
+    if len(sys.argv) < 3:
+        print("ERROR: Need input and output folders!")
+        sys.exit(1)
+
+    inputFolder = sys.argv[1]
+    outputFolder = sys.argv[2]
+
+    for ff in get_file_list(inputFolder):
+        # Passing the filename as scenario
+        id_report = generate_id_report(ff)
+        # print (prettify(id_report))
+
+        ET.ElementTree(id_report).write(os.path.join(outputFolder, ff.replace(".n42", ".res")), encoding='utf-8',
+                                        xml_declaration=True, method='xml')

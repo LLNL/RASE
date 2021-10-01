@@ -42,7 +42,7 @@ The tables in the "View Results" and "Detailed Results" dialogs can be exported 
 |
 
 RASE uses both an unweighted and weighted F-Score methodology based on the geometric mean of precision and recall to evaluate the identification
-performance of an algorithm. For more details on the F-Score see [AIP]_. 
+performance of an algorithm. For more details on the F-Score see [AIP]_.
 
 Confidence intervals in RASE are are determined using the Wilson Score approach. Wilson Score intervals are biased
 towards 0.5, and are asymmetric, but have been shown to have a more accurate performance than "exact" methods such as
@@ -80,7 +80,10 @@ all replications for a given scenario. The information in the columns are define
 Plotting
 ========
 
-RASE includes built-in 2D plotting capabilities. Using the drop-down selection boxes in the bottom left of the "View Results" window, the user may select any of the possible results columns as x and y axes to plot against each other. If the user chooses source/background dose/flux as one of the axes, they will be prompted to choose one of the source/background isotopes to plot. The "Category" option allows the user to further break up results into several relevant groups. For example, the user may choose "Detector" as a category for plotting pID vs Source Dose; if there are results for more than one detector in the results table, the results for these two detectors will be plotted in different colors on the same plot. Clicking "View Plot" will bring up a plotting dialog displaying the selected data.
+RASE includes 1D, 2D, and 3D built-in plotting capabilities. Using the drop-down selection boxes in the bottom left of the "View Results" window, the user may select any of the possible results columns to form plots from. Selecting an option exclusively for the x axis will result in a histogram plot for the chosen results column. Selecting options for both the x and y axes will create a 2D plot. Selecting an option from the z axis drop-down menu will produce a heat map of that column as a function of the results from the x and y columns. If the user chooses source/background dose/flux as one of the axes, they will be prompted to choose one of the source/background isotopes to plot. The "Category" option allows the user to further break up results into several relevant groups. For example, the user may choose "Detector" as a category for plotting pID vs Source Dose; if there are results for more than one detector in the results table, the results for these two detectors will be plotted in different colors on the same plot. Clicking "View Plot" will bring up a plotting dialog displaying the selected data.
+
+S-curves
+--------
 
 The plotting capabilities are particularly specialized for S-curve fitting. In the plotting dialog the user may select which dataset to fit curves to (if categories are defined), specify confidence intervals for the fit (to help convergence in certain cases), and set a percent for ID threshold estimation. Pressing "Plot S-Curve" will fit a sigmoid trendline, if possible. The fit is done using a linear or a log-spaced Boltzmann Sigmoid function, as specified by the user, using the equation:
 
@@ -90,11 +93,39 @@ The plotting capabilities are particularly specialized for S-curve fitting. In t
 
 This plot works for curves where the identification rate is positively correlated with source intensity as well as negatively correlated. If the fit is successful, the S-curve is plotted with a 1-sigma confidence interval surrounding the line and a point is marked on the plot where the trendline crosses an ID threshold (default is 80%, but can be varied by the user). The x-value of this crossing point is noted in the legend. These graphical features can be toggled on or off. The user may also select the uncertainty to provide the fitting algorithm, which may help convergence in certain cases. Detailed fit results are displayed in the window to the left regardless of if the fit was successful. This can be toggled on or off Various properties of the plot, including title and axes scale/labels, can be modified by the user. The plot can be exported in the user's favorite image file format.
 
-
-
-.. _rase-WorkflowStep6b:
-
 .. figure:: _static/rase_WorkflowStep6-3.png
     :scale: 80%
 
     “View Results” table and "Plotting" window.
+
+3D Plotting - Heat Maps
+-----------------------
+
+Heat maps are only possible to create where exactly one result exists at each intersection point of a grid of permutations created by the x and y variables: for example, if the user were to define all permutations with source A at dose rates 0.1, 0.2, and 0.3 uSv/hr and source B at dose rates 0.4, 0.5, and 0.6 uSv/hr (so 9 total scenarios), it would be possible to create a continuous heat map of results. However, if the user were to include an additional scenario in these results where source A = 0.1 uSv/hr, source B = 0.4 uSv/hr, and source C = 0.7 uSv/hr (so 10 total scenarios), the heat map would fail to generate because there is already results for a scenario where source A = 0.1 uSv/hr and source B = 0.4 uSv/hr. If instead the user did not define, for some reason, the scenario where source A = 0.2 uSv/hr and source B = 0.3 uSv/hr (so 8 scenarios total), the heat map would have a large section undefined due to this result missing from the grid.
+
+To add convenience for the user, a "Ignore isotopes with zero contribution" checkbox also exists. This is applicable specifically if the user is planning to look at the results of several possible permutations in quick succession. For example, the user has created three permutation sets of 9 scenarios each:
+
+    - Set 1:
+
+        - source A at dose rates 0.1, 0.2, and 0.3 uSv/hr
+        - source B at dose rates 0.4, 0.5, and 0.6 uSv/hr
+
+    - Set 2:
+
+        - source A at dose rates 0.1, 0.2, and 0.3 uSv/hr
+        - source C at dose rates 0.7, 0.8, and 0.9 uSv/hr
+
+    - Set 3:
+
+        - source A at dose rates 0.1, 0.2, and 0.3 uSv/hr
+        - source D at dose rates 1.0, 1.1, and 1.2 uSv/hr
+
+
+If the user attempts to create a heat map with the X-axis defined as the "Source Dose" of source A and the Y-axis as the "Source Dose" of source B, the map will fail to generate because RASE has implicitly assumed that source C and source D also exist in those scenarios with a dose rate of 0. By checking the "Ignore isotopes with zero contribution" checkbox, these instances are ignored when creating the heat map. This lets the user quickly examine all three sets of scenarios.
+
+.. _rase-WorkflowStep6b:
+
+.. figure:: _static/rase_WorkflowStep6-4.png
+    :scale: 80%
+
+    An example of plotting 3-dimensional data as a heat map.

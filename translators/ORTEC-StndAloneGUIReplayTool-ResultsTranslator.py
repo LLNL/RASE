@@ -2,6 +2,9 @@ import os
 import xml.etree.ElementTree as ET
 from shutil import copyfile
 
+from src.rase_functions import write_results
+
+
 def FileListing(TargetDirectory):
     """
     Retrieve directory listing of *.N42 files to be translated
@@ -20,7 +23,7 @@ def FileListing(TargetDirectory):
 def CopyResults(input_dir, inSpecraFiles):
     """
     This function creates a copy of the results file in a separate directory. 
-    This is to be consistent with the comman-line replay tool folder structure.
+    This is to be consistent with the command-line replay tool folder structure.
     
     """
     results_dir = input_dir #+ '_results'
@@ -58,61 +61,16 @@ def retrieve_ORTEC_StdAlone_Results(filepath):
     return resultsArray
 
 
-def indent(elem, level=0):
-  i = "\n" + level*"  "
-  if len(elem):
-    if not elem.text or not elem.text.strip():
-      elem.text = i + "  "
-    if not elem.tail or not elem.tail.strip():
-      elem.tail = i
-    for elem in elem:
-      indent(elem, level+1)
-    if not elem.tail or not elem.tail.strip():
-      elem.tail = i
-  else:
-    if level and (not elem.tail or not elem.tail.strip()):
-      elem.tail = i
-
-def write_ORTEC_StdAlone_results(resultsArray, outFilepath):
-    """
-
-    :param :
-    :return:
-    """
-        
-    root = ET.Element('IdentificationResults')
-        
-    for iso, conf in zip(resultsArray[0],resultsArray[1]):
-        identification = ET.SubElement(root, 'Identification')
-        isotope = ET.SubElement(identification, 'IDName')
-        isotope.text = iso
-        confidence = ET.SubElement(identification, 'IDConfidence')
-        confidence.text = conf
-
-    indent(root)
-    tree = ET.ElementTree(root)
-    # write entire XML out to new file
-    tree.write(outFilepath, encoding='utf-8', xml_declaration=True, method='xml')
-
-    return
-
-
-def main(input_dir, output_dir, template_dir="./"):
-
-    inSpecraFiles = FileListing(input_dir[:-8])
-
+def main(input_dir, output_dir):
+    in_files = FileListing(input_dir[:-8])
     CopyResults(input_dir, inSpecraFiles)
-
     
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
     
-    for fname in inSpecraFiles:
-
+    for fname in in_files:
         ResultsArray = retrieve_ORTEC_StdAlone_Results(os.path.join(input_dir, fname))
-        newFileName = os.path.join(output_dir, fname)
-        write_ORTEC_StdAlone_results(ResultsArray, newFileName)
-
+        write_results(ResultsArray, os.path.join(output_dir, fname))
     return
 
 
@@ -124,5 +82,4 @@ if __name__ == "__main__":
         print("ERROR: Need input and output folder!")
         sys.exit(1)
     
-    cwd = os.path.dirname(sys.argv[0])
-    main(sys.argv[1], sys.argv[2], cwd)
+    main(sys.argv[1], sys.argv[2])

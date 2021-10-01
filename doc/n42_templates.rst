@@ -8,26 +8,32 @@ The vast majority of replay tools ingest spectra formatted according to N42.42 A
 
 The following table provides a list of the basic variables accessible for use within a template file:
 
-+----------------------------------------------------------------+----------------------------------------------------------------------+
-| Variable                                                       | Description                                                          |
-+================================================================+======================================================================+
-| scenario.acq_time                                              | Acquisition time in seconds for the scenario                         |
-+----------------------------------------------------------------+----------------------------------------------------------------------+
-| sample_counts                                                  | Generated sample spectrum as space separated counts for each channel |
-+----------------------------------------------------------------+----------------------------------------------------------------------+
-| compressed_sample_counts                                       | Same as above but in N42.42 zero compressed format                   |
-+----------------------------------------------------------------+----------------------------------------------------------------------+
-| secondary_spectrum.realtime                                    | Realtime of the secondary spectrum, if present                       |
-+----------------------------------------------------------------+----------------------------------------------------------------------+
-| secondary_spectrum.livetim                                     | Livetime of the secondary spectrum, if present                       |
-+----------------------------------------------------------------+----------------------------------------------------------------------+
-| secondary_spectrum.get_counts_as_str()                         | Secondary spectrum as space separated counts for each channel        |
-+----------------------------------------------------------------+----------------------------------------------------------------------+
-| secondary_spectrum.get_compressed_counts_as_str()              | Same as above but in N42.42 zero compressed format                   |
-+----------------------------------------------------------------+----------------------------------------------------------------------+
-| detector.ecal0, detector.ecal1, detector.ecal2, detector.ecal3 | Energy calibration coefficients                                      |
-+----------------------------------------------------------------+----------------------------------------------------------------------+
+.. table::
+    :widths: 800 500
 
+    +----------------------------------------------------------------+----------------------------------------------------------------------+
+    | Variable                                                       | Description                                                          |
+    +================================================================+======================================================================+
+    | scenario.acq_time                                              | Acquisition time in seconds for the scenario                         |
+    +----------------------------------------------------------------+----------------------------------------------------------------------+
+    | sample_counts                                                  | Generated sample spectrum as space separated counts for each channel |
+    +----------------------------------------------------------------+----------------------------------------------------------------------+
+    | compressed_sample_counts                                       | Same as above but in N42.42 zero compressed format                   |
+    +----------------------------------------------------------------+----------------------------------------------------------------------+
+    | secondary_spectrum.realtime                                    | Realtime of the secondary spectrum, if present                       |
+    +----------------------------------------------------------------+----------------------------------------------------------------------+
+    | secondary_spectrum.livetim                                     | Livetime of the secondary spectrum, if present                       |
+    +----------------------------------------------------------------+----------------------------------------------------------------------+
+    | secondary_spectrum.get_counts_as_str()                         | Secondary spectrum as space separated counts for each channel        |
+    +----------------------------------------------------------------+----------------------------------------------------------------------+
+    | secondary_spectrum.get_compressed_counts_as_str()              | Same as above but in N42.42 zero compressed format                   |
+    +----------------------------------------------------------------+----------------------------------------------------------------------+
+    | detector.ecal0, detector.ecal1,                                | Energy calibration coefficients                                      |
+    |                                                                |                                                                      |
+    | detector.ecal2, detector.ecal3                                 |                                                                      |
+    +----------------------------------------------------------------+----------------------------------------------------------------------+
+
+|
 
 Examples of .n42 templates are distributed with RASE.
 
