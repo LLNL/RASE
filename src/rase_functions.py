@@ -1,11 +1,11 @@
 ###############################################################################
-# Copyright (c) 2018-2021 Lawrence Livermore National Security, LLC.
+# Copyright (c) 2018-2022 Lawrence Livermore National Security, LLC.
 # Produced at the Lawrence Livermore National Laboratory
 #
-# Written by J. Chavez, S. Czyz, G. Kosinovsky, V. Mozin, S. Sangiorgio.
+# Written by J. Brodsky, J. Chavez, S. Czyz, G. Kosinovsky, V. Mozin, S. Sangiorgio.
 # RASE-support@llnl.gov.
 #
-# LLNL-CODE-819515
+# LLNL-CODE-819515, LLNL-CODE-829509
 #
 # All rights reserved.
 #
@@ -44,15 +44,17 @@ from pathlib import Path
 
 import numpy as np
 from mako import exceptions
-from sqlalchemy.engine import create_engine
+from sqlalchemy.engine import create_engine, Engine
+from sqlalchemy import event
 
 from src.scenarios_io import ScenariosIO
-from src.table_def import BaseSpectrum, BackgroundSpectrum, Detector, Scenario, SampleSpectraSeed, \
-    Session, Base, DetectorInfluence, ScenarioMaterial, ScenarioBackgroundMaterial, Material
-from src.utils import compress_counts, indent
+from src.table_def import BaseSpectrum, BackgroundSpectrum, Detector, Scenario, \
+    Session, Base, DetectorInfluence, ScenarioMaterial, ScenarioBackgroundMaterial
+from src.utils import compress_counts
 
 # Key variables used in several places
-secondary_type = {'internal': 2, 'base_spec': 0,  'scenario': 1, 'file': 3}
+secondary_type = {'internal': 2, 'base_spec': 0, 'scenario': 1, 'file': 3}
+
 
 def initializeDatabase(databaseFilepath):
     """
@@ -65,7 +67,15 @@ def initializeDatabase(databaseFilepath):
     Session.configure(bind=engine)
     if not os.path.exists(databaseFilepath):
         Base.metadata.create_all(engine)
+        return False
+    return True
 
+
+@event.listens_for(Engine, "connect")
+def set_sqlite_pragma(dbapi_connection, connection_record):
+    cursor = dbapi_connection.cursor()
+    cursor.execute("PRAGMA foreign_keys=ON")
+    cursor.close()
 
 def importDistortionFile(filepath):
     """
@@ -107,7 +117,7 @@ class ResultsFileFormatException(Exception):
     pass
 
 
-def readTranslatedResultFile(filename, use_confs):
+def readTranslatedResultFile(filename):
     """
     Reads translated results file from either of two formats:
 
@@ -130,6 +140,8 @@ def readTranslatedResultFile(filename, use_confs):
     :param filename: path of valid results file
     :return: list of identification results
     """
+    # TODO: confidence level of the identification is neglected for now
+
     root = ET.parse(filename).getroot()
     if root.tag != "IdentificationResults":
         raise ResultsFileFormatException(f'{filename}: bad file format')
@@ -138,63 +150,18 @@ def readTranslatedResultFile(filename, use_confs):
     if len(root.findall('Isotopes')) > 0:
        isotopes = root.find('Isotopes').text
        if isotopes:
-            results = list(filter(lambda x: x.strip() not in ['-', ''], isotopes.split('\n')))
-            if root.find('ConfidenceIndex') is not None:
-                confidences = root.find('ConfidenceIndex').text
-            elif root.find('Confidences') is not None:
-                confidences = root.find('Confidences').text
-            else:
-                confidences = None
-            if use_confs and confidences is not None:
-                confidences = list(filter(lambda x: x.strip() not in ['-', ''], confidences.split('\n')))
-                # for some instruments (e.g.: RadEagle), the confidences are zeros while the isotopes are dashes
-                if len(confidences) > len(results):
-                    confidences = confidences[0:len(results)]
-                if confidences:
-                    try:
-                        # 0 - 3 = low, 4 - 6 = medium, 7 - 10 = high
-                        confidences = [(int(float(c)/3.4) + 1) / 3 for c in confidences]
-                    except:
-                        raw_confidences = confidences
-                        confidences = []
-                        for c in raw_confidences:
-                            if c == 'low':
-                                confidences.append(1/3)
-                            elif c == 'medium':
-                                confidences.append(2/3)
-                            else:
-                                confidences.append(1)  # default to full confidence in results
-            else:
-                confidences = [1] * len(results)
-            return results, confidences
+            return list(filter(lambda x: x.strip() not in ['-',''],isotopes.split('\n')))
        else:
-            return [], []
+           return []
     # Read Format 2
     elif len(root.findall('Identification')) > 0:
         results = []
-        confidences = []
         for identification in root.findall('Identification'):
             idname = identification.find('IDName')
+            # confidence = identification.find('IDConfidence')
             if idname.text:
                 results.append(idname.text.strip())
-                confidence = identification.find('IDConfidence')
-            else:
-                confidence = None
-            if use_confs and confidence is not None:
-                try:
-                    # 0 - 3 = low, 4 - 6 = medium, 7 - 10 = high
-                    confidences.append((int(float(confidence.text.strip()) / 3.4) + 1) / 3)
-                except:
-                    if confidence.text.strip() == 'low':
-                        confidences.append(1 / 3)
-                    elif confidence.text.strip() == 'medium':
-                        confidences.append(2 / 3)
-                    else:
-                        confidences.append(1)  # default to full confidence in results
-            else:
-                confidences = [1] * len(results)
-
-        return results, confidences
+        return results
     else:
         raise ResultsFileFormatException(f'{filename}: bad file format')
 
@@ -606,10 +573,6 @@ def create_n42_file(filename, scenario, detector, sample_counts, secondary_spect
     f.write('</ChannelData>\n')
     f.write('    </Spectrum>\n')
     if secondary_spectrum:
-        if secondary_spectrum.is_spectrum_float():
-            sec_counts = [float(c_str) for c_str in secondary_spectrum.baseCounts.split(",")]
-        else:
-            sec_counts = [int(float(c_str)) for c_str in secondary_spectrum.baseCounts.split(",")]
         f.write('    <Spectrum>\n')
         f.write('      <RealTime Unit="sec">PT{}S</RealTime>\n'.format(secondary_spectrum.realtime))
         f.write('      <LiveTime Unit="sec">PT{}S</LiveTime>\n'.format(secondary_spectrum.livetime))
@@ -620,10 +583,8 @@ def create_n42_file(filename, scenario, detector, sample_counts, secondary_spect
         f.write('        </Equation>\n')
         f.write('      </Calibration>\n')
         f.write('      <ChannelData>')
-        if secondary_spectrum.is_spectrum_float():
-            f.write('{}'.format(' '.join('{:f}'.format(x) for x in sec_counts)))
-        else:
-            f.write('{}'.format(' '.join('{:d}'.format(x) for x in sec_counts)))
+        f.write(secondary_spectrum.get_counts_as_str())
+
         f.write('</ChannelData>\n')
         f.write('    </Spectrum>\n')
     f.write('  </Measurement>\n')
@@ -631,7 +592,7 @@ def create_n42_file(filename, scenario, detector, sample_counts, secondary_spect
     f.close()
 
 
-def create_n42_file_from_template(n42_mako_template, filename, scenario, detector, sample_counts, secondary_spectrum=None):
+def create_n42_file_from_template(n42_mako_template, filename, scenario, detector, sample_counts : np.ndarray, secondary_spectrum=None):
     """
     Creates n42 file from input using teplate
     :param n42_mako_template: template used to make file
@@ -641,17 +602,21 @@ def create_n42_file_from_template(n42_mako_template, filename, scenario, detecto
     :param sample_counts: sample counts array
     :param secondary_spectrum: optional secondary spectrum array
     """
+
     template_data = dict(
         scenario=scenario,
         detector=detector,
-        sample_counts_array=sample_counts,
-        sample_counts=' '.join('{:d}'.format(x) for x in sample_counts),    # FIXME: this is forced to integers
-        compressed_sample_counts=' '.join('{:d}'.format(x) for x in compress_counts(sample_counts)),
+        # TODO: we may want to create a 'sample_counts' class with methods to return it in different formatting
+
     )
+    try:
+        template_data['sample_counts'] = ' '.join('{:d}'.format(x) for x in sample_counts)
+        template_data['compressed_sample_counts'] = ' '.join('{:d}'.format(x) for x in compress_counts(sample_counts))
+    except TypeError:
+        template_data['sample_periods'] = sample_counts
 
     if secondary_spectrum:
-        secondary_spectrum_ints = [int(float(x)) for x in secondary_spectrum.baseCounts.split(',')]
-        secondary_spectrum.baseCounts = ','.join('{:d}'.format(val) for val in secondary_spectrum_ints)
+        secondary_spectrum.counts = secondary_spectrum.counts.astype(int)
         template_data.update(dict(secondary_spectrum=secondary_spectrum))
 
     try:
@@ -665,31 +630,6 @@ def create_n42_file_from_template(n42_mako_template, filename, scenario, detecto
 
     with open(filename, 'w', newline='') as f:
         f.write(templated_content)
-
-
-def write_results(results_array, out_filepath):
-    """
-    Write a RASE-formatted results file from results data
-    :param results_array: list of (isotope, confidence level) tuples
-    :param out_filepath: full pathname of output file
-    :return: None
-    """
-    root = ET.Element('IdentificationResults')
-
-    if not results_array:
-        results_array.append(('', 0))
-
-    for iso, conf in results_array:
-        identification = ET.SubElement(root, 'Identification')
-        isotope = ET.SubElement(identification, 'IDName')
-        isotope.text = iso
-        confidence = ET.SubElement(identification, 'IDConfidence')
-        confidence.text = conf
-
-    indent(root)
-    tree = ET.ElementTree(root)
-    tree.write(out_filepath, encoding='utf-8', xml_declaration=True, method='xml')
-    return
 
 
 def strip_xml_tag(str):
@@ -794,27 +734,6 @@ def delete_scenario(scenario_ids, sample_root_dir):
     session.close()
 
 
-def delete_instrument(session, name):
-    sssDelete = session.query(SampleSpectraSeed).filter(SampleSpectraSeed.det_name == name)
-    sssDelete.delete()
-    detReplayDelete = session.query(Detector).filter(Detector.name == name)
-    detReplayDelete.first().influences.clear()
-    detReplayDelete.delete()
-    detBaseRelationDelete = session.query(BaseSpectrum).filter(BaseSpectrum.detector_name == name)
-    detBaseRelationDelete.delete()
-    detBackRelationDelete = session.query(BackgroundSpectrum).filter(BackgroundSpectrum.detector_name == name)
-    detBackRelationDelete.delete()
-    session.commit()
-
-
-def get_or_create_material(session, matname):
-    material = session.query(Material).get(matname)
-    if not material:
-        material = Material(name=matname)
-        session.commit()
-    return material
-
-
 def export_scenarios(scenarios_ids, file_path):
     """
     Export scenarios from database to xml file
@@ -881,7 +800,7 @@ def apply_distortions(new_influences, counts, bin_widths, energies, ecal):
     if (not new_influences[0] == 0) or (not new_influences[2] == 0) or (not new_influences[1] == 1):
         counts = rebin(np.array(counts), energies, ecal)
 
-    count_bs.baseCounts = ','.join([str(c) for c in counts])
+    count_bs.counts = counts
 
     counts = gaussian_smearing(counts, bin_widths, new_influences[4], count_bs.is_spectrum_float())
 

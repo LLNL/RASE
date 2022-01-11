@@ -1,11 +1,11 @@
 ###############################################################################
-# Copyright (c) 2018-2021 Lawrence Livermore National Security, LLC.
+# Copyright (c) 2018-2022 Lawrence Livermore National Security, LLC.
 # Produced at the Lawrence Livermore National Laboratory
 #
-# Written by J. Chavez, S. Czyz, G. Kosinovsky, V. Mozin, S. Sangiorgio.
+# Written by J. Brodsky, J. Chavez, S. Czyz, G. Kosinovsky, V. Mozin, S. Sangiorgio.
 # RASE-support@llnl.gov.
 #
-# LLNL-CODE-819515
+# LLNL-CODE-819515, LLNL-CODE-829509
 #
 # All rights reserved.
 #
@@ -57,9 +57,9 @@ class ScenariosIO:
         def dict_to_scenario(state, value):
             session = Session()
             value['id'] = Scenario.scenario_hash(value['acq_time'],
-                                    value['scen_materials'],
-                                    value['scen_bckg_materials'],
-                                    value['influences'])
+                                                 value['scen_materials'],
+                                                 value['scen_bckg_materials'],
+                                                 value['influences'])
             q = session.query(Scenario).filter_by(id=value['id']).first()
             if q:
                 if self.scenario_group:

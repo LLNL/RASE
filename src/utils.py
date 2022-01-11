@@ -1,11 +1,11 @@
 ###############################################################################
-# Copyright (c) 2018-2021 Lawrence Livermore National Security, LLC.
+# Copyright (c) 2018-2022 Lawrence Livermore National Security, LLC.
 # Produced at the Lawrence Livermore National Laboratory
 #
-# Written by J. Chavez, S. Czyz, G. Kosinovsky, V. Mozin, S. Sangiorgio.
+# Written by J. Brodsky, J. Chavez, S. Czyz, G. Kosinovsky, V. Mozin, S. Sangiorgio.
 # RASE-support@llnl.gov.
 #
-# LLNL-CODE-819515
+# LLNL-CODE-819515, LLNL-CODE-829509
 #
 # All rights reserved.
 #
@@ -29,7 +29,7 @@
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ###############################################################################
 """
-This module defines profileit(), compress_counts(), and other utility functions
+This module defines profileit() and compress_counts() utility functions
 """
 import os
 import re
@@ -60,6 +60,7 @@ def profileit(func):
         return retval
 
     return wrapper
+
 
 def compress_counts(counts):
     """
@@ -105,25 +106,3 @@ def get_bundle_dir():
     else:
         # we are running in a normal Python environment
         return os.getcwd()
-
-
-def indent(elem, level=0):
-    '''
-    imported from http://effbot.org/zone/element-lib.htm#prettyprint
-    it basically walks your tree and adds spaces and newlines so the tree is
-    printed in a nice way
-    '''
-
-    i = "\n" + level * "  "
-    if len(elem):
-        if not elem.text or not elem.text.strip():
-            elem.text = i + "  "
-        if not elem.tail or not elem.tail.strip():
-            elem.tail = i
-        for elem in elem:
-            indent(elem, level + 1)
-        if not elem.tail or not elem.tail.strip():
-            elem.tail = i
-    else:
-        if level and (not elem.tail or not elem.tail.strip()):
-            elem.tail = i

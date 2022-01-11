@@ -1,0 +1,13 @@
+# NOTE: All paths must include no spaces
+csv_output: /example/path/DRASE_results.csv #location to save the output results table, or False to avoid saving
+db_file_location: /example/path/dynamic.db # location of the database used to store spectra and models
+
+replay_verbose: 0 #if true, replay tool console output is shown, otherwise it is suppressed
+translator: /example/path/translator.exe # path for a translator available in the RASE distribution
+output_folder: /example/path/drase_output/ # all file output will be saved here
+template_path: /example/path/rase/n42Templates/dynamic_template.n42 #template in Mako format for producing vendor-formatted simulated spectra
+dynamic_replay: True # Set to True when the template is designed to hold multiple output periods in a single file. Set to False when the template is designed so each output period is its own file.
+
+#this command specifies a vendor-supplied replay tool. This runs the demo_replay tool included with RASE
+#distributions; for vendor replay tools, see the most recent version of the RASE manual.
+replay_command: python /example/path/rase/tools/demo_replay.py

@@ -1,0 +1,107 @@
+scenarios: #top-level block defining combinations of sources and dynamic motion.
+  ExampleScenario: #arbitrary name for the scenario, will be referenced later by tests
+    acquisition_time: 2.6  #total length of measurement in seconds
+    sample_hz: 10 #number of samples along a path PER SECOND, which are integrated into the output period. Higher values use more computing time to more smoothly sample continuous motion.
+    #For proper functionality, make sure output_period ≥ (1/sample_hz), and make sure that (acquisition_time * sample_hz) is a whole number.
+    output_period: .1  #the length of an output step, in seconds. Each output step is one spectrum written to the templated files.
+    replications: 10  #number of experiments to run
+    sources: #required block describing all sources. Note that at least one source and quantity is required.
+      Cs137Colimated: #should correspond to source available in the detector block
+        quantity: 20 #assumes same units as "quantity" tag in base spectra files, e.g. uCi, kg, etc.
+      #multiple sources are allowed
+    replay_name: Cs-137 #Replay output is searched for this source name to identify successful detections
+    backgrounds: #required block describing backgrounds; at least one background and quantity is required. These backgrounds are ambient, i.e. do not move along the path
+      ColimatedBG:
+        quantity: 0.079 # same units as quantity in BG base spectrum file
+      #multiple backgrounds are allowed
+    path: #this required clock describes the dynamic motion of the source(s).
+      path_type: NStepPath #see dynamic models doc for path type options.
+      #the parameters below are specific to NStepPath (and shared with InMotionPath)
+      pos: [[-300,50,0], [-250,50,0], [-200,50,0], [-150,50,0], [-100,50,0], [-50,50,0], [0,50,0], [50,50,0], [100,50,0], [150,50,0], [200,50,0], [250,50,0], [300,50,0]]
+      times: [.2, .4, .6, .8, 1., 1.2, 1.4, 1.6, 1.8, 2.0, 2.2, 2.4]
+
+
+
+tests: #this block describes combinations of a scenario to simulate and a model to use for that simulation.
+  #tests are the basic unit of operation in Dynamic RASE.
+  RecreateTest: #arbitrary name for the test, may be referenced elsewhere by plots
+    detector: GadrasDetector # choose a detector from the detectors block
+    scenario: ExampleScenario # choose a scenario from the scenario block
+    model: RecreateModel # choose a model from the options in the dynamic models documentation. This model performs no interpolation.
+    model_def: # this block is settings passed to the model. See the documentation for each model's required settings
+      ["N/A",]
+
+  GPTest7: #multiple tests can be defined in this block
+    detector: GadrasDetector
+    scenario: ExampleScenario #each test can refer to a different scenario or the same scenario
+    model: ManyGPsROIModel #this is the most commonly used interpolation model, using
+    model_def:
+      points: #this model takes a list of training points (optional, will use all available if not specified)
+        - [0,100,0]
+        - [100,50,0]
+        - [50,50,0]
+        - [-50,50,0]
+        - [-100,50,0]
+        - [-150,50,0]
+        - [150,50,0]
+      roi: #this model also takes an roi parameter specifying the energy bins of interest. These bins should include the interesting peaks, and skip high-energy regions of no interest to detection
+        first: 0
+        last: 300
+
+  GPTestAll:
+    detector: GadrasDetector
+    scenario: ExampleScenario
+    model: ManyGPsROIModel
+    model_def:
+      roi:
+        first: 0
+        last: 300
+
+
+scores: #this block specifies scores, algorithms that compare the model to the input data to distill any discrepancies down to a single number
+  ScoreExample: #arbitrary name for the scorer
+    scorer: ScoreMaxDifferenceAcrossROI # see the dynamic models doc for the available scorer types
+    test:  # if no tests are named, it will run the scorer on all tests
+    test_points:
+          # if no test points are named, it will run the scorer on all points
+    roi: #configuration settings specific to this scorer type, in this case selecting energy bins to evaluate
+      first: 220
+      last: 230
+
+plots: #top-level block defining plots to display
+  Plot3DMultiBin: #arbitrary name for this plot
+    plotter: [plot_3D_model, plot_3D_train_colored_by_model] # plot types to use for this plot. Here, plot both the model and the training data.
+    dimensions: 3 # 3 for 3D, or 2 for 2D plots
+    plot_error: True # show error bars on training points, reflecting statistical uncertainty in the data
+    plot_type: model # Sets the y axis type. "model" shows relative difference from 1/r2 behavior. "real" uses absolute counts.
+    test: [ GPTest7, GPTestAll] # plot only the models present in these tests.
+    scorer: ScoreExample # plot only test points contained in this scorer
+    bin: [226,] #list of energy bins to make plots for. Each energy bin receives a separate plot.
+
+detectors: #top level block describing detectors and the sources
+  GadrasDetector: #name of detector
+    #begin set of detector specs required by RASE, not relevant for dynamic simulations
+    description: Simulation
+    manufacturer: LLNL
+    class_code: 1
+    hardware_version: 1
+    instr_id: 1
+    #end of standard detector specs
+
+    chan_count: 1024 # number of energy bins in this detector's spectra
+
+    #The below settings control Dynamic RASE's approach to filling any secondary spectrum fields in the output template.
+    #the settings below will cause background sources in the scenario to be sampled to produce a background reference spectrum and placed into the secondary spectrum fields in the output template.
+    secondary_type: scenario
+    include_secondary_spectrum: True
+    #Dynamic RASE currently does not handle other kinds of secondary spectra. If your detector includes another type, e.g.
+       #a factory-set energy calibration spectrum, you should reproduce that in your template and not use any secondary spectrum Mako template fields
+
+    spectra: #for each detector, this block describes source and background base spectra available for this detector
+      sources: #sources are assumed to have location coordinates in their files
+        Cs137Colimated: #source name, referenced by scenarios
+          directory: /example/path/GADRAS/DRASE_Static_Cs137_Shield_Livermore/*Cs137*.n42 #folder or wildcard path to all base spectra files for this source
+      backgrounds: # backgrounds are single files describing ambient, i.e. not position dependent, radiation
+        ColimatedBG: #background name, referenced by scenarios
+          path: /example/path/GADRAS/DRASE_Static_Cs137_Shield_Livermore/Background.n42
+  # Multiple detectors can be defined

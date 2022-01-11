@@ -1,0 +1,13 @@
+operations:
+  output_files: True # produce files containing simulated spectra using the specified template
+  print_scores: True # run scoring algorithm(s) and print the scores
+  replay_files: True # run a vendor-supplied replay tool on the output files
+  translate_replay: True # convert the output of the replay tool into a standardized format for interpretation by DRASE
+  evaluate_detection: True # read the translated results and check them for successful detections
+  show_plots: True # display plots (as specified in the plot definitions block and the run block)
+  force_rebuild_models: False #If True, models will be rebuilt, which can take a few minutes. If False, models will be retrieved from the database if they have been previously built.
+
+run: #this block references tests, plots, and scores defined in the definitions file.
+  tests: [GPTest7, RecreateTest] #if this is present, run only the specified tests. Remove to run all tests in the definitions file.
+  #plots: [...]   ## similarly, plots and scores can be selected, or these blocks can be left blank to run everything in the definitions file.
+  #scores: [...]

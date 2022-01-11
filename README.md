@@ -67,14 +67,6 @@ Contributors
 - Jason Brodsky, LLNL
 
 
-Citation
---------
-
-Please cite use of the RASE software as:
-
-J. P. Brodsky, J. Chavez, S. A. Czyz, G. Kosinovsky, V. Mozin, & S. Sangiorgio. (2021, June 7). LLNL/RASE: RASE v2.1 (Version v2.1). Zenodo. http://doi.org/10.5281/zenodo.4910068
-
-
 Acknowledgements
 ----------------
 

@@ -1,11 +1,11 @@
 ###############################################################################
-# Copyright (c) 2018-2021 Lawrence Livermore National Security, LLC.
+# Copyright (c) 2018-2022 Lawrence Livermore National Security, LLC.
 # Produced at the Lawrence Livermore National Laboratory
 #
-# Written by J. Chavez, S. Czyz, G. Kosinovsky, V. Mozin, S. Sangiorgio.
+# Written by J. Brodsky, J. Chavez, S. Czyz, G. Kosinovsky, V. Mozin, S. Sangiorgio.
 # RASE-support@llnl.gov.
 #
-# LLNL-CODE-819515
+# LLNL-CODE-819515, LLNL-CODE-829509
 #
 # All rights reserved.
 #
@@ -32,19 +32,19 @@
 This module defines persistable objects in sqlalchemy framework
 """
 
-from sqlalchemy import ForeignKey, Column, Integer, String, Float, Boolean
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy import ForeignKey, Column, Integer, String, Float, Boolean, JSON
+from sqlalchemy.ext.declarative import declarative_base, declared_attr
 from sqlalchemy.orm             import relationship, sessionmaker, scoped_session, backref
 from sqlalchemy.sql.schema import Table, CheckConstraint
 from sqlalchemy import event
 import numpy as np
 import hashlib
-from typing import Set
+from typing import Set, Sequence, MutableSequence
 import json
-
 from src.utils import compress_counts
 
-DB_VERSION_NAME = 'rase_db_v1_3'
+
+DB_VERSION_NAME = 'rase_db_v1_2_d4'
 
 Base    = declarative_base()
 # Session = sessionmaker()
@@ -63,8 +63,8 @@ det_infl_assoc_tbl = Table('det_influences', Base.metadata,
     Column('influence_name', String, ForeignKey('influences.name')))
 
 scen_group_assoc_tbl = Table('scen_group_association', Base.metadata,
-    Column('group_id', Integer, ForeignKey('scenario_groups.id')),
-    Column('scenario_id', String, ForeignKey('scenarios.id'))
+    Column('group_id', Integer, ForeignKey('scenario_groups.id',ondelete='cascade')),
+    Column('scenario_id', String, ForeignKey('scenarios.id', ondelete='cascade'))
 )
 
 class CorrespondenceTableElement(Base):
@@ -114,8 +114,8 @@ class Scenario(Base):
     acq_time            = Column(Float)
     replication         = Column(Integer)
     # eager loading required by the import/export scenario functions in scenarios_io module
-    scen_materials      = relationship('ScenarioMaterial', cascade='save-update, merge, delete', lazy='joined')
-    scen_bckg_materials = relationship('ScenarioBackgroundMaterial', cascade='save-update, merge, delete', lazy='joined')
+    scen_materials      = relationship('ScenarioMaterial', cascade='all, delete', lazy='joined')
+    scen_bckg_materials = relationship('ScenarioBackgroundMaterial', cascade='all, delete', lazy='joined')
     influences          = relationship('Influence', secondary=scen_infl_assoc_tbl, lazy='joined')
     scenario_groups     = relationship('ScenarioGroup', secondary=scen_group_assoc_tbl, backref='scenarios')
 
@@ -139,7 +139,10 @@ class Scenario(Base):
             ''.join(sorted('BKGD{}{:9.12f}{}'.format(
                 scenMat.material.name, scenMat.dose, scenMat.fd_mode) for scenMat in scen_bckg_materials)) + \
             ''.join(sorted(infl.name for infl in influences))
-        return hashlib.md5(s.encode('utf-8')).hexdigest()[:6].upper()
+        try:
+            return hashlib.md5(s.encode('utf-8')).hexdigest()[:6].upper()
+        except ValueError:
+            return hashlib.md5(s.encode('utf-8'),usedforsecurity=False).hexdigest()[:6].upper()
 
     def get_material_names_no_shielding(self) -> Set[str]:
         return set(name for scenMat in self.scen_materials for name in scenMat.material.name_no_shielding())
@@ -172,8 +175,8 @@ class ScenarioMaterial(Base):
     dose          = Column(Float)
     fd_mode       = Column(String, CheckConstraint("fd_mode IN ('DOSE','FLUX')"))
     material      = relationship('Material', lazy='joined')
-    scenario_id   = Column(String, ForeignKey('scenarios.id'))
-    material_name = Column(String, ForeignKey('materials.name'))
+    scenario_id   = Column(String, ForeignKey('scenarios.id', ondelete='cascade'))
+    material_name = Column(String, ForeignKey('materials.name',ondelete='cascade'))
 
 class ScenarioBackgroundMaterial(Base):
     """many-to-many table between scenario and material"""
@@ -182,8 +185,8 @@ class ScenarioBackgroundMaterial(Base):
     dose          = Column(Float)
     fd_mode       = Column(String, CheckConstraint("fd_mode IN ('DOSE','FLUX')"))
     material      = relationship('Material', lazy='joined')
-    scenario_id   = Column(String, ForeignKey('scenarios.id'))
-    material_name = Column(String, ForeignKey('materials.name'))
+    scenario_id   = Column(String, ForeignKey('scenarios.id',ondelete='cascade'))
+    material_name = Column(String, ForeignKey('materials.name',ondelete='cascade'))
 
 class Detector(Base):
     __tablename__= 'detectors'
@@ -205,7 +208,8 @@ class Detector(Base):
     results_translator_name  = Column(String, ForeignKey('resultsTranslators.name'))
     resultsTranslator       = relationship('ResultsTranslator')
     influences          = relationship('Influence', secondary=det_infl_assoc_tbl, lazy='joined', backref='detectors')
-    base_spectra = relationship('BaseSpectrum')
+    base_spectra : MutableSequence = relationship('BaseSpectrum')
+    base_spectra_xyz : MutableSequence = relationship('BaseSpectrumXYZ')
     bckg_spectra = relationship('BackgroundSpectrum')
 
 
@@ -243,96 +247,109 @@ class ResultsTranslator(Base):
     is_cmd_line    = Column(Boolean)
     settings       = Column(String)
 
-
-class BaseSpectrum(Base):
-    __tablename__ = 'base_spectra'
+class Spectrum_mixin():
     id            = Column(Integer, primary_key=True)
     filename      = Column(String)
-    material      = relationship('Material')
-    baseCounts    = Column(String)
+    _counts    = Column(String)
     realtime      = Column(Float)
     livetime      = Column(Float)
-    rase_sensitivity   = Column(Float)  # aka static efficiency
-    flux_sensitivity   = Column(Float)
-    detector_name = Column(String, ForeignKey('detectors.name'))
-    material_name = Column(String, ForeignKey('materials.name'))
 
-    def get_counts_as_np(self):
-        if self.is_spectrum_float():
-            return np.array([float(c) for c in self.baseCounts.split(",")])
-        else:
-            return np.array([int(float(c)) for c in self.baseCounts.split(",")])
+    @declared_attr
+    def material(cls): return relationship('Material')
+
+    @declared_attr
+    def detector_name(cls):
+        return Column(String, ForeignKey('detectors.name', ondelete='cascade'))
 
     def is_spectrum_float(self):
         """Checks if spectrum has floats in it or not"""
-        for binval in self.baseCounts.split(','):
+        for binval in self._counts.split(','):
             c = float(binval)
             if c and (c < 1 or int(c) % c):
                 return True
         return False
+
+
+    @declared_attr
+    def material_name(cls): return Column(String, ForeignKey('materials.name', ondelete='cascade'))
 
     def as_json(self, detector):
         return json.dumps([{"title": self.material_name,
                             "livetime": self.livetime,
                             "realtime": self.realtime,
                             "xeqn": [detector.ecal0, detector.ecal1, detector.ecal2],
-                            "y": [float(c) for c in self.baseCounts.split(',')],
+                            "y": [float(c) for c in self._counts.split(',')],
                             "yScaleFactor": 1,
                             }])
 
+    @property
+    def counts(self):
+        return np.array([float(c) for c in self._counts.split(",")])
+    @counts.setter
+    def counts(self, value):
+        self._counts = ','.join([str(c) for c in value])
 
-# TODO: Secondary background currently does not have flux/dose sensitivity parameters, it is a direct copy/paste from
-#  the base spectra
-class BackgroundSpectrum(Base):
-    __tablename__ = 'background_spectra'
-    id            = Column(Integer, primary_key=True)
-    filename      = Column(String)
-    material      = relationship('Material')
-    baseCounts    = Column(String)
-    realtime      = Column(Float)
-    livetime      = Column(Float)
-    detector_name = Column(String, ForeignKey('detectors.name'))
-    material_name = Column(String, ForeignKey('materials.name'))
+    #legacy
+    def get_counts_as_np(self)->Sequence[float]:
+        return np.array([float(c) for c in self._counts.split(",")])
 
-    def get_counts_as_np(self):
-        if self.is_spectrum_float():
-            return np.array([float(c) for c in self.baseCounts.split(",")])
-        else:
-            return np.array([int(float(c)) for c in self.baseCounts.split(",")])
-
-
+    #legacy
     def get_counts_as_str(self):
         if self.is_spectrum_float():
-            return ' '.join([str(float(c)) for c in self.baseCounts.split(",")])
+            return ' '.join([str(float(c)) for c in self._counts.split(",")])
         else:
-            return ' '.join([str(int(float(c))) for c in self.baseCounts.split(",")])
+            return ' '.join([str(int(float(c))) for c in self._counts.split(",")])
 
 
     def get_compressed_counts_as_str(self):
         if self.is_spectrum_float():
             return ' '.join('{:f}'.format(x) for x in
-                            compress_counts(np.array([float(c) for c in self.baseCounts.split(",")])))
+                            compress_counts(np.array([float(c) for c in self._counts.split(",")])))
         else:
             return ' '.join('{:d}'.format(x) for x in
-                            compress_counts(np.array([int(float(c)) for c in self.baseCounts.split(",")])))
+                            compress_counts(np.array([int(float(c)) for c in self._counts.split(",")])))
 
-    def is_spectrum_float(self):
-        """Checks if spectrum has floats in it or not"""
-        for binval in self.baseCounts.split(','):
-            c = float(binval)
-            if c and (c < 1 or int(c) % c):
-                return True
-        return False
+class BaseSpectrum(Spectrum_mixin,Base):
+    __tablename__ = 'base_spectra'
+    sensitivity   = Column(Float)  # aka static efficiency
 
-class MaterialWeight(Base):
-    __tablename__   = 'material_weight'
-    name            = Column(String, primary_key=True)
-    mat_name        = Column(String)
-    TPWF            = Column(Float)
-    FPWF            = Column(Float)
-    FNWF            = Column(Float)
+class BaseSpectrumXYZ(Spectrum_mixin,Base):
+    __tablename__ = 'base_spectra_xyz'
+    sensitivity   = Column(Float)  # aka static efficiency
+    x             = Column(Float)  # units of cm
+    y             = Column(Float)  # units of cm
+    z             = Column(Float)  # units of cm
+
+class BackgroundSpectrum(Spectrum_mixin,Base):
+    __tablename__ = 'background_spectra'
+
 
 class MaterialNameTranslation(Base):
     __tablename__ = 'material_translations'
     name          = Column(String, primary_key=True)
     toName        = Column(String)
+
+
+from sqlalchemy import PickleType, UniqueConstraint
+
+def are_elements_equal(x, y):
+    return x == y
+
+class DynamicModelStorage(Base):
+    __tablename__ = 'dynamic_models'
+    id = Column(Integer, primary_key=True)
+    detector_name = Column(String)
+    material_name = Column(String)
+    model_name    = Column(String)
+    model_def     = Column(JSON)
+    model = Column(PickleType(comparator=are_elements_equal))
+    __table_args__ = (UniqueConstraint('detector_name', 'material_name', 'model_name', 'model_def',
+                                       name='_customer_location_uc'),
+                      )
+
+# class ProxySource(Base): #removed for the moment, since I am trying to specify proxies in the train set instead
+#     __tablename__ = 'proxy_sources'
+#
+#     material_name = Column(String,primary_key=True)
+#     proxy         = Column(JSON) #dict
+

@@ -1,11 +1,11 @@
 ###############################################################################
-# Copyright (c) 2018-2021 Lawrence Livermore National Security, LLC.
+# Copyright (c) 2018-2022 Lawrence Livermore National Security, LLC.
 # Produced at the Lawrence Livermore National Laboratory
 #
-# Written by J. Chavez, S. Czyz, G. Kosinovsky, V. Mozin, S. Sangiorgio.
+# Written by J. Brodsky, J. Chavez, S. Czyz, G. Kosinovsky, V. Mozin, S. Sangiorgio.
 # RASE-support@llnl.gov.
 #
-# LLNL-CODE-819515
+# LLNL-CODE-819515, LLNL-CODE-829509
 #
 # All rights reserved.
 #
@@ -31,7 +31,6 @@
 
 import xml.etree.ElementTree as etree
 from src import rase_functions as Rf
-from src.utils import indent
 import numpy
 import copy
 import os.path
@@ -132,7 +131,7 @@ def insert_counts(specEl, counts):
         for element in parent.findall('ChannelData'):
             parent.remove(element)
     countsEl = etree.Element('ChannelData')
-    countstxt = ' '.join(f'{count:.0f}' for count in counts)
+    countstxt = ' '.join(f'{count:.4f}' for count in counts)
     countsEl.text = countstxt
     specEl.append(countsEl)
 
@@ -230,6 +229,28 @@ def build_base_ET(ET_orig, radid=None, uSievertsph=None, fluxValue=None, subtrac
     indent(ET.getroot())
 
     return ET
+
+
+def indent(elem, level=0):
+    '''
+    copy and paste from http://effbot.org/zone/element-lib.htm#prettyprint
+    it basically walks your tree and adds spaces and newlines so the tree is
+    printed in a nice way
+    '''
+
+    i = "\n" + level * "  "
+    if len(elem):
+        if not elem.text or not elem.text.strip():
+            elem.text = i + "  "
+        if not elem.tail or not elem.tail.strip():
+            elem.tail = i
+        for elem in elem:
+            indent(elem, level + 1)
+        if not elem.tail or not elem.tail.strip():
+            elem.tail = i
+    else:
+        if level and (not elem.tail or not elem.tail.strip()):
+            elem.tail = i
 
 
 def build_base_clean(ET_orig, radid=None, uSievertsph=None, fluxValue=None, subtraction_ET=None, subtraction_radid=None,
