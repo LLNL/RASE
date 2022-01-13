@@ -178,8 +178,6 @@ def main(args):
             yield row
 
 
-
-
     table = BeautifulTable(maxwidth=200)
     table.columns.header= columns
     for line in table.stream(run_all(), append=True):
@@ -188,17 +186,6 @@ def main(args):
         table.to_csv(config['csv_output'])
     if operations.get('show_plots'):
         run_plots(tests,config)
-
-
-
-
-
-
-
-
-
-
-
 
 
 if __name__ == '__main__':

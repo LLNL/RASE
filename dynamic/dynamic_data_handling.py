@@ -127,11 +127,13 @@ class DynamicData:
                 v = rf.parseRadMeasurement(BG_ET, bg['path'], sharedobject, '', False)
             except:
                 v = rf.parseMeasurement(BG_ET, bg['path'], sharedobject, '',requireRASESen=False)
+            quantity = float(rf.requiredElement('Quantity', BG_ET).text.strip())
             BgSpec = BackgroundSpectrum(material=bkgmat, filename=bg['path'],
-                                     realtime=v[2],
-                                     livetime=v[3],
-                                     _counts=v[0],
-                                     )
+                                        realtime=v[2],
+                                        livetime=v[3],
+                                        sensitivity=1 / quantity,
+                                        _counts=v[0],
+                                        )
             detector.bckg_spectra.append(BgSpec)
 
         for name,source in spectra_config['sources'].items():
@@ -311,22 +313,12 @@ class DynamicData:
                 raise ValueError('Spectra not found in DB and couldn\'t be created')
         # if the detector has an internal calibration source, it needs to be added with special treatment
         # NOT IMPLEMENTED RIGHT NOW, so detectors with secondary spectra of different types should replicate those
-        # # in the template, not ask DRASE to handle
+        # in the template, not ask DRASE to handle
         # if detector.includeSecondarySpectrum and detector.secondary_type == 2:
         #     secondary_spectrum = (session.query(BackgroundSpectrum).filter_by(detector_name=detector.name)).first()
         #     bkg_spectrum.append(secondary_spectrum)
         return zip(bkg_spectrum,scales)
 
-    # def set_proxy(self,material_name, proxy_dict):
-    #     session = Session()
-    #     proxy = ProxySource()
-    #     proxy.material_name=material_name
-    #     proxy.proxy = proxy_dict
-    #     session.merge(proxy)
-    #
-    # def get_proxy(self,material_name):
-    #     session=Session()
-    #     return session.query(ProxySource).filter_by(material_name=material_name).one().proxy
 
 
 

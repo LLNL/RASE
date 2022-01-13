@@ -226,14 +226,15 @@ class DynamicIDSet:
 
 
 
-        for bg_spectrum,scale in self.data.get_bg_spectra(self.detector.name, self.scenario.name):
-            scaled_counts = (bg_spectrum.counts * (self.scenario.output_period/bg_spectrum.realtime * scale )) [:self.detector.chan_count]
-            self.sampled_spectra['bg_'+bg_spectrum.material_name] = np.random.poisson(scaled_counts, size = (self.scenario.replication,int(self.scenario.n_periods),self.detector.chan_count)) #added to periodized spectra
+        for bg_spectrum, scale in self.data.get_bg_spectra(self.detector.name, self.scenario.name):
+            scaled_counts = (bg_spectrum.counts * (self.scenario.output_period / bg_spectrum.realtime *
+                                                   (scale * bg_spectrum.sensitivity)))[:self.detector.chan_count]
+            self.sampled_spectra['bg_' + bg_spectrum.material_name] = np.random.poisson(scaled_counts,
+                                                        size=(self.scenario.replication, int(self.scenario.n_periods),
+                                                              self.detector.chan_count))  # added to periodized spectra
 
-
-            bg_overall_scale = self.shortest_bg_time/bg_spectrum.realtime * scale
-            scaled_counts_overall = (bg_spectrum.counts * bg_overall_scale)[
-                            :self.detector.chan_count]
+            bg_overall_scale = self.shortest_bg_time / bg_spectrum.realtime * (scale * bg_spectrum.sensitivity)
+            scaled_counts_overall = (bg_spectrum.counts * bg_overall_scale)[:self.detector.chan_count]
             self.sampled_bg[bg_spectrum.material_name] = np.random.poisson(scaled_counts_overall)
 
     def sum_spectra(self):

@@ -322,7 +322,7 @@ class BaseSpectrumXYZ(Spectrum_mixin,Base):
 
 class BackgroundSpectrum(Spectrum_mixin,Base):
     __tablename__ = 'background_spectra'
-
+    sensitivity = Column(Float)  # aka static efficiency
 
 class MaterialNameTranslation(Base):
     __tablename__ = 'material_translations'
