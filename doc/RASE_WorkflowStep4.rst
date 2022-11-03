@@ -52,9 +52,11 @@ is compatible with the replay tool in the same manner as spectra generated in RA
 agreement with the number of replications defined by the user, but provided that the number of replications defined for a scenario is greater than the number of spectra
 imported for that scenario the RASE workflow should operate normally and correctly.
 
+|
+
 .. _rase-WorkflowStep4:
 
 .. figure:: _static/rase_WorkflowStep4.png
     :scale: 90%
 
-    Populated main RASE window showing how to generate sample spectra.
+    **Populated main RASE window showing how to generate sample spectra.**

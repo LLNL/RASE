@@ -1,11 +1,11 @@
 ###############################################################################
-# Copyright (c) 2018-2021 Lawrence Livermore National Security, LLC.
+# Copyright (c) 2018-2022 Lawrence Livermore National Security, LLC.
 # Produced at the Lawrence Livermore National Laboratory
 #
 # Written by J. Chavez, S. Czyz, G. Kosinovsky, V. Mozin, S. Sangiorgio.
 # RASE-support@llnl.gov.
 #
-# LLNL-CODE-819515
+# LLNL-CODE-841943, LLNL-CODE-829509
 #
 # All rights reserved.
 #
@@ -33,16 +33,15 @@ This module provides plotting support for RASE analysis
 """
 import glob
 import json
-from itertools import cycle
 import os
 import numpy as np
 import matplotlib
 from sqlalchemy.orm import Session
-import pandas as pd
+from uncertainties import ufloat, UFloat
 
-matplotlib.use("Qt5Agg")
-from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
-from matplotlib.backends.backend_qt5agg import FigureCanvas
+matplotlib.use("QtAgg")
+from matplotlib.backends.backend_qt import NavigationToolbar2QT as NavigationToolbar
+from matplotlib.backends.backend_qtagg import FigureCanvas
 from matplotlib.figure import Figure
 from matplotlib import rcParams
 import matplotlib.patheffects as peff
@@ -52,17 +51,20 @@ import seaborn as sns
 sns.set(font_scale=1.5)
 sns.set_style("whitegrid")
 
-from PyQt5.QtCore import pyqtSlot, Qt, QUrl
-from PyQt5.QtWidgets import QDialog, QVBoxLayout, QMessageBox
-from PyQt5.QtGui import QStandardItemModel, QStandardItem
-from PyQt5.QtWebEngineWidgets import QWebEngineView
+from PySide6.QtCore import Slot, Qt, QUrl
+from PySide6.QtWidgets import QDialog, QVBoxLayout, QMessageBox, QGridLayout, QLabel, QDialogButtonBox, QLineEdit, \
+    QCheckBox, QWidget, QComboBox
+from PySide6.QtGui import QStandardItemModel, QStandardItem, QValidator
+from PySide6.QtWebEngineWidgets import QWebEngineView
 
-from .ui_generated import ui_view_spectra_dialog, ui_results_plotting_dialog, ui_results_plotting_dialog_3d
+from .ui_generated import ui_view_spectra_dialog, ui_results_plotting_dialog, ui_results_plotting_dialog_3d, \
+    ui_fit_params_settings_dialog
 from src.rase_functions import calc_result_uncertainty, get_sample_dir, readSpectrumFile
 import src.s_curve_functions as sCurve
 from src.utils import get_bundle_dir, natural_keys
 from src.base_spectra_dialog import SharedObject, ReadFileObject
 from src.rase_settings import RaseSettings
+from src.qt_utils import DoubleValidatorInfinity, DoubleValidator
 
 
 class BaseSpectraViewerDialog(ui_view_spectra_dialog.Ui_Dialog, QDialog):
@@ -90,16 +92,16 @@ class BaseSpectraViewerDialog(ui_view_spectra_dialog.Ui_Dialog, QDialog):
     def plot_spectrum(self):
         baseSpectrum = self.baseSpectra[self.index]
         with open(self.json_file, "w") as json_file:
-            print(baseSpectrum.as_json(self.detector), file=json_file)
+            print(baseSpectrum.as_json(), file=json_file)
         self.browser.reload()
 
-    @pyqtSlot(bool)
+    @Slot(bool)
     def on_prevMaterialButton_clicked(self, checked):
         if self.index > 0:
             self.index = self.index - 1
             self.plot_spectrum()
 
-    @pyqtSlot(bool)
+    @Slot(bool)
     def on_nextMaterialButton_clicked(self, checked):
         if self.index < len(self.baseSpectra)-1:
             self.index = self.index + 1
@@ -149,13 +151,13 @@ class SampleSpectraViewerDialog(ui_view_spectra_dialog.Ui_Dialog, QDialog):
             print(json_str, file=json_file)
         self.browser.reload()
 
-    @pyqtSlot(bool)
+    @Slot(bool)
     def on_prevMaterialButton_clicked(self, checked):
         if self.index >= 0:
             self.index = self.index - 1
             self.plot_spectrum()
 
-    @pyqtSlot(bool)
+    @Slot(bool)
     def on_nextMaterialButton_clicked(self, checked):
         if self.index < len(self.file_list)-1:
             self.index = self.index + 1
@@ -234,11 +236,13 @@ class ResultPlottingDialog(ui_results_plotting_dialog.Ui_Dialog, QDialog):
         self.y_err = y_err
         self.titles = titles
         self.labels = labels
+        self.handles = []
         self.replications = replications
-        self.palette = None
-        # seaborn not compatible with lmfit
-        self.color_array = [['b', "#E5E7E9"], ['r', "#D5DbDb"], ['g', "#CCD1D1"],
-                            ['m', "#CACFD2"], ['c', "#AAB7B8"], ['k', "#99A3A4"]]
+        self.palette = iter(sns.color_palette())
+        self.params = [None for _ in range(len(self.x))]
+        # # seaborn not compatible with lmfit
+        # self.color_array = [['b', "#E5E7E9"], ['r', "#D5DbDb"], ['g', "#CCD1D1"],
+        #                     ['m', "#CACFD2"], ['c', "#AAB7B8"], ['k', "#99A3A4"]]
 
         self.fig = Figure()
         self.canvas = FigureCanvas(self.fig)
@@ -246,12 +250,6 @@ class ResultPlottingDialog(ui_results_plotting_dialog.Ui_Dialog, QDialog):
         self.ax = self.fig.add_subplot(111)
 
         self.navi_toolbar = NavigationToolbar(self.canvas, self.widget)
-
-        self.alphaCBox.addItem('\u03B1 = 0.01 (99%)', 0.01)
-        self.alphaCBox.addItem('\u03B1 = 0.05 (95%)', 0.05)
-        self.alphaCBox.addItem('\u03B1 = 0.1 (90%)', 0.1)
-        self.alphaCBox.addItem('\u03B1 = 0.32 (68%)', 0.32)
-        self.alphaCBox.setCurrentIndex(1)
 
         self.window_layout = QVBoxLayout(self.widget)
         self.window_layout.addWidget(self.canvas)
@@ -264,7 +262,7 @@ class ResultPlottingDialog(ui_results_plotting_dialog.Ui_Dialog, QDialog):
             item.setCheckable(True)
             model.appendRow(item)
         self.lstCurves.setModel(model)
-        if not self.labels:
+        if len(self.labels) == 1:
             self.lstCurves.hide()
             self.lblSelectCurves.hide()
 
@@ -290,25 +288,19 @@ class ResultPlottingDialog(ui_results_plotting_dialog.Ui_Dialog, QDialog):
         """
         Draws the initial plot of all the data
         """
-        self.palette = cycle(sns.color_palette())
+        self.palette = iter(sns.color_palette())
         self.ax.clear()
 
         if self.y:
             self.ax.set_ylabel(self.titles[1])
-            if self.labels:
-                for i, (x, y, label) in enumerate(zip(self.x, self.y, self.labels)):
-                    y_err = np.transpose(self.y_err[i]) if i < len(self.y_err) else None
-                    x_err = np.transpose(self.x_err[i]) if i < len(self.x_err) else None
-                    color = next(self.palette)
-                    self.ax.errorbar(x, y, yerr=y_err, xerr=x_err,
-                                     color=color, ecolor=color, fmt='o', capsize=3, label=label)
-                self.ax.legend(bbox_to_anchor=(1.04, 1), loc="upper left", fontsize='xx-small')
-            else:
-                y_err = np.transpose(self.y_err[0]) if self.y_err else None
-                x_err = np.transpose(self.x_err[0]) if self.x_err else None
+            for i, (x, y, label) in enumerate(zip(self.x, self.y, self.labels)):
+                y_err = np.transpose(self.y_err[i]) if i < len(self.y_err) else None
+                x_err = np.transpose(self.x_err[i]) if i < len(self.x_err) else None
                 color = next(self.palette)
-                self.ax.errorbar(self.x[0], self.y[0], yerr=y_err, xerr=x_err,
-                                 color=color, ecolor=color, fmt='o', capsize=3)
+                self.ax.errorbar(x, y, yerr=y_err, xerr=x_err,
+                                 color=color, ecolor=color, fmt='o', capsize=3, label=label)
+            if len(self.labels) > 1:
+                self.ax.legend(bbox_to_anchor=(1.04, 1), loc="upper left", fontsize='xx-small')
         else:
             # min_n_entries = min([len(k) for k in self.x])
             # n_bins = 10 if min_n_entries <= 10 else int(np.sqrt(min_n_entries))
@@ -324,13 +316,20 @@ class ResultPlottingDialog(ui_results_plotting_dialog.Ui_Dialog, QDialog):
             self.ax.set_yscale('log')
         self.canvas.draw()
 
-    @pyqtSlot(bool)
+    @Slot(bool)
+    def on_btnEditParams_clicked(self, checked):
+        dialog = FitParamsSettings(self)
+        if dialog.exec():
+            self.params = dialog.params
+
+    @Slot(bool)
     def plotSelection(self, checked):
         """
         Executes after the "plot S-curve(s)" button has been pressed and checkboxes have been checked
         (if there are any to be checked)
         """
-        self.ax_text = []
+        self.handles = []
+        self.palette = iter(sns.color_palette())
 
         # to ensure zip and input data to s-curve function work as intended even if there is no data in the error vals
         if not self.x_err:
@@ -342,88 +341,109 @@ class ResultPlottingDialog(ui_results_plotting_dialog.Ui_Dialog, QDialog):
         else:
             y_error = self.y_err
 
-        if self.labels:
-            self.ax.clear()
-            self.draw()
-            for index, (lab, x_vals, y_vals, err_x, err_y, repl) in \
-                    enumerate(zip(self.labels, self.x, self.y, x_error, y_error, self.replications)):
-                if str(lab) in self.get_selected_labels():
-                    color, color_hash = self.color_array[index % 6]
-                    self.sCurveGen(lab, x_vals, y_vals, err_x, err_y, repl, color, color_hash)
-        else:
-            self.ax.clear()
-            self.sCurveGen('Data', self.x[0], self.y[0], x_error[0], y_error[0], self.replications[0], 'b', '#e5e7e9')
+        self.ax.clear()
+        for i, lab in enumerate([str(l) for l in self.labels]):
+            if lab in self.get_selected_labels():
+                color = next(self.palette)
+                new_params = self.sCurveGen(lab, self.x[i], self.y[i], x_error[i], y_error[i],
+                                            self.replications[i], color, self.params[i])
+                if new_params:
+                    self.params[i] = new_params
 
-    def sCurveGen(self, label, x, y, x_err, y_err, repl, color, color_hash):
+    def sCurveGen(self, label, x, y, x_err, y_err, repl, color, params):
+        """
+        S-curve fitting, analysis, and plotting
+        """
 
-        # TODO: Automatically trim off all (x, y) pairs that are above the first 1 and below the last 0 to prevent
-        #  fits from failing to converge or giving wonky results
         if x_err[0] is None:
             x_err = [None] * len(x)
         if y_err[0] is None:
             y_err = [None] * len(y)
 
-        id_mark = self.idThreshBox.value() / 100
-        alpha = self.alphaCBox.itemData(self.alphaCBox.currentIndex())
-        B = 1
-        Q = 1
-        if self.combo_fitspace.currentText() == 'Logarithmic':
-            logfit = True
-        else:
-            logfit = False
-
-        errorbars = np.absolute([np.subtract((p, p), calc_result_uncertainty(p, n, alpha))
+        # compute fit weights from uncertainty in the data points
+        errorbars = np.absolute([np.subtract((p, p), calc_result_uncertainty(p, n, alpha=0.32))
                                  for (p, n) in zip(y, repl)])
         weights = np.array([1. / ((h + l) / 2) for (h, l) in errorbars])  # weights by half total error bar length
         if np.isnan(np.sum(weights)):
             weights = None
 
-        r = sCurve.s_fit(x, y, weights, [B, Q], logfit)
-        p = [r.params[u].value for u in r.var_names]
-        try:
-            (a1, a2, B, Q) = sCurve.correlated_values(p, r.covar)
-        except:
-            (a1, a2, B, Q) = (0, 0, 0, 0)
+        # if no user or previous parameters, use defaults and improve initial guesses based on data
+        if not params:
+            params = sCurve.get_default_fit_parameters()
+            # set initial guess for 'M' parameter to the x value of the point closest to PID = 0.5
+            params['M'].set(x[y.index(min(y, key=lambda i: abs(0.5 - i)))], min=min(x)/100, max=max(x)*100)
+            # set initial guess for 'a1' and 'a2' parameter to the values at the extremes of the array
+            y_left = y[x.index(min(x))]
+            y_right = y[x.index(max(x))]
+            params["a1"].set(y_right, min=y_right-0.3, max=y_right+0.3)
+            params["a2"].set(y_left, min=y_left-0.3, max=y_left+0.3)
+            # this one is purely empirical from typical s-curves in RASE work
+            params['B'].set(params['M']/10.)
 
-        self.txtFitResults.append("------------\n" + str(label) + "\n")
-        self.txtFitResults.append(r.fit_report(show_correl=False))
-        self.ax_text.append(label)
-        self.ax.plot(x, y, 'o', color=color, label='_nolegend_')
-
-        if r.covar is not None:
-            r.plot_fit(datafmt=' ', fitfmt=color + '-', yerr=[0] * (len(y)), ax=self.ax, numpoints=150000)
-            x_dense = np.linspace(min(x), max(x), 150000)
-            delta_y = r.eval_uncertainty(x=x_dense)
-            r_best = r.model.eval(r.params, x=x_dense)
-            if self.check_confint.isChecked():
-                self.ax.fill_between(x_dense, r_best - delta_y, r_best + delta_y, color=color_hash)
+        # plot the data points
+        if y_err[0] is not None:
+            line = self.ax.errorbar(x, y, color=color, yerr=np.transpose(y_err), fmt='o', capsize=3, label=label)
         else:
-            # no confidence band to plot, so don't make fit
-            self.ax.plot(x, y, color + 'o')
+            line, = self.ax.plot(x, y, color=color, fmt='o', label=label)
+        self.handles.append(line)
 
-        if not y_err[0] is None:
-            self.ax.errorbar(x, y, color=color, yerr=np.transpose(y_err), fmt='none', capsize=3)
+        r = None
+        if all([(not p.vary) for p in params.values()]):
+            # all parameters are fixed, so can't really do fit
+            x_dense = np.linspace(min(x), max(x), 150000)
+            y_dense = sCurve.boltzmann_lin(x_dense, *[p.value for p in params.values()])
+            line, = self.ax.plot(x_dense, y_dense, '-', color=color, label='S-curve (fixed params)')
+            self.handles.append(line)
+            self.txtFitResults.append("------------\n" + str(label) + "\n")
+            self.txtFitResults.append('S-curve plotted from fixed parameters.')
+        else:
+            r = sCurve.s_fit(x, y, weights=weights, params=params)
+            self.txtFitResults.append("------------\n" + str(label) + "\n")
+            self.txtFitResults.append(r.fit_report(show_correl=False))
 
-        if self.check_idshow.isChecked():
-            thresh_mark_nom, thresh_mark_stdev = sCurve.thresh_mark(a1, a2, B, Q, id_mark, logfit)
-            if thresh_mark_nom == thresh_mark_stdev == 0:
-                pass
-            else:
-                self.ax.plot(thresh_mark_nom, id_mark, color + 'd', label=str(id_mark * 100) + '%: ' +
-                                                                          str(thresh_mark_nom), markersize=10,
-                             path_effects=[peff.Stroke(linewidth=2, foreground='black')])
-                if self.titles[0].split(' ')[0] == 'Dose':
-                    self.ax_text.append(str(id_mark * 100) + '%, Dose =\n' +
-                                        str(sCurve.ufloat(thresh_mark_nom, thresh_mark_stdev)) + ' \u00B5Sv/hr')
-                elif self.titles[0].split(' ')[0] == 'Flux':
-                    self.ax_text.append(str(id_mark * 100) + '%, Flux =\n' +
-                                        str(sCurve.ufloat(thresh_mark_nom,
-                                                          thresh_mark_stdev)) + ' (\u03B3/(cm\u00B2s))')
-                else:
-                    self.ax_text.append(str(id_mark * 100) + '%, ' + self.titles[0].split(' ')[0] + ' = ' +
-                                        str(sCurve.ufloat(thresh_mark_nom, thresh_mark_stdev)))
+        if r:   # if fit happened
+            if not r.success:
+                QMessageBox.information(self, 'Information', 'Fit did not converge. Perhaps not enough points or '
+                                                             "points don\'t follow a Sigmoid curve.")
 
-        self.ax.legend(self.ax_text, bbox_to_anchor=(1.04, 1), loc="upper left", fontsize='xx-small')
+            if r.covar is not None:
+                x_dense = np.linspace(min(x), max(x), 150000)
+
+                # plot fit line
+                r_best = r.model.eval(r.params, x=x_dense)
+                line, = self.ax.plot(x_dense, r_best, '-', color=color, label='S-curve fit')
+                self.handles.append(line)
+
+                # plot confidence band
+                delta_y = r.eval_uncertainty(x=x_dense)
+                if self.check_confint.isChecked() and not np.isnan(delta_y).any():
+                    line = self.ax.fill_between(x_dense, r_best - delta_y, r_best + delta_y,
+                                                color=color, alpha=0.3, label='68% fit confidence band')
+                    self.handles.append(line)
+
+                # compute and plot id threshold estimate
+                if self.check_idshow.isChecked() and r.success:
+                    id_mark = self.idThreshBox.value() / 100
+                    thres_mark = sCurve.boltzmann_inverse(id_mark,
+                                                          ufloat(r.params['a1'].value, r.params['a1'].stderr),
+                                                          ufloat(r.params['a2'].value, r.params['a2'].stderr),
+                                                          ufloat(r.params['B'].value, r.params['B'].stderr),
+                                                          ufloat(r.params['M'].value, r.params['M'].stderr))
+                    if (not isinstance(thres_mark, UFloat)) and np.isnan(thres_mark):
+                        QMessageBox.information(self, 'Information', 'Cannot compute the ID threshold estimate. ')
+                    else:
+                        line, = self.ax.plot(thres_mark.nominal_value, id_mark, 'd', color=color, markersize=10,
+                                             path_effects=[peff.Stroke(linewidth=2, foreground='black')])
+                        if self.titles[0].split(' ')[0] == 'Dose':
+                            id_label = str(id_mark * 100) + '%, Dose =\n' + str(thres_mark) + ' \u00B5Sv/hr'
+                        elif self.titles[0].split(' ')[0] == 'Flux':
+                            id_label = str(id_mark * 100) + '%, Flux =\n' + str(thres_mark) + ' (\u03B3/(cm\u00B2s))'
+                        else:
+                            id_label = str(id_mark * 100) + '%, ' + self.titles[0].split(' ')[0] + ' = ' + str(thres_mark)
+                        line.set_label(id_label)
+                        self.handles.append(line)
+
+        self.ax.legend(handles=self.handles, bbox_to_anchor=(1.04, 1), loc="upper left", fontsize='xx-small')
         self.ax.set_title(None)
         self.ax.set_xscale('log')
         self.ax.set_ylim([-0.1, 1.1])
@@ -431,3 +451,96 @@ class ResultPlottingDialog(ui_results_plotting_dialog.Ui_Dialog, QDialog):
         self.ax.set_xlabel(self.titles[0])
         self.ax.set_ylabel(self.titles[1])
         self.canvas.draw()
+
+        return r.params if (r and r.success) else None
+
+
+class FitParamsSettings(ui_fit_params_settings_dialog.Ui_Dialog, QDialog):
+    """Simple Dialog to customize the initial values and ranges of the s-curve fit parameters
+
+    :param parent: the parent dialog, from which the current parameters are imported
+    """
+    def __init__(self, parent):
+        QDialog.__init__(self, parent)
+        self.setupUi(self)
+        self.params = parent.params
+
+        self.comboList.setSizeAdjustPolicy(QComboBox.AdjustToContents)
+        model = parent.lstCurves.model()
+        self.sel_indexes = [index for index in range(model.rowCount()) if model.item(index).checkState()]
+        self.sel_txts = [model.item(index).text() for index in range(model.rowCount()) if model.item(index).checkState()]
+        self.comboList.addItems(self.sel_txts)
+
+        self.pages = []
+        self.pages_layouts = []
+        self.pages_widgets = []
+        for i, param_index in enumerate(self.sel_indexes):
+            current_page = QWidget()
+            self.pages.append(current_page)
+            current_layout = QGridLayout(current_page)
+            self.pages_layouts.append(current_layout)
+
+            for k, label in enumerate(['Name', 'Fix', 'Initial Guess', 'Min', 'Max']):
+                current_layout.addWidget(QLabel(label, current_page), 0, k)
+            self.stackedWidget.addWidget(current_page)
+
+            if not self.params[param_index]:
+                self.params[param_index] = sCurve.get_default_fit_parameters()
+            params = self.params[param_index]
+
+            pw_dict = {'pname': {}, 'fix': {}, 'value': {}, 'min': {}, 'max': {}}
+            self.pages_widgets.append(pw_dict)
+            for j, name in enumerate(params, 1):
+                pw_dict['pname'][name] = QLineEdit(name)
+                current_layout.addWidget(pw_dict['pname'][name], j, 0)
+
+                pw_dict['fix'][name] = QCheckBox()
+                pw_dict['fix'][name].setChecked(not params[name].vary)
+                current_layout.addWidget(pw_dict['fix'][name], j, 1)
+
+                pw_dict['value'][name] = QLineEdit(f'{params[name].value:.4g}')
+                pw_dict['value'][name].setValidator(DoubleValidator(pw_dict['value'][name]))
+                pw_dict['value'][name].validator().validationChanged.connect(self.handle_validation_change)
+                current_layout.addWidget(pw_dict['value'][name], j, 2)
+
+                pw_dict['min'][name] = QLineEdit(f'{params[name].min:.4g}')
+                pw_dict['min'][name].setValidator(DoubleValidatorInfinity(pw_dict['min'][name]))
+                pw_dict['min'][name].validator().validationChanged.connect(self.handle_validation_change)
+                current_layout.addWidget(pw_dict['min'][name], j, 3)
+
+                pw_dict['max'][name] = QLineEdit(f'{params[name].max:.4g}')
+                pw_dict['max'][name].setValidator(DoubleValidatorInfinity(pw_dict['max'][name]))
+                pw_dict['max'][name].validator().validationChanged.connect(self.handle_validation_change)
+                current_layout.addWidget(pw_dict['max'][name], j, 4)
+
+        self.comboList.currentIndexChanged.connect(self.change_displayed_params)
+
+    @Slot(int)
+    def change_displayed_params(self, index):
+        self.stackedWidget.setCurrentIndex(index)
+
+    @Slot(QValidator.State)
+    def handle_validation_change(self, state):
+        if state == QValidator.Invalid:
+            color = 'red'
+        elif state == QValidator.Intermediate:
+            color = 'gold'
+        elif state == QValidator.Acceptable:
+            color = 'green'
+        sender = self.sender().parent()
+        sender.setStyleSheet(f'border: 2px solid {color}')
+        # QtCore.QTimer.singleShot(1000, lambda: sender.setStyleSheet(''))
+
+    @Slot()
+    def accept(self):
+        """
+        Object-level `params` variable is updated from the GUI values
+        """
+        for k, param_index in enumerate(self.sel_indexes):
+            for name in self.params[param_index]:
+                value = float(self.pages_widgets[k]['value'][name].text())
+                bound_min = float(self.pages_widgets[k]['min'][name].text())
+                bound_max = float(self.pages_widgets[k]['max'][name].text())
+                vary = not self.pages_widgets[k]['fix'][name].isChecked()
+                self.params[param_index][name].set(value, min=bound_min, max=bound_max, vary=vary)
+        return QDialog.accept(self)

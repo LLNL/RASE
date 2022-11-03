@@ -1,11 +1,11 @@
 ###############################################################################
-# Copyright (c) 2018-2021 Lawrence Livermore National Security, LLC.
+# Copyright (c) 2018-2022 Lawrence Livermore National Security, LLC.
 # Produced at the Lawrence Livermore National Laboratory
 #
 # Written by J. Chavez, S. Czyz, G. Kosinovsky, V. Mozin, S. Sangiorgio.
 # RASE-support@llnl.gov.
 #
-# LLNL-CODE-819515
+# LLNL-CODE-841943, LLNL-CODE-829509
 #
 # All rights reserved.
 #
@@ -33,8 +33,8 @@ This module allows user to change program settings such as the data directory
 and sampling algorithm
 """
 
-from PyQt5.QtCore import pyqtSlot
-from PyQt5.QtWidgets import QDialog, QFileDialog, QMessageBox
+from PySide6.QtCore import Slot
+from PySide6.QtWidgets import QDialog, QFileDialog, QMessageBox
 
 from src import sampling_algos
 from src.rase_settings import RaseSettings
@@ -71,7 +71,7 @@ class SettingsDialog(ui_prefs_dialog.Ui_Dialog, QDialog):
         self.algorithmSelected = False
         self.downSapmplingAlgoComboBox.currentIndexChanged.connect(self.chooseSamplingAlgo)
 
-    @pyqtSlot(bool)
+    @Slot(bool)
     def on_btnBrowseDataDir_clicked(self, checked):
         """
         Selects Data Directory
@@ -91,7 +91,7 @@ class SettingsDialog(ui_prefs_dialog.Ui_Dialog, QDialog):
         self.algorithmSelected = True
 
 
-    @pyqtSlot()
+    @Slot()
     def accept(self):
         if self.dataDirectoryChanged:
             self.settings.setDataDirectory(os.path.normpath(self.txtDataDir.text()))

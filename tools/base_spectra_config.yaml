@@ -1,0 +1,41 @@
+# Expected yaml fields:
+# measurement_spectrum_xpath
+# realtime_xpath
+# livetime_xpath
+# calibration
+# subtraction_spectrum_xpath (optional)
+
+Generic N42 2012: &generic
+  measurement_spectrum_xpath: ./RadMeasurement[MeasurementClassCode="Foreground"]/Spectrum
+  realtime_xpath: ./RadMeasurement[MeasurementClassCode="Foreground"]/RealTimeDuration
+  livetime_xpath: ./RadMeasurement[MeasurementClassCode="Foreground"]/Spectrum/LiveTimeDuration
+  subtraction_spectrum_xpath: ./RadMeasurement[MeasurementClassCode="Foreground"]/Spectrum
+  calibration: ./EnergyCalibration/CoefficientValues
+  additionals:
+    - ./RadMeasurement[MeasurementClassCode="Background"]
+    - ./RadMeasurement[MeasurementClassCode="IntrinsicActivity"]
+Kromek:
+  <<: *generic
+  calibration: "Replace this text with your instrument's calibration coefficients."
+  
+Radseeker:
+  <<: *generic
+  calibration: ./EnergyCalibration[@id="CS1"]/CoefficientValues
+  
+Symetrica:
+  measurement_spectrum_xpath: ./RadMeasurement[@id="ForegroundMeasureSum"]/Spectrum
+  subtraction_spectrum_xpath: ./RadMeasurement[@id="ForegroundMeasureSum"]/Spectrum
+  realtime_xpath: ./RadMeasurement[@id="ForegroundMeasureSum"]/RealTimeDuration
+  livetime_xpath: ./RadMeasurement[@id="ForegroundMeasureSum"]/Spectrum/LiveTimeDuration
+  calibration: ./EnergyCalibration[contains(@id,"ECalGamma")]/CoefficientValues
+
+Verifinder: &Verifinder
+  measurement_spectrum_xpath: ./Measurement/DetectorData/DetectorMeasurement/SpectrumMeasurement/Spectrum[SourceType="Item"]
+  subtraction_spectrum_xpath: ./Measurement/DetectorData/DetectorMeasurement/SpectrumMeasurement/Spectrum[SourceType="Item"]
+  realtime_xpath: ./Measurement/DetectorData/DetectorMeasurement/SpectrumMeasurement/Spectrum[SourceType="Item"]/RealTime
+  livetime_xpath: ./Measurement/DetectorData/DetectorMeasurement/SpectrumMeasurement/Spectrum[SourceType="Item"]/LiveTime
+  calibration: ./EnergyCalibration[contains(@id,"ECalGamma")]/CoefficientValues
+
+Verifinder_alt_config:
+  <<: *Verifinder
+  calibration: ./Measurement/DetectorData/DetectorMeasurement/SpectrumMeasurement/Spectrum[SourceType="Item"]/Calibration/Equation/Coefficients

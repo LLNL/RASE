@@ -1,11 +1,11 @@
 ###############################################################################
-# Copyright (c) 2018-2021 Lawrence Livermore National Security, LLC.
+# Copyright (c) 2018-2022 Lawrence Livermore National Security, LLC.
 # Produced at the Lawrence Livermore National Laboratory
 #
-# Written by J. Chavez, S. Czyz, G. Kosinovsky, V. Mozin, S. Sangiorgio.
+# Written by J. Brodsky, J. Chavez, S. Czyz, G. Kosinovsky, V. Mozin, S. Sangiorgio.
 # RASE-support@llnl.gov.
 #
-# LLNL-CODE-819515
+# LLNL-CODE-841943, LLNL-CODE-829509
 #
 # All rights reserved.
 #
@@ -29,39 +29,46 @@
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ###############################################################################
 
-import xml.etree.ElementTree as etree
+from typing import Union
+from lxml import etree
 from src import rase_functions as Rf
+from src.rase_functions import get_ET_from_file
 from src.utils import indent
 import numpy
 import copy
 import os.path
+from glob import glob
 import re
+from mako.template import Template
+
+base_template = '''<?xml version="1.0"?>
+<RadInstrumentData>
+  <RadMeasurement id="Foreground">
+    <RealTimeDuration>${realtime}</RealTimeDuration>
+    <Spectrum>
+      <LiveTimeDuration Unit="sec">${livetime}</LiveTimeDuration>
+      <ChannelData>${spectrum}</ChannelData>
+      ${RASE_sens} ${FLUX_sens}
+    </Spectrum>
+  </RadMeasurement>
+  <EnergyCalibration>
+    <CoefficientValues>${ecal}</CoefficientValues>
+  </EnergyCalibration>
+%for line in additional.splitlines():
+  ${line}
+%endfor${additional}
+</RadInstrumentData>
+'''
+
+# Expected yaml fields:
+# measurement_spectrum_xpath
+# realtime_xpath
+# livetime_xpath
+# calibration
+# subtraction_spectrum_xpath (optional)
+# secondary_spectrum_xpath (optional)
 
 
-def remove_control_characters(xml):
-    def str_to_int(s, default, base=10):
-        if int(s, base) < 0x10000:
-            return chr(int(s, base))
-        return default
-
-    xml = re.sub(r"&#(\d+);?", lambda c: str_to_int(c.group(1), c.group(0)), xml)
-    xml = re.sub(r"&#[xX]([0-9a-fA-F]+);?", lambda c: str_to_int(c.group(1), c.group(0), base=16), xml)
-    xml = re.sub(r"[\x00-\x08\x0b\x0e-\x1f\x7f]", "", xml)
-    return xml
-
-
-def insert_Sensitivity(specElement, Rsens, flag):
-    """ Adds RASE Sensitivity to a Spectrum element
-    :param specElement:
-    :param Rsens:
-    :return:
-    """
-    existing_rsens = specElement.findall(flag)
-    for rsens in existing_rsens:
-        specElement.remove(rsens)
-    RsensElement = etree.Element(flag)
-    RsensElement.text = str(Rsens)
-    specElement.append(RsensElement)
 
 
 def uncompressCountedZeroes(counts):
@@ -117,7 +124,7 @@ def subtract_spectra(specEl_meas, specEl_bkg):
     livetime_b = get_livetime(specEl_bkg)
     counts_b = get_counts(specEl_bkg)
     counts_s = counts_m - (counts_b) * (livetime_m / livetime_b)
-    counts_s[counts_s < 0] = 0
+
     return counts_s
 
 
@@ -132,33 +139,9 @@ def insert_counts(specEl, counts):
         for element in parent.findall('ChannelData'):
             parent.remove(element)
     countsEl = etree.Element('ChannelData')
-    countstxt = ' '.join(f'{count:.0f}' for count in counts)
+    countstxt = ' '.join(f'{count:.4f}' for count in counts)
     countsEl.text = countstxt
     specEl.append(countsEl)
-
-
-def get_container(ET, id=None, containername='RadMeasurement'):
-    """
-    Retrieves a RadMeasurement object from the ElementTree (or ET root) by id. id can be an int, picking that index
-    from the list of RadMeasurements, or a string to compare to the "id" attribute of the RadMeasurement element.
-    :param ET:
-    :param id:
-    :return:
-    """
-    if id is None: id = 1
-    Rf.requiredElement(containername, ET)  # require that RadMeasurement exists
-    rads = ET.findall(f".//{containername}")
-    return_rads = []
-    for rad in rads:
-        if isinstance(id, str) and id in rad.get('id', []):
-            return_rads.append(rad)
-    if not return_rads:
-        try:
-            return rads[id - 1]
-        except TypeError:  # id is probably a string
-            raise Rf.BaseSpectraFormatException(f'Cannot find {containername} with id/index {id}')
-    assert len(return_rads) == 1
-    return return_rads[0]
 
 
 def calc_RASE_Sensitivity(counts, livetime, source_act_fact):
@@ -173,125 +156,78 @@ def calc_RASE_Sensitivity(counts, livetime, source_act_fact):
     """
     return (counts.sum() / livetime) / source_act_fact
 
-
-def build_base_ET(ET_orig, radid=None, uSievertsph=None, fluxValue=None, subtraction_ET=None, subtraction_radid=None,
-                  containername='RadMeasurement', spectrum_id=None, subtraction_spectrum_id=None, transform=None):
-    '''
-    Old base building core that produces output N42s with all original content except an updated RadMeasurement.
-    :param ET_orig:
-    :param radid:
-    :param uSievertsph:
-    :param subtraction_ET:
-    :param subtraction_radid:
-    :param containername:
-    :param spectrum_id:
-    :param subtraction_spectrum_id:
-    :return:
-    '''
-    ET = copy.deepcopy(ET_orig)
-    Rf.strip_namespaces(ET)
-    parent_map = {c: p for p in ET.iter() for c in p}
-    radElement = get_container(ET.getroot(), radid, containername)
-    try:
-        specElement = get_container(radElement, spectrum_id, 'Spectrum')
-    except Rf.BaseSpectraFormatException:
-        specElement = get_container(radElement, 1, 'Spectrum')
-    counts = get_counts(specElement)
-    if subtraction_ET:
-        subtraction_ET_clone = copy.deepcopy(subtraction_ET)
-        Rf.strip_namespaces(subtraction_ET_clone)
-        radElement_b = get_container(subtraction_ET_clone.getroot(), subtraction_radid, containername)
-        try:
-            specElement_b = get_container(radElement_b, subtraction_spectrum_id, 'Spectrum')
-        except Rf.BaseSpectraFormatException:
-            specElement_b = get_container(radElement_b, 1, 'Spectrum')
-        counts = subtract_spectra(specElement, specElement_b)
-
-    for parent in radElement.findall('.//Spectrum/..'):
-        for element in parent.findall('Spectrum'):
-            parent.remove(element)
-    radElement.append(specElement)
-    if (transform):
-        counts = transform(counts)
-    insert_counts(specElement, counts)
-    livetime = get_livetime(specElement)
-    if uSievertsph:
-        Rsens = calc_RASE_Sensitivity(counts, livetime, uSievertsph)
-        insert_Sensitivity(specElement, Rsens, 'RASE_Sensitivity')
-    if fluxValue:
-        Rsens = calc_RASE_Sensitivity(counts, livetime, fluxValue)
-        insert_Sensitivity(specElement, Rsens, 'FLUX_Sensitivity')
-    if not (uSievertsph or fluxValue):
-        Rsens = 1
-        insert_Sensitivity(specElement, Rsens, 'RASE_Sensitivity')
-    parent = parent_map[radElement]
-    parent.remove(radElement)
-    parent.insert(0, radElement)
-    indent(ET.getroot())
-
-    return ET
-
-
-def build_base_clean(ET_orig, radid=None, uSievertsph=None, fluxValue=None, subtraction_ET=None, subtraction_radid=None,
-                     containername='RadMeasurement', spectrum_id=None, subtraction_spectrum_id=None, transform=None):
-    '''
-    New base building core that produces a "clean" N42 with only the RadMeasurement.
-    :param ET_orig:
-    :param radid:
-    :param uSievertsph:
-    :param fluxValue:
-    :param subtraction_ET:
-    :param subtraction_radid:
-    :param containername:
-    :param spectrum_id:
-    :param subtraction_spectrum_id:
-    :return:
-    '''
-    # FIXME: The secondary spectrum is not propagated to the new base spectrum
-    ET = copy.deepcopy(ET_orig)
-    Rf.strip_namespaces(ET)
-    radElement = get_container(ET.getroot(), radid, containername)
-    try:
-        specElement = get_container(radElement, spectrum_id, 'Spectrum')
-    except Rf.BaseSpectraFormatException:
-        specElement = get_container(radElement, 1, 'Spectrum')
-    counts = get_counts(specElement)
-    if subtraction_ET:
-        subtraction_ET_clone = copy.deepcopy(subtraction_ET)
-        Rf.strip_namespaces(subtraction_ET_clone)
-        radElement_b = get_container(subtraction_ET_clone.getroot(), subtraction_radid, containername)
-        try:
-            specElement_b = get_container(radElement_b, subtraction_spectrum_id, 'Spectrum')
-        except Rf.BaseSpectraFormatException:
-            specElement_b = get_container(radElement_b, 1, 'Spectrum')
-        counts = subtract_spectra(specElement, specElement_b)
-
-    for parent in radElement.findall('.//Spectrum/..'):
-        for element in parent.findall('Spectrum'):
-            parent.remove(element)
-    if transform:
-        counts = transform(counts)
-
-    newroot = etree.Element(ET.getroot().tag)
-    newroot.insert(0, radElement)
-    radElement.insert(0, specElement)
-    livetime = get_livetime(specElement)
-    insert_counts(specElement, counts)
+def sensitivity_text(counts, livetime, uSievertsph = None, fluxValue = None, ):
     # TODO: Make so that if the user puts nothing in dose or flux an error gets thrown
+    RASE_sensitivity = ''
+    FLUX_sensitivity = ''
     if uSievertsph:
         Rsens = calc_RASE_Sensitivity(counts, livetime, uSievertsph)
-        insert_Sensitivity(specElement, Rsens, 'RASE_Sensitivity')
+        RASE_sensitivity = f'<RASE_Sensitivity>{Rsens}</RASE_Sensitivity>'
     if fluxValue:
         Rsens = calc_RASE_Sensitivity(counts, livetime, fluxValue)
-        insert_Sensitivity(specElement, Rsens, 'FLUX_Sensitivity')
+        FLUX_sensitivity = f'<FLUX_Sensitivity>{Rsens}</FLUX_Sensitivity>'
     if not (uSievertsph or fluxValue):
         Rsens = 1
-        insert_Sensitivity(specElement, Rsens, 'RASE_Sensitivity')
-        insert_Sensitivity(specElement, Rsens, 'FLUX_Sensitivity')
+        RASE_sensitivity = f'<RASE_Sensitivity>{Rsens}</RASE_Sensitivity>'
+        FLUX_sensitivity = f'<FLUX_Sensitivity>{Rsens}</FLUX_Sensitivity>'
+    return RASE_sensitivity, FLUX_sensitivity
 
-    indent(newroot)
 
-    return etree.ElementTree(newroot)
+def build_base_ET(ET, measureXPath, realtimeXPath, livetimeXPath,
+                      subtraction_ET, subtractionXpath, calibration, additionals=[], uSievertsph=None, fluxValue=None, transform=None):
+
+    specElements = ET.xpath(measureXPath)
+    countslist = []
+    livetimes = []
+    realtimes = []
+    for specElement in specElements:
+        counts = get_counts(specElement)
+        if subtraction_ET:
+            specElement_b = subtraction_ET.xpath(subtractionXpath)[0]
+            counts = subtract_spectra(specElement, specElement_b)
+        if transform:
+            counts = transform(counts)
+        countslist.append(counts)
+
+    sumcounts = sum(countslist)
+    countstxt = ' '.join(f'{count:.4f}' for count in sumcounts)
+
+
+    realtimes = ET.xpath(realtimeXPath)  # assumes realtime is a property of the radmeasurement
+    livetimes = ET.xpath(livetimeXPath)
+    livetime_sum_s = sum( [Rf.ConvertDurationToSeconds(livetime.text) for livetime in livetimes])
+    realtime_sum_s = sum([Rf.ConvertDurationToSeconds(realtime.text) for realtime in realtimes])
+    livetime_sum_txt = Rf.ConvertSecondsToIsoDuration(livetime_sum_s)
+    realtime_sum_txt = Rf.ConvertSecondsToIsoDuration(realtime_sum_s)
+
+    try:
+        ecal = ET.xpath(calibration)[0].text
+    except (TypeError, etree.XPathError):
+        ecal = calibration
+    except (IndexError):
+        raise ValueError("Calibration XPath does not resolve to any element in input XML. "
+                         "Please check base building config file and compare to the input XML.")
+
+    RASE_sensitivity, FLUX_sensitivity = sensitivity_text(counts,livetime_sum_s,uSievertsph,fluxValue)
+
+    additional = ''
+    if additionals:
+        for addon in additionals:
+            secondary_find = ET.xpath(addon)
+            if secondary_find:
+                secondary_el = ET.xpath(addon)[0]
+                etree.indent(secondary_el)
+                secondary_el.nsmap.clear()
+                additional+=etree.tostring(secondary_el, encoding='unicode')
+                additional+='\n'
+
+    makotemplate = Template(text=base_template, input_encoding='utf-8')
+    output = makotemplate.render(spectrum=countstxt, realtime=realtime_sum_txt, livetime=livetime_sum_txt,
+                                 ecal=ecal,
+                                 additional=additional, RASE_sens=RASE_sensitivity, FLUX_sens=FLUX_sensitivity)
+
+    return output
+
 
 
 def list_spectra(ET):
@@ -314,36 +250,86 @@ def base_output_filename(manufacturer, model, source, description=None):
 
 def write_base_ET(ET, outputfolder, outputfilename):
     outputpath = os.path.join(outputfolder, outputfilename)
-    ET.write(outputpath, encoding="unicode", method='xml', xml_declaration=True)
+    ET.write(outputpath, encoding="utf-8", method='xml', xml_declaration=True)
 
 
-def get_ET_from_file(inputfile):
-    with open(inputfile, 'r') as inputf:
-        inputstr = inputf.read()
-        inputstr = remove_control_characters(inputstr)
-        return etree.ElementTree(etree.fromstring(inputstr))
+def write_base_text(text, outputfolder, outputfilename):
+    outputpath = os.path.join(outputfolder, outputfilename)
+    with open(outputpath, 'w', newline='') as f:
+        f.write(text)
 
 
-def do_all(inputfile, radid, outputfolder, manufacturer, model, source, uSievertsph, fluxValue, subtraction,
-           subtraction_radid,
-           containername='RadMeasurement', spectrum_id=None, subtraction_spectrum_id=None, description=None,
-           transform=None):
-    ET_orig = get_ET_from_file(inputfile)
+
+
+def do_all(inputfile, config:dict, outputfolder, manufacturer, model, source, subtraction,
+           uSievertsph=None, fluxValue=None, description=None, transform=None):
+    ET = get_ET_from_file(inputfile)
     try:
         subtraction_ET = get_ET_from_file(subtraction)
     except TypeError:
         subtraction_ET = subtraction
-    ET = build_base_ET(ET_orig, radid, uSievertsph, fluxValue, subtraction_ET, subtraction_radid,
-                       containername=containername, spectrum_id=spectrum_id,
-                       subtraction_spectrum_id=subtraction_spectrum_id, transform=transform)
-    outputfilename = base_output_filename(manufacturer, model, source, description)
-    write_base_ET(ET, outputfolder, outputfilename)
 
-    '''
-    input 0-3MeV spectrum
-    create x-y points using bin, as in congrid, but do it in integral space
-    add extra x-y point at 8MeV with integral = previous max
-    interpolate with 2^14 points 0-8MeV
-    differentiate to go back to binned events space
-    check bin centers and check trivial case
-    '''
+
+    output = build_base_ET(ET=ET, measureXPath=config['measurement_spectrum_xpath'], realtimeXPath=config['realtime_xpath'], livetimeXPath=config['livetime_xpath'],
+                      subtraction_ET=subtraction_ET, subtractionXpath=config.get('subtraction_spectrum_xpath'),
+                    calibration=config['calibration'], additionals=config.get('additionals'), uSievertsph=uSievertsph, fluxValue=fluxValue, transform=transform)
+    outputfilename = base_output_filename(manufacturer, model, source, description)
+    write_base_text(output, outputfolder, outputfilename)
+
+
+
+def add_bases(ET:etree.ElementTree, ET2: Union[etree.ElementTree,None]):
+    if ET2: #if ET2 is None, just return ET
+        #add spectra, including livetimes
+        spec1 = Rf.requiredElement('Spectrum',ET) #get first, which should be reliable since we have made these files in the right order
+        spec2 = Rf.requiredElement('Spectrum',ET2) #get first, which should be reliable since we have made these files in the right order
+        sum_counts = get_counts(spec1) + get_counts(spec2)
+        sum_livetime = get_livetime(spec1) + get_livetime(spec2)
+        insert_counts(spec1,sum_counts)
+        Rf.requiredElement('LiveTimeDuration',spec1).text = f'PT{sum_livetime}S' #set livetime in units of seconds only.
+        
+        #add realtimes
+
+        rt1 = Rf.requiredElement('RealTimeDuration',ET) #get first, which should be reliable since we have made these files in the right order
+        rt2 = Rf.requiredElement('RealTimeDuration',ET2)
+        sum_rt = Rf.ConvertDurationToSeconds(rt1.text)+Rf.ConvertDurationToSeconds(rt2.text)
+        rt1.text = f'PT{sum_rt}S'
+        indent(ET.getroot())
+
+    return ET
+    
+
+
+def do_list(inputfiles, config:dict, outputfolder, manufacturer, model, source, subtraction,
+           uSievertsph=None, fluxValue=None, description=None, transform=None):
+    comboET=None
+    try:
+        subtraction_ET = get_ET_from_file(subtraction)
+    except TypeError:
+        subtraction_ET = subtraction
+    for inputfile in inputfiles:
+        ET_orig = get_ET_from_file(inputfile)
+        ET = build_base_ET(ET=ET_orig, measureXPath=config['measurement_spectrum_xpath'], realtimeXPath=config['realtime_xpath'], livetimeXPath=config['livetime_xpath'],
+                      subtraction_ET=subtraction_ET, subtractionXpath=config.get('subtraction_spectrum_xpath'), calibration=config['calibration'], additionals=config.get('additionals'), uSievertsph=uSievertsph, fluxValue=fluxValue, transform=transform)
+        comboET = add_bases(etree.ElementTree(etree.fromstring(bytes(ET,encoding='utf-8'))), comboET)
+    outputfilename = base_output_filename(manufacturer, model, source, description)
+    write_base_ET(comboET, outputfolder, outputfilename)
+
+
+def do_glob(inputfileglob, config:dict, outputfolder, manufacturer, model, source, subtraction,
+           uSievertsph=None, fluxValue=None, description=None, transform=None):
+    inputfiles = glob(inputfileglob)
+    do_list(inputfiles, config, outputfolder, manufacturer, model, source, subtraction,
+           uSievertsph, fluxValue, description, transform)
+
+
+from .base_spectra_dialog import SharedObject
+def validate_output(outputfolder, manufacturer, model, source, description=None):
+    outputfilename = os.path.join(outputfolder,base_output_filename(manufacturer, model, source, description))
+    sharedobj = SharedObject(True)
+    tstatus=[]
+    v = Rf.readSpectrumFile(filepath=outputfilename, sharedObject=sharedobj, tstatus=tstatus)
+    if len(tstatus):
+        raise Rf.BaseSpectraFormatException(tstatus)
+    if not v:
+        raise Rf.BaseSpectraFormatException("readSpectrumFile returned no output")

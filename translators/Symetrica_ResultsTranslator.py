@@ -1,14 +1,14 @@
 ### Static Parameters ###
-# TemplateSpectrum = 'FLIR-ID-2_TemplateSpectrum_CmdLine.n42'
+# TemplateSpectrum = 'Symetrica_SN33N_template.n42'
 ### End of the Static Parameters ###
 
 import os
 import xml.etree.ElementTree as ET
 
-from src.rase_functions import write_results
+from translators.translator_functions import write_results
 
 
-def retrieve_FLIR_Results(filepath):
+def retrieve_Symetrica_Results(filepath):
     """
 
     :param filepath:
@@ -38,7 +38,7 @@ def main(input_dir, output_dir):
         os.makedirs(output_dir)
 
     for fname in in_files:
-        ResultsArray = retrieve_FLIR_Results(os.path.join(input_dir, fname))
+        ResultsArray = retrieve_Symetrica_Results(os.path.join(input_dir, fname))
         write_results(ResultsArray, os.path.join(output_dir, fname))
     return
 

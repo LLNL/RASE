@@ -1,11 +1,11 @@
 ###############################################################################
-# Copyright (c) 2018-2021 Lawrence Livermore National Security, LLC.
+# Copyright (c) 2018-2022 Lawrence Livermore National Security, LLC.
 # Produced at the Lawrence Livermore National Laboratory
 #
-# Written by J. Chavez, S. Czyz, G. Kosinovsky, V. Mozin, S. Sangiorgio.
+# Written by J. Brodsky, J. Chavez, S. Czyz, G. Kosinovsky, V. Mozin, S. Sangiorgio.
 # RASE-support@llnl.gov.
 #
-# LLNL-CODE-819515
+# LLNL-CODE-841943, LLNL-CODE-829509
 #
 # All rights reserved.
 #
@@ -54,24 +54,26 @@ class ScenariosIO:
         self.group_desc = group_desc
         self.scenario_group = None
 
-        def dict_to_scenario(state, value):
+        def dict_to_scenario(state, value: dict):
             session = Session()
             value['id'] = Scenario.scenario_hash(value['acq_time'],
-                                    value['scen_materials'],
-                                    value['scen_bckg_materials'],
-                                    value['influences'])
+                                                 value['scen_materials'],
+                                                 value['scen_bckg_materials'],
+                                                 value['influences'])
             q = session.query(Scenario).filter_by(id=value['id']).first()
             if q:
                 if self.scenario_group:
                     self.scenario_group.scenarios.append(q)
                 return q
             else:
+                comment = value['comment'] if 'comment' in value.keys() else ''
                 scenario = Scenario(value['acq_time'],
                                     value['replication'],
                                     value['scen_materials'],
                                     value['scen_bckg_materials'],
                                     value['influences'],
-                                    [self.scenario_group])
+                                    [self.scenario_group],
+                                    comment)
 
             return scenario
 
@@ -117,7 +119,8 @@ class ScenariosIO:
         )
 
         self.material_processor = xml.user_object('Material', Material, [
-            xml.string('BaseMaterialName', alias='name')
+            xml.string('BaseMaterialName', alias='name'),
+            xml.boolean('IncludeIntrinsic', alias='include_intrinsic', required=False)
         ], alias='material', hooks=self.material_hooks)
 
         self.sourcematerials_processor = xml.user_object('ScenarioMaterial', ScenarioMaterial, [
@@ -140,6 +143,7 @@ class ScenariosIO:
             xml.string("id", required=False),
             xml.floating_point("acq_time"),
             xml.integer("replication"),
+            xml.string("comment", required=False),
             xml.array(self.sourcematerials_processor),
             xml.array(self.bkgmaterial_processor),
             xml.array(self.influence_processor)
@@ -187,6 +191,8 @@ class ScenariosIO:
                 acq_time.text = str(row['acq_time'])
                 replication = ET.SubElement(scenario, 'replication')
                 replication.text = str(row['replications'])
+                comment = ET.SubElement(scenario, 'comment')
+                comment.text = row['comment']
             else:
                 return False
 
@@ -221,11 +227,11 @@ def main():
     initializeDatabase(str(Path(Path.home(), "test.sql")))
     session = Session()
 
-    m1 = Material(name="TTT")
+    m1 = Material(name="TTT", include_intrinsic=True)
     m2 = Material(name="NORM")
-    s1 = ScenarioMaterial(material=m1, dose=11.2)
-    s2 = ScenarioMaterial(material=m1, dose=111)
-    sb = ScenarioBackgroundMaterial(material=m2, dose=1.0)
+    s1 = ScenarioMaterial(material=m1, dose=11.2, fd_mode='DOSE')
+    s2 = ScenarioMaterial(material=m1, dose=111, fd_mode='FLUX')
+    sb = ScenarioBackgroundMaterial(material=m2, dose=1.0, fd_mode='DOSE')
     i = Influence(name="Temperature")
     sc1 = Scenario(30, 100, [s1, s2], [], [])
     sc2 = Scenario(40, 200, [s1], [sb], [i])
@@ -239,17 +245,17 @@ def main():
     print("\n***\nTest importing back the xml just generated\n***\n")
     ss = sio.scenario_import(xml_str)
     for s in ss:
-        print(s.dump_xml())
+        print(s.__dict__)
 
     print("\n***\nTest exporting a scenario from the db\n***\n")
     prev = session.query(Scenario).first()
-    print(prev.dump_xml())
+    print(prev.__dict__)
     xml_str = sio.scenario_export([prev])
     print(xml_str)
 
     print("\n***\nTest importing a scenario that exists in the db\n***\n")
     ss = sio.scenario_import(xml_str)
-    print(ss[0].dump_xml())
+    print(ss[0].__dict__)
 
     print("\n***\nTest importing from a xml string\n***\n")
     xml_str = """<?xml version="1.0" encoding="utf-8"?>
@@ -258,23 +264,27 @@ def main():
         <id>E7XX64</id>
         <acq_time>30.0</acq_time>
         <replication>100</replication>
+        <comment>This is a comment</comment>
         <ScenarioMaterial>
             <Material>
                 <BaseMaterialName>YYY</BaseMaterialName>
+                <IncludeIntrinsic>True</IncludeIntrinsic>
             </Material>
+            <fd_mode>DOSE</fd_mode>
             <dose>11.2</dose>
         </ScenarioMaterial>
         <ScenarioMaterial>
             <Material>
                 <BaseMaterialName>TTT</BaseMaterialName>
             </Material>
+            <fd_mode>DOSE</fd_mode>
             <dose>111.0</dose>
         </ScenarioMaterial>
     </Scenario>
 </Scenarios>"""
 
     ss = sio.scenario_import(xml_str)
-    print(ss[0].dump_xml())
+    print(ss[0].__dict__)
 
     session.commit()
     session.close()

@@ -1,11 +1,11 @@
 ###############################################################################
-# Copyright (c) 2018-2021 Lawrence Livermore National Security, LLC.
+# Copyright (c) 2018-2022 Lawrence Livermore National Security, LLC.
 # Produced at the Lawrence Livermore National Laboratory
 #
 # Written by J. Chavez, S. Czyz, G. Kosinovsky, V. Mozin, S. Sangiorgio.
 # RASE-support@llnl.gov.
 #
-# LLNL-CODE-750919
+# LLNL-CODE-841943, LLNL-CODE-829509
 #
 # All rights reserved.
 #
@@ -34,9 +34,9 @@ This module supports import, export and deletion of user defined material weight
 
 import csv
 
-from PyQt5.QtWidgets import QDialog, QFileDialog, QTableWidgetItem, QAbstractItemView
-from PyQt5.QtWidgets import QHeaderView, QMessageBox
-from PyQt5.QtCore import pyqtSlot, Qt
+from PySide6.QtWidgets import QDialog, QFileDialog, QTableWidgetItem, QAbstractItemView
+from PySide6.QtWidgets import QHeaderView, QMessageBox
+from PySide6.QtCore import Slot, Qt
 
 from .table_def import Session, MaterialWeight
 from .ui_generated import ui_manage_weights_dialog
@@ -179,7 +179,7 @@ class ManageWeightsDialog(ui_manage_weights_dialog.Ui_Dialog, QDialog):
         for materialDelete in materialsToDelete:
             self.session.delete(materialDelete)
 
-    @pyqtSlot()
+    @Slot()
     def accept(self):
         """
         Closes dialog

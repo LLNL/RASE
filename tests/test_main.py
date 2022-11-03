@@ -1,9 +1,10 @@
+import sys
 from time import sleep
 
 import pytest
-from PyQt5.QtCore import Qt, QTimer, QObject, pyqtSignal
-from PyQt5.QtGui import QContextMenuEvent
-from PyQt5.QtWidgets import QDialogButtonBox, QMenu, QApplication
+from PySide6.QtCore import Qt, QTimer, QObject, Signal
+from PySide6.QtGui import QContextMenuEvent
+from PySide6.QtWidgets import QDialogButtonBox, QMenu, QApplication
 
 from src.correspondence_table_dialog import CorrespondenceTableDialog as ctd
 from src.detector_dialog import DetectorDialog
@@ -12,19 +13,27 @@ from src.rase_functions import *
 from src.rase_settings import RaseSettings
 from src.scenario_group_dialog import GroupSettings as gsd
 from src.table_def import ScenarioGroup, Replay
-
+from sqlalchemy.orm import close_all_sessions
 pytest.main(['-s'])
 
 
 @pytest.fixture(scope="class", autouse=True)
-def reboot_database():
+def db_and_output_folder():
     """Delete and recreate the database between test classes"""
     settings = RaseSettings()
+    dataDir = settings.getDataDirectory()
+    if not os.path.exists(dataDir):
+        os.makedirs(dataDir, exist_ok=True)
+    initializeDatabase(settings.getDatabaseFilepath())
+    yield Session()
+    close_all_sessions()
     if os.path.isdir(settings.getSampleDirectory()):
         shutil.rmtree(settings.getSampleDirectory())
     if os.path.isfile(settings.getDatabaseFilepath()):
         os.remove(settings.getDatabaseFilepath())
-        initializeDatabase(settings.getDatabaseFilepath())
+
+
+
 
 
 @pytest.fixture(scope='session', autouse=True)
@@ -45,7 +54,7 @@ def complete_tests():
 
 
 class Helper(QObject):
-    finished = pyqtSignal()
+    finished = Signal()
 
 
 class HelpObjectCreation:
@@ -79,6 +88,9 @@ class HelpObjectCreation:
 
     def get_default_mat_names(self):
         return [['dummy_mat_1'], ['dummy_mat_2', 'dummy_mat_3']], [['dummy_back_1'], ['dummy_back_2']]
+
+    def get_default_ecal(self):
+        return [[[0,1,0,0]] , [[0,1,0,0],[0,2,0,0]] ], [[[0,1,0,0]],[[0,3,0,0]]]
 
     def get_default_doses(self):
         return [[.31], [2.3, 1.1]], [[.08], [.077]]
@@ -171,12 +183,14 @@ class HelpObjectCreation:
         fg_fds, bg_fds = self.get_default_fd_modes()
         fg_sens, bg_sens = self.get_default_sensitivities()
         fg_bscounts, bg_bscounts = self.get_default_base_counts()
+        fg_ecals, bg_ecals = self.get_default_ecal()
 
 
-        for mats, real_live_times, fd_modes, sensitivities, bscounts in zip(mat_names + back_names,
+        for mats, real_live_times, fd_modes, sensitivities, bscounts, ecals in zip(mat_names + back_names,
                                                                         fg_rt_lt + bg_rt_lt, fg_fds + bg_fds,
-                                                                        fg_sens + bg_sens, fg_bscounts + bg_bscounts):
-            for m, r_l_t, fd, sens, cnts in zip(mats, real_live_times, fd_modes, sensitivities, bscounts):
+                                                                        fg_sens + bg_sens, fg_bscounts + bg_bscounts,
+                                                                            fg_ecals+bg_ecals):
+            for m, r_l_t, fd, sens, cnts, ecal in zip(mats, real_live_times, fd_modes, sensitivities, bscounts, ecals):
                 if fd == 'DOSE':
                     rase_sensitivity = sens
                     flux_sensitivity = None
@@ -187,7 +201,7 @@ class HelpObjectCreation:
                 baseSpectra.append(BaseSpectrum(material=get_or_create_material(session, m),
                                                 filename='.', realtime=r_l_t[0], livetime=r_l_t[1],
                                                 rase_sensitivity=rase_sensitivity, flux_sensitivity=flux_sensitivity,
-                                                baseCounts=cnts))
+                                                baseCounts=cnts, ecal=ecal))
 
         return baseSpectra
 
@@ -221,9 +235,9 @@ class HelpObjectCreation:
     def create_default_replay(self):
         session = Session()
         name = self.get_default_replay_name()
-        exe_path = os.path.join(os.pardir, 'tests/fixed_replay.py')
+        exe_path = sys.executable
         is_cmd_line = True
-        settings = 'INPUTDIR OUTPUTDIR'
+        settings = f"fixed_replay.py INPUTDIR OUTPUTDIR"
         n42_template_path = None
         input_filename_suffix = '.n42'
 

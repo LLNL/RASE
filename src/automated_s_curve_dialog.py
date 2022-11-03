@@ -1,11 +1,11 @@
 ###############################################################################
-# Copyright (c) 2018-2021 Lawrence Livermore National Security, LLC.
+# Copyright (c) 2018-2022 Lawrence Livermore National Security, LLC.
 # Produced at the Lawrence Livermore National Laboratory
 #
 # Written by J. Chavez, S. Czyz, G. Kosinovsky, V. Mozin, S. Sangiorgio.
 # RASE-support@llnl.gov.
 #
-# LLNL-CODE-819515
+# LLNL-CODE-841943, LLNL-CODE-829509
 #
 # All rights reserved.
 #
@@ -33,9 +33,9 @@ This module allows user to input seed for Random Number Generation to ensure rep
 validation results
 """
 
-from PyQt5.QtCore import pyqtSlot, QRegularExpression
-from PyQt5.QtWidgets import QDialog, QDialogButtonBox, QWidgetItem
-from PyQt5.QtGui import QRegularExpressionValidator
+from PySide6.QtCore import Slot, QRegularExpression
+from PySide6.QtWidgets import QDialog, QDialogButtonBox, QWidgetItem
+from PySide6.QtGui import QRegularExpressionValidator
 
 from src.rase_settings import RaseSettings
 from src.ui_generated import ui_auto_scurve
@@ -104,7 +104,7 @@ class AutomatedSCurve(ui_auto_scurve.Ui_AutoSCurveDialog, QDialog):
             if det.replay and det.replay.is_cmd_line:
                 self.combo_inst.addItem(det.name)
 
-    @pyqtSlot(str)
+    @Slot(str)
     def updateMaterials(self, detName):
         """
         Updates the possible material selection based on the selected instrument.
@@ -151,7 +151,7 @@ class AutomatedSCurve(ui_auto_scurve.Ui_AutoSCurveDialog, QDialog):
                         combobox.addItem('FLUX (\u03B3/(cm\u00B2s))')
 
 
-    @pyqtSlot(str)
+    @Slot(str)
     def enableOk(self, intensity):
         """Only enable the okay button if all the relevant points are selected"""
         if self.combo_matdose.currentText() and self.line_dwell.text() and \
@@ -280,7 +280,7 @@ class AutomatedSCurve(ui_auto_scurve.Ui_AutoSCurveDialog, QDialog):
         dialog.setWindowTitle('Set static background for the ' + self.combo_inst.currentText() + '.')
         dialog.exec_()
 
-    @pyqtSlot()
+    @Slot()
     def accept(self):
         if self.line_addpoints.text():
             addpoints = [float(i) for i in self.line_addpoints.text().split(',')]

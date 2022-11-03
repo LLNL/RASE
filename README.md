@@ -11,13 +11,17 @@ For more information on RASE see:
 
 Required Libraries
 ----------------------------------
-* QT5
-* PyQt5 and PyQTWebEngine
+* Qt6
+* PySide6
 * declxml
+* lxml
+* isodate
 * SQLAlchemy
-* Matplotlib, Numpy, Pandas, Seaborn
+* Matplotlib >= 3.5, 
+* Numpy, Pandas, Seaborn
 * Uncertainties, LmFit
 * Mako
+* pyyaml
 
 
 Creating a standalone executable
@@ -59,20 +63,19 @@ The documentation is generated in the `doc\_build\` folder
 Contributors
 ------------
 
-- Samuele Sangiorgio, LLNL
-- Vladimir Mozin, LLNL
+- Jason Brodsky, LLNL
+- Joe Chavez, LLNL
 - Steven Czyz, LLNL
 - Greg Kosinovsky, LLNL
-- Joe Chavez, LLNL
-- Jason Brodsky, LLNL
-
+- Vladimir Mozin, LLNL
+- Samuele Sangiorgio, LLNL
 
 Citation
 --------
 
 Please cite use of the RASE software as:
 
-J. P. Brodsky, J. Chavez, S. A. Czyz, G. Kosinovsky, V. Mozin, & S. Sangiorgio. (2021, Oct 1). LLNL/RASE: RASE v2.2 (Version v2.2). Zenodo. https://doi.org/10.5281/zenodo.5544951
+J. P. Brodsky, J. Chavez, S. A. Czyz, G. Kosinovsky, V. Mozin, & S. Sangiorgio. (2021, Oct 1). LLNL/RASE: RASE v2.2 (Version v2.2). Zenodo. http://doi.org/10.5281/zenodo.5545051
 
 
 Acknowledgements
@@ -92,6 +95,6 @@ Department of Homeland Security.
 License
 -------
 
-RASE is released under an MIT license. For more details see the [LICENSE](/LICENSE) file.
+RASE is released under an MIT license. For more details see the [LICENSE](/LICENSE-MIT) file.
 
-LLNL-CODE-819515
+LLNL-CODE-841943, LLNL-CODE-829509

@@ -14,3 +14,5 @@ Advanced Topics
    Import_CSV
    n42_templates
    Results_file_format
+   Use_distance
+   Intrinsic_source_handling

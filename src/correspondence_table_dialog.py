@@ -1,11 +1,11 @@
 ###############################################################################
-# Copyright (c) 2018-2021 Lawrence Livermore National Security, LLC.
+# Copyright (c) 2018-2022 Lawrence Livermore National Security, LLC.
 # Produced at the Lawrence Livermore National Laboratory
 #
 # Written by J. Chavez, S. Czyz, G. Kosinovsky, V. Mozin, S. Sangiorgio.
 # RASE-support@llnl.gov.
 #
-# LLNL-CODE-819515
+# LLNL-CODE-841943, LLNL-CODE-829509
 #
 # All rights reserved.
 #
@@ -35,9 +35,10 @@ replay identification results
 
 import csv
 
-from PyQt5.QtCore import pyqtSlot, Qt
-from PyQt5.QtWidgets import QTableWidgetItem, QDialog, QFileDialog, \
-     QMessageBox, QHeaderView, QItemDelegate, QComboBox, QMenu, QAction
+from PySide6.QtCore import Slot, Qt
+from PySide6.QtWidgets import QTableWidgetItem, QDialog, QFileDialog, \
+     QMessageBox, QHeaderView, QItemDelegate, QComboBox, QMenu
+from PySide6.QtGui import QAction
 
 from src.rase_settings import RaseSettings
 from .table_def import CorrespondenceTableElement, CorrespondenceTable, Session, Material
@@ -242,7 +243,7 @@ class CorrespondenceTableDialog(ui_correspondence_table_dialog.Ui_dlgCorrTable, 
             self.tblCCCLists.horizontalHeader().setSectionResizeMode(2, QHeaderView.Stretch)
             self.NUM_ROWS = self.tblCCCLists.rowCount()
 
-    @pyqtSlot(QTableWidgetItem)
+    @Slot(QTableWidgetItem)
     def on_tblCCCLists_itemChanged(self, item):
         """
         Listener for changes to the table
@@ -296,8 +297,7 @@ class CorrespondenceTableDialog(ui_correspondence_table_dialog.Ui_dlgCorrTable, 
 
     @staticmethod
     def add_corr_table_entry(table, iso, l1='', l2=''):
-        corrTsbleEntry = CorrespondenceTableElement(isotope=iso, corrList1=l1, corrList2=l2)
-        table.corr_table_elements.append(corrTsbleEntry)
+        corrTsbleEntry = CorrespondenceTableElement(isotope=iso, table=table, corrList1=l1, corrList2=l2)
         return table
 
 

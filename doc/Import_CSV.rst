@@ -23,4 +23,6 @@ This first line should be followed by any number of subsequent lines. Each of th
 
 Of these terms, only acq_time and replications are absolutely necessary. If no source (or background) material is desired, leave the three source (or background) columns blank.
 
-Each scenario line must make a unique scenario. The sources will be imported into the "Imported" scenario group.
+Each scenario line must correspond to a unique scenario.
+
+Upon import, a new scenario group is created and labeled using the name of the imported file.

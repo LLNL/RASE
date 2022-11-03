@@ -15,7 +15,9 @@ The correspondence table can be managed using the dedicated window accessible un
 for manual input of table entries, as well as enables importing and exporting the table in a comma-separated \*.csv
 format. \*.csv files can also be edited in Microsoft Excel program independently from the RASE software.
 
+|
+
 .. figure:: _static/CorrTable.png
     :scale: 75 %
 
-    "Correspondence Table" dialog, accessible from the "Setup" menu in the main RASE window.
+    **"Correspondence Table" dialog, accessible from the "Setup" menu in the main RASE window.**

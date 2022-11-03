@@ -25,19 +25,21 @@ For each scenario, RASE also computes the **frequency of identification results*
 
 The tables in the "View Results" and "Detailed Results" dialogs can be exported as a \*.csv file and processed in Excel for plotting and extended analysis. The RASE-generated sampled spectra and replay tool outputs can be reviewed manually using programs like PeakEasy and Interspec.
 
+|
+
 .. _rase-WorkflowStep6a:
 
 .. figure:: _static/rase_WorkflowStep6.png
     :scale: 75%
 
-    Main RASE window showing how to access identification results dialogs
+    **Main RASE window showing how to access identification results dialogs**
 
-
+|
 
 .. figure:: _static/rase_WorkflowStep6-2.png
-    :scale: 75%
+    :scale: 65%
 
-    “View Results” and "Detailed Results" tables.
+    **“View Results” and "Detailed Results" tables.**
 
 |
 
@@ -85,40 +87,44 @@ RASE includes 1D, 2D, and 3D built-in plotting capabilities. Using the drop-down
 S-curves
 --------
 
-The plotting capabilities are particularly specialized for S-curve fitting. In the plotting dialog the user may select which dataset to fit curves to (if categories are defined), specify confidence intervals for the fit (to help convergence in certain cases), and set a percent for ID threshold estimation. Pressing "Plot S-Curve" will fit a sigmoid trendline, if possible. The fit is done using a linear or a log-spaced Boltzmann Sigmoid function, as specified by the user, using the equation:
+The plotting capabilities are particularly specialized for S-curve fitting. In the plotting dialog the user may select which dataset to fit curves to (if categories are defined), and set a percent for ID threshold estimation. Pressing "Plot S-Curve" will fit a sigmoid trendline, if possible. The fit is done using a Boltzmann Sigmoid function defined as:
 
 .. math::
-   y_{Fit} = a_2 + \frac{a_1 - a_2}{1 + Q e^{-Bx}} \quad {\text{or}} \quad y_{Fit} = a_2 + \frac{a_1 - a_2}{1 + Q e^{-B \,\times\, ln(x)}}
+   y_{Fit} = a_2 + \frac{a_1 - a_2}{1 + e^{-(x-M)/B}}
 
 
-This plot works for curves where the identification rate is positively correlated with source intensity as well as negatively correlated. If the fit is successful, the S-curve is plotted with a 1-sigma confidence interval surrounding the line and a point is marked on the plot where the trendline crosses an ID threshold (default is 80%, but can be varied by the user). The x-value of this crossing point is noted in the legend. These graphical features can be toggled on or off. The user may also select the uncertainty to provide the fitting algorithm, which may help convergence in certain cases. Detailed fit results are displayed in the window to the left regardless of if the fit was successful. This can be toggled on or off Various properties of the plot, including title and axes scale/labels, can be modified by the user. The plot can be exported in the user's favorite image file format.
+This plot works for curves where the identification rate is positively correlated with source intensity as well as negatively correlated. If the fit is successful, the S-curve is plotted with a 1-sigma confidence interval surrounding the line and a point is marked on the plot where the trendline crosses an ID threshold (default is 80%, but can be varied by the user). The x-value of this crossing point is noted in the legend. These graphical features can be toggled on or off. Detailed fit results are displayed in the text box to the left. While the fitting algorithm is sufficiently robust, it may be necessary to manually adjust the fit parameters to help convergence. The fit parameters for each curve are accessible through the "Edit S-Curve Fit Parameters" button.   Various properties of the plot, including title and axes scale/labels, can be modified by the user. The plot can be exported in the user's favorite image file format.
+
+|
 
 .. figure:: _static/rase_WorkflowStep6-3.png
-    :scale: 80%
+    :scale: 33%
 
-    “View Results” table and "Plotting" window.
+    **Plotting interface and S-curve fits**
+
+|
 
 3D Plotting - Heat Maps
 -----------------------
 
-Heat maps are only possible to create where exactly one result exists at each intersection point of a grid of permutations created by the x and y variables: for example, if the user were to define all permutations with source A at dose rates 0.1, 0.2, and 0.3 uSv/hr and source B at dose rates 0.4, 0.5, and 0.6 uSv/hr (so 9 total scenarios), it would be possible to create a continuous heat map of results. However, if the user were to include an additional scenario in these results where source A = 0.1 uSv/hr, source B = 0.4 uSv/hr, and source C = 0.7 uSv/hr (so 10 total scenarios), the heat map would fail to generate because there is already results for a scenario where source A = 0.1 uSv/hr and source B = 0.4 uSv/hr. If instead the user did not define, for some reason, the scenario where source A = 0.2 uSv/hr and source B = 0.3 uSv/hr (so 8 scenarios total), the heat map would have a large section undefined due to this result missing from the grid.
+Heat maps are only possible to create where exactly one result exists at each intersection point of a grid of permutations created by the x and y variables: for example, if the user were to define all permutations with source A at dose rates 0.1, 0.2, and 0.3 :math:`{\mu}`\ Sv/hr and source B at dose rates 0.4, 0.5, and 0.6 :math:`{\mu}`\ Sv/hr (so 9 total scenarios), it would be possible to create a continuous heat map of results. However, if the user were to include an additional scenario in these results where source A = 0.1 :math:`{\mu}`\ Sv/hr, source B = 0.4 :math:`{\mu}`\ Sv/hr, and source C = 0.7 :math:`{\mu}`\ Sv/hr (so 10 total scenarios), the heat map would fail to generate because there is already results for a scenario where source A = 0.1 :math:`{\mu}`\ Sv/hr and source B = 0.4 :math:`{\mu}`\ Sv/hr. If instead the user did not define, for some reason, the scenario where source A = 0.2 :math:`{\mu}`\ Sv/hr and source B = 0.3 :math:`{\mu}`\ Sv/hr (so 8 scenarios total), the heat map would have a large section undefined due to this result missing from the grid.
 
 To add convenience for the user, a "Ignore isotopes with zero contribution" checkbox also exists. This is applicable specifically if the user is planning to look at the results of several possible permutations in quick succession. For example, the user has created three permutation sets of 9 scenarios each:
 
     - Set 1:
 
-        - source A at dose rates 0.1, 0.2, and 0.3 uSv/hr
-        - source B at dose rates 0.4, 0.5, and 0.6 uSv/hr
+        - source A at dose rates 0.1, 0.2, and 0.3 :math:`{\mu}`\ Sv/hr
+        - source B at dose rates 0.4, 0.5, and 0.6 :math:`{\mu}`\ Sv/hr
 
     - Set 2:
 
-        - source A at dose rates 0.1, 0.2, and 0.3 uSv/hr
-        - source C at dose rates 0.7, 0.8, and 0.9 uSv/hr
+        - source A at dose rates 0.1, 0.2, and 0.3 :math:`{\mu}`\ Sv/hr
+        - source C at dose rates 0.7, 0.8, and 0.9 :math:`{\mu}`\ Sv/hr
 
     - Set 3:
 
-        - source A at dose rates 0.1, 0.2, and 0.3 uSv/hr
-        - source D at dose rates 1.0, 1.1, and 1.2 uSv/hr
+        - source A at dose rates 0.1, 0.2, and 0.3 :math:`{\mu}`\ Sv/hr
+        - source D at dose rates 1.0, 1.1, and 1.2 :math:`{\mu}`\ Sv/hr
 
 
 If the user attempts to create a heat map with the X-axis defined as the "Source Dose" of source A and the Y-axis as the "Source Dose" of source B, the map will fail to generate because RASE has implicitly assumed that source C and source D also exist in those scenarios with a dose rate of 0. By checking the "Ignore isotopes with zero contribution" checkbox, these instances are ignored when creating the heat map. This lets the user quickly examine all three sets of scenarios.
@@ -128,4 +134,4 @@ If the user attempts to create a heat map with the X-axis defined as the "Source
 .. figure:: _static/rase_WorkflowStep6-4.png
     :scale: 80%
 
-    An example of plotting 3-dimensional data as a heat map.
+    **An example of plotting 3-dimensional data as a heat map.**

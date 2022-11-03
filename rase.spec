@@ -5,13 +5,13 @@ block_cipher = None
 # import sys
 # sys.setrecursionlimit(10000)
 
-import PyQt5
+import PySide6
 import platform
 
 pathex = []
 exclude_binaries = True
 if platform.system() == "Windows":
-    pathex.append(PyQt5.__path__[0] + '\\Qt\\bin')
+    pathex.append(PySide6.__path__[0])
     exclude_binaries=False
 
 a = Analysis(['rase.pyw'],

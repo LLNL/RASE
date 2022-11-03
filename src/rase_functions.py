@@ -1,11 +1,11 @@
 ###############################################################################
-# Copyright (c) 2018-2021 Lawrence Livermore National Security, LLC.
+# Copyright (c) 2018-2022 Lawrence Livermore National Security, LLC.
 # Produced at the Lawrence Livermore National Laboratory
 #
-# Written by J. Chavez, S. Czyz, G. Kosinovsky, V. Mozin, S. Sangiorgio.
+# Written by J. Brodsky, J. Chavez, S. Czyz, G. Kosinovsky, V. Mozin, S. Sangiorgio.
 # RASE-support@llnl.gov.
 #
-# LLNL-CODE-819515
+# LLNL-CODE-841943, LLNL-CODE-829509
 #
 # All rights reserved.
 #
@@ -33,26 +33,29 @@ This module defines key functions used in RASE
 """
 
 import glob
+import io
 import logging
 import ntpath
 import os
 import re
 import shutil
 import sys
-import xml.etree.ElementTree as ET
+from lxml import etree
 from pathlib import Path
-
+import isodate, datetime
 import numpy as np
 from mako import exceptions
-from sqlalchemy.engine import create_engine
+from sqlalchemy.engine import create_engine, Engine
+from sqlalchemy import event
 
 from src.scenarios_io import ScenariosIO
 from src.table_def import BaseSpectrum, BackgroundSpectrum, Detector, Scenario, SampleSpectraSeed, \
     Session, Base, DetectorInfluence, ScenarioMaterial, ScenarioBackgroundMaterial, Material
 from src.utils import compress_counts, indent
-
 # Key variables used in several places
-secondary_type = {'internal': 2, 'base_spec': 0,  'scenario': 1, 'file': 3}
+secondary_type = {'internal': 2, 'base_spec': 0, 'scenario': 1, 'file': 3}
+
+
 
 def initializeDatabase(databaseFilepath):
     """
@@ -65,7 +68,15 @@ def initializeDatabase(databaseFilepath):
     Session.configure(bind=engine)
     if not os.path.exists(databaseFilepath):
         Base.metadata.create_all(engine)
+        return False
+    return True
 
+
+@event.listens_for(Engine, "connect")
+def set_sqlite_pragma(dbapi_connection, connection_record):
+    cursor = dbapi_connection.cursor()
+    cursor.execute("PRAGMA foreign_keys=ON")
+    cursor.close()
 
 def importDistortionFile(filepath):
     """
@@ -73,7 +84,7 @@ def importDistortionFile(filepath):
     :param filepath: path of valid influence file
     :return: array of influence names and corresponding distorsion values
     """
-    root = ET.parse(filepath).getroot()
+    root = etree.parse(filepath).getroot()
     detInfluences = []
     for inflElement in root:
         inflName = inflElement.tag
@@ -84,24 +95,21 @@ def importDistortionFile(filepath):
 
 def ConvertDurationToSeconds(inTime):
     """
-
+    converts text string to seconds
+    :param inTime: text string in ISO format ("PTxxx")
+    :return: duration in seconds
     """
-    inTimePat = re.compile('PT(\d+D)?(\d+H)?(\d+M)?(\d+(.\d+)?S)?')  # ('PT?:((\d+)H)?:((\d+)M)(\d+?:(.d+))S')
-    time = inTimePat.findall(inTime)
+    outTime = isodate.parse_duration(inTime)
+    return outTime.total_seconds()
 
-    if 'D' in inTime:
-        outTime = int(time[0][0].strip('D')) * 86400 + int(time[0][1].strip('H')) * 3600 + int(
-            time[0][2].strip('M')) * 60 + float(time[0][3].strip('S'))
-    elif 'H' in inTime:
-        outTime = int(time[0][1].strip('H')) * 3600 + int(time[0][2].strip('M')) * 60 + float(time[0][3].strip('S'))
-    elif 'M' in inTime and time[0][3] != '':
-        outTime = int(time[0][2].strip('M')) * 60 + float(time[0][3].strip('S'))
-    elif 'M' in inTime and time[0][3] == '':
-        outTime = int(time[0][2].strip('M')) * 60
-    else:
-        outTime = float(time[0][3].strip('S'))
-
-    return outTime
+def ConvertSecondsToIsoDuration(inseconds):
+    """
+    converts seconds to text string
+    :param inseconds: seconds
+    :return: ISO "PT" textstring
+    """
+    dt = datetime.timedelta(seconds=inseconds)
+    return isodate.duration_isoformat(dt)
 
 class ResultsFileFormatException(Exception):
     pass
@@ -130,7 +138,7 @@ def readTranslatedResultFile(filename, use_confs):
     :param filename: path of valid results file
     :return: list of identification results
     """
-    root = ET.parse(filename).getroot()
+    root = etree.parse(str(filename)).getroot()
     if root.tag != "IdentificationResults":
         raise ResultsFileFormatException(f'{filename}: bad file format')
 
@@ -235,16 +243,18 @@ def requiredSensitivity(element, source):
 
 def parseRadMeasurement(root, filepath, sharedObject, tstatus, requireRASESens):
     try:
-        radElement = requiredElement('RadMeasurement',root,)
+        radElement = requiredElement('RadMeasurement', root, )
         allRad = root.findall("RadMeasurement")
         if len(allRad) == 2:
             sharedObject.bkgndSpectrumInFile = True
             radElementBckg = allRad[1]
         elif len(allRad) > 2:
             raise BaseSpectraFormatException(f'Too many RadMeasurement elements, expected 1 or 2')
-        specElement = requiredElement('Spectrum',radElement)
-        chanData = requiredElement('ChannelData',specElement)
+        specElement = requiredElement('Spectrum', radElement)
+        chanData = requiredElement('ChannelData', specElement)
         countsChar = chanData.text.strip("'").strip().split()
+        if len(countsChar) < 2:
+            countsChar = chanData.text.strip("'").strip().split(',')
         counts = [float(count) for count in countsChar]
         if not counts: raise BaseSpectraFormatException('Could not parse ChannelData')
         if ("." in countsChar[0]):
@@ -301,7 +311,7 @@ def parseRadMeasurement(root, filepath, sharedObject, tstatus, requireRASESens):
 
 def parseMeasurement(measurement, filepath, sharedObject, tstatus, requireRASESen=True):
     try:
-        specElement = requiredElement('Spectrum',measurement)
+        specElement = requiredElement('Spectrum', measurement)
         allSpectra = measurement.findall("Spectrum")
         if len(allSpectra) == 2:
             sharedObject.bkgndSpectrumInFile = True
@@ -309,8 +319,10 @@ def parseMeasurement(measurement, filepath, sharedObject, tstatus, requireRASESe
         elif len(allSpectra) > 2:
             raise BaseSpectraFormatException(f'Too many Spectrum elements, expected 1 or 2')
 
-        chanData = requiredElement('ChannelData',specElement)
+        chanData = requiredElement('ChannelData', specElement)
         countsChar = chanData.text.strip("'").strip().split()
+        if len(countsChar) < 2:
+            countsChar = chanData.text.strip("'").strip().split(',')
         if ("." in countsChar[0]):
             sharedObject.chanDataType = "float"
         else:
@@ -379,7 +391,8 @@ def parseMeasurement(measurement, filepath, sharedObject, tstatus, requireRASESe
 
 
 def uncompressCountedZeroes(chanData,counts):
-    if chanData.attrib.get('Compression') == 'CountedZeroes':
+    if (chanData.attrib.get('Compression') == 'CountedZeroes') or (
+            chanData.attrib.get('compressionCode') == 'CountedZeroes'):
         uncompressedCounts = []
         countsIter = iter(counts)
         for count in countsIter:
@@ -392,15 +405,39 @@ def uncompressCountedZeroes(chanData,counts):
         counts = ','.join(map(str, counts))
     return counts
 
+def strip_namespaces(tree:etree.ElementTree):
+    # xpath query for selecting all element nodes in namespace
+    tree.getroot()
+    query = "descendant-or-self::*[namespace-uri()!='']"
+    # for each element returned by the above xpath query...
+    for element in tree.xpath(query):
+        # replace element name with its local name
+        element.tag = etree.QName(element).localname
+    tree.getroot().attrib.clear()
+    etree.cleanup_namespaces(tree)
+    return tree
 
-def strip_namespaces(ET):
-    try:
-        for el in ET.getroot().iter():
-            el.tag = el.tag.split('}', 1)[-1]
-    except AttributeError:
-        for _, el in ET:
-            el.tag = el.tag.split('}', 1)[-1]
+def remove_control_characters(xml):
+    def str_to_int(s, default, base=10):
+        if int(s, base) < 0x10000:
+            return chr(int(s, base))
+        return default
 
+    xml = re.sub(r"&#(\d+);?", lambda c: str_to_int(c.group(1), c.group(0)), xml)
+    xml = re.sub(r"&#[xX]([0-9a-fA-F]+);?", lambda c: str_to_int(c.group(1), c.group(0), base=16), xml)
+    xml = re.sub(r"[\x00-\x08\x0b\x0e-\x1f\x7f]", "", xml)
+    return xml
+
+def get_ET_from_file(inputfile):
+    with open(inputfile, 'r') as inputf:
+        inputstr = inputf.read()
+        inputstr = remove_control_characters(inputstr)
+        inputstr_io = io.BytesIO(bytes(inputstr,encoding='utf-8'))
+        parser = etree.XMLParser(recover=True)
+        et =  etree.parse(inputstr_io,parser)
+        # et = copy.deepcopy((et_orig))
+        strip_namespaces(et)
+        return et
 
 def readSpectrumFile(filepath, sharedObject, tstatus, requireRASESen=True):
     """
@@ -415,10 +452,8 @@ def readSpectrumFile(filepath, sharedObject, tstatus, requireRASESen=True):
         specElementBckg = None
         # First strip all namespaces if any
         # TODO: make this a general utility method as it can be useful elsewhere
-        it = ET.iterparse(filepath)
-        strip_namespaces(it)
 
-        root = it.root
+        root = get_ET_from_file(filepath).getroot()
         # Now extract the relevant details from the file
         measurement = root.find('Measurement')
         rad_measurement = root.find('RadMeasurement')
@@ -512,33 +547,22 @@ def _getCountsDoseAndSensitivity(scenario, detector, degradations=None):
 
     # distortion:  distort ecal with influence factors
     ecal = [detector.ecal3, detector.ecal2, detector.ecal1, detector.ecal0]
-    energies = np.polyval(ecal, np.arange(detector.chan_count))
-    new_influences = []
-    bin_widths = np.zeros([len(scenario.influences), len(energies)])
-    for index, influence in enumerate(scenario.influences):
-        detInfl = session.query(DetectorInfluence).filter_by(influence_name=influence.name).first()
-        new_infl = [detInfl.infl_0, detInfl.infl_1, detInfl.infl_2, detInfl.fixed_smear, detInfl.linear_smear]
-        if degradations:
-            new_infl = [infl + deg for infl, deg in zip(new_infl, degradations[index])]
-            # deal with potential negative values
-            for position, n_inf in enumerate(new_infl):
-                if n_inf < 0:
-                    if not position == 1:
-                        new_infl[position] = 0
-                    else:
-                        new_infl[position] = 0.0001
+    #get ecal: either the only ecal in the list of sources, or the preferred ecal of the detector if the sources differ
+    scenMaterialnames =  [m.material_name for m in scenario.scen_materials + scenario.scen_bckg_materials]
+    baseSpectra = session.query(BaseSpectrum).filter(BaseSpectrum.detector_name == detector.name,
+                                                     BaseSpectrum.material_name.in_(scenMaterialnames)).all()
 
-        new_influences.append(new_infl)
+    ecals = [bs.ecal for bs in baseSpectra]
+    all_same_ecal = all(np.array_equal(ecals[0], other) for other in ecals)
 
-        if new_infl[0] != 0 or new_infl[2] != 0 or new_infl[1] != 1:
-            energies = np.polyval([new_infl[2], (new_infl[1]), new_infl[0]], energies)
-        # convert fixed energy smear distortion from energy to bins
-        if new_infl[3] != 0:
-            e_width = new_infl[3] / 2
-            for sub_index, energy in enumerate(energies):
-                b0 = np.roots([new_infl[2], new_infl[1], new_infl[0] - (energy - e_width)])
-                b1 = np.roots([new_infl[2], new_infl[1], new_infl[0] - (energy + e_width)])
-                bin_widths[index][sub_index] = max(b1) - max(b0)
+    if all_same_ecal:
+        ecal = ecals[0]
+    else:
+        ecal = detector.ecal
+
+
+    new_influences, bin_widths, energies = calculate_influence(scenario,detector,degradations,ecal)
+
 
     # get dose, counts and sensitivity for each material
     countsDoseAndSensitivity = []
@@ -547,7 +571,10 @@ def _getCountsDoseAndSensitivity(scenario, detector, degradations=None):
                         .filter_by(detector_name=detector.name,
                                    material_name=scenMaterial.material_name)
                         ).first()
-        counts = baseSpectrum.get_counts_as_np()
+        counts = baseSpectrum.counts
+        if not (np.array_equal(ecal, baseSpectrum.ecal)):
+            oldenergies = np.polyval(baseSpectrum.ecal, np.arange(detector.chan_count))
+            counts = rebin(counts, oldenergies, ecal)
 
         if scenario.influences:
             for index, infl in enumerate(new_influences):
@@ -594,6 +621,7 @@ def create_n42_file(filename, scenario, detector, sample_counts, secondary_spect
     f.write('<N42InstrumentData>\n')
     f.write('  <Measurement>\n')
     f.write('    <Spectrum>\n')
+    f.write('      <SourceType>Item</SourceType>\n')
     f.write('      <RealTime Unit="sec">PT{}S</RealTime>\n'.format(scenario.acq_time))
     f.write('      <LiveTime Unit="sec">PT{}S</LiveTime>\n'.format(scenario.acq_time))
     f.write('      <Calibration Type="Energy" EnergyUnits="keV">\n')
@@ -606,11 +634,9 @@ def create_n42_file(filename, scenario, detector, sample_counts, secondary_spect
     f.write('</ChannelData>\n')
     f.write('    </Spectrum>\n')
     if secondary_spectrum:
-        if secondary_spectrum.is_spectrum_float():
-            sec_counts = [float(c_str) for c_str in secondary_spectrum.baseCounts.split(",")]
-        else:
-            sec_counts = [int(float(c_str)) for c_str in secondary_spectrum.baseCounts.split(",")]
         f.write('    <Spectrum>\n')
+        type_str = 'Calibration' if detector.secondary_type == secondary_type['internal'] else 'Background'
+        f.write(f'      <SourceType>{type_str}</SourceType>\n')
         f.write('      <RealTime Unit="sec">PT{}S</RealTime>\n'.format(secondary_spectrum.realtime))
         f.write('      <LiveTime Unit="sec">PT{}S</LiveTime>\n'.format(secondary_spectrum.livetime))
         f.write('      <Calibration Type="Energy" EnergyUnits="keV">\n')
@@ -620,10 +646,8 @@ def create_n42_file(filename, scenario, detector, sample_counts, secondary_spect
         f.write('        </Equation>\n')
         f.write('      </Calibration>\n')
         f.write('      <ChannelData>')
-        if secondary_spectrum.is_spectrum_float():
-            f.write('{}'.format(' '.join('{:f}'.format(x) for x in sec_counts)))
-        else:
-            f.write('{}'.format(' '.join('{:d}'.format(x) for x in sec_counts)))
+        f.write(secondary_spectrum.get_counts_as_str())
+
         f.write('</ChannelData>\n')
         f.write('    </Spectrum>\n')
     f.write('  </Measurement>\n')
@@ -631,7 +655,7 @@ def create_n42_file(filename, scenario, detector, sample_counts, secondary_spect
     f.close()
 
 
-def create_n42_file_from_template(n42_mako_template, filename, scenario, detector, sample_counts, secondary_spectrum=None):
+def create_n42_file_from_template(n42_mako_template, filename, scenario, detector, sample_counts : np.ndarray, secondary_spectrum=None):
     """
     Creates n42 file from input using teplate
     :param n42_mako_template: template used to make file
@@ -644,14 +668,17 @@ def create_n42_file_from_template(n42_mako_template, filename, scenario, detecto
     template_data = dict(
         scenario=scenario,
         detector=detector,
-        sample_counts_array=sample_counts,
-        sample_counts=' '.join('{:d}'.format(x) for x in sample_counts),    # FIXME: this is forced to integers
-        compressed_sample_counts=' '.join('{:d}'.format(x) for x in compress_counts(sample_counts)),
+        # TODO: we may want to create a 'sample_counts' class with methods to return it in different formatting
+
     )
+    try:
+        template_data['sample_counts'] = ' '.join('{:d}'.format(x) for x in sample_counts)
+        template_data['compressed_sample_counts'] = ' '.join('{:d}'.format(x) for x in compress_counts(sample_counts))
+    except TypeError:
+        template_data['sample_periods'] = sample_counts
 
     if secondary_spectrum:
-        secondary_spectrum_ints = [int(float(x)) for x in secondary_spectrum.baseCounts.split(',')]
-        secondary_spectrum.baseCounts = ','.join('{:d}'.format(val) for val in secondary_spectrum_ints)
+        secondary_spectrum.counts = secondary_spectrum.counts.astype(int)
         template_data.update(dict(secondary_spectrum=secondary_spectrum))
 
     try:
@@ -674,20 +701,20 @@ def write_results(results_array, out_filepath):
     :param out_filepath: full pathname of output file
     :return: None
     """
-    root = ET.Element('IdentificationResults')
+    root = etree.Element('IdentificationResults')
 
     if not results_array:
         results_array.append(('', 0))
 
     for iso, conf in results_array:
-        identification = ET.SubElement(root, 'Identification')
-        isotope = ET.SubElement(identification, 'IDName')
+        identification = etree.SubElement(root, 'Identification')
+        isotope = etree.SubElement(identification, 'IDName')
         isotope.text = iso
-        confidence = ET.SubElement(identification, 'IDConfidence')
+        confidence = etree.SubElement(identification, 'IDConfidence')
         confidence.text = conf
 
     indent(root)
-    tree = ET.ElementTree(root)
+    tree = etree.ElementTree(root)
     tree.write(out_filepath, encoding='utf-8', xml_declaration=True, method='xml')
     return
 
@@ -807,10 +834,11 @@ def delete_instrument(session, name):
     session.commit()
 
 
-def get_or_create_material(session, matname):
-    material = session.query(Material).get(matname)
+def get_or_create_material(session, matname, include_intrinsic=False):
+    material_name = Material.get_name(matname, include_intrinsic)
+    material = session.query(Material).filter_by(name=material_name).first()
     if not material:
-        material = Material(name=matname)
+        material = Material(name=matname, include_intrinsic=include_intrinsic)
         session.commit()
     return material
 
@@ -827,11 +855,11 @@ def export_scenarios(scenarios_ids, file_path):
     Path(file_path).write_text(xml_str)
 
 
-def import_scenarios(file_path, file_format='xml'):
+def import_scenarios(file_path, file_format='xml', group_name=None, group_desc=None):
     """
     Import scenarios from an xml file into a list of scenarios. Objects are not committed to db here.
     """
-    scen_io = ScenariosIO()
+    scen_io = ScenariosIO(group_name=group_name, group_desc=group_desc)
     if file_format == 'csv':
         # import is taken from a tree directly
         xml_str = scen_io.xmlstr_from_csv(file_path)
@@ -881,11 +909,43 @@ def apply_distortions(new_influences, counts, bin_widths, energies, ecal):
     if (not new_influences[0] == 0) or (not new_influences[2] == 0) or (not new_influences[1] == 1):
         counts = rebin(np.array(counts), energies, ecal)
 
-    count_bs.baseCounts = ','.join([str(c) for c in counts])
+    count_bs.counts = counts
 
     counts = gaussian_smearing(counts, bin_widths, new_influences[4], count_bs.is_spectrum_float())
 
     return counts
+
+def calculate_influence(scenario, detector, degradations, ecal):
+    session = Session()
+
+    energies = np.polyval(ecal, np.arange(detector.chan_count))
+    new_influences = []
+    bin_widths = np.zeros([len(scenario.influences), len(energies)])
+    for index, influence in enumerate(scenario.influences):
+        detInfl = influence.detector_influence
+        new_infl = [detInfl.infl_0, detInfl.infl_1, detInfl.infl_2, detInfl.fixed_smear, detInfl.linear_smear]
+        if degradations:
+            new_infl = [infl + deg for infl, deg in zip(new_infl, degradations[index])]
+            # deal with potential negative values
+            for position, n_inf in enumerate(new_infl):
+                if n_inf < 0:
+                    if not position == 1:
+                        new_infl[position] = 0
+                    else:
+                        new_infl[position] = 0.0001
+
+        new_influences.append(new_infl)
+
+        if new_infl[0] != 0 or new_infl[2] != 0 or new_infl[1] != 1:
+            energies = np.polyval([new_infl[2], (new_infl[1]), new_infl[0]], energies)
+        # convert fixed energy smear distortion from energy to bins
+        if new_infl[3] != 0:
+            e_width = new_infl[3] / 2
+            for sub_index, energy in enumerate(energies):
+                b0 = np.roots([new_infl[2], new_infl[1], new_infl[0] - (energy - e_width)])
+                b1 = np.roots([new_infl[2], new_infl[1], new_infl[0] - (energy + e_width)])
+                bin_widths[index][sub_index] = max(b1) - max(b0)
+    return new_influences, bin_widths, energies
 
 def gaussian_smearing(orig_hist, bin_widths, res_percent, is_float=False):
     if is_float:
@@ -911,3 +971,38 @@ def gaussian_smearing(orig_hist, bin_widths, res_percent, is_float=False):
         smeared_hist = smeared_hist / oom_scale
 
     return smeared_hist
+
+
+def get_ids_from_webid(inputdir, outputdir, drf, url='http://127.0.0.1:8082', bkg_file=None):
+    api_url = url + "/api/v1/analysis"
+    for ff in [f for f in os.listdir(inputdir) if f.endswith(".n42")]:
+        files = {"ipc": open(os.path.join(inputdir, ff), 'rb')}
+        if bkg_file:
+            files["back"] = open(bkg_file, 'rb')
+
+        try:
+            import requests
+            r = requests.post(f'{api_url}?drf={drf}', files=files)
+        except Exception as e:
+            print(e)
+            raise
+
+        try:
+            ids = [(i['name'], str(i['confidence'])) for i in r.json()['isotopes']]
+        except:
+            # if zero counts in primary spectrum, r.json() has no 'isotopes' key
+            ids = None
+        if not ids:  # no identifications
+            ids = [('', '0')]
+
+        id_report = etree.Element('IdentificationResults')
+        for id_iso, id_conf in ids:
+            id_result = etree.SubElement(id_report, 'Identification')
+            id_name = etree.SubElement(id_result, 'IDName')
+            id_name.text = id_iso
+            id_confidence = etree.SubElement(id_result, 'IDConfidence')
+            id_confidence.text = id_conf
+        indent(id_report)
+
+        etree.ElementTree(id_report).write(os.path.join(outputdir, ff.replace(".n42", ".res")), encoding='utf-8',
+                                        xml_declaration=True, method='xml')

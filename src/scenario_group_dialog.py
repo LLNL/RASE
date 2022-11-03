@@ -1,11 +1,11 @@
 ###############################################################################
-# Copyright (c) 2018-2021 Lawrence Livermore National Security, LLC.
+# Copyright (c) 2018-2022 Lawrence Livermore National Security, LLC.
 # Produced at the Lawrence Livermore National Laboratory
 #
 # Written by J. Chavez, S. Czyz, G. Kosinovsky, V. Mozin, S. Sangiorgio.
 # RASE-support@llnl.gov.
 #
-# LLNL-CODE-819515
+# LLNL-CODE-841943, LLNL-CODE-829509
 #
 # All rights reserved.
 #
@@ -31,8 +31,8 @@
 """
 This module allows user to adjust scenario groups
 """
-from PyQt5.QtCore import pyqtSlot
-from PyQt5.QtWidgets import QWidget, QDialog, QLineEdit, QVBoxLayout, QCheckBox,QDialogButtonBox, QPushButton, \
+from PySide6.QtCore import Slot
+from PySide6.QtWidgets import QWidget, QDialog, QLineEdit, QVBoxLayout, QCheckBox,QDialogButtonBox, QPushButton, \
                                     QInputDialog, QMessageBox, QLabel
 from src.table_def import ScenarioGroup, Session
 
@@ -139,7 +139,7 @@ class GroupSettings(QDialog):
         session.commit()
 
 
-    @pyqtSlot()
+    @Slot()
     def accept(self):
         """
         Adds the scenario to the checked groups

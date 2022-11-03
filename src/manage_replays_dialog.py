@@ -1,11 +1,11 @@
 ###############################################################################
-# Copyright (c) 2018-2021 Lawrence Livermore National Security, LLC.
+# Copyright (c) 2018-2022 Lawrence Livermore National Security, LLC.
 # Produced at the Lawrence Livermore National Laboratory
 #
 # Written by J. Chavez, S. Czyz, G. Kosinovsky, V. Mozin, S. Sangiorgio.
 # RASE-support@llnl.gov.
 #
-# LLNL-CODE-819515
+# LLNL-CODE-841943, LLNL-CODE-829509
 #
 # All rights reserved.
 #
@@ -34,11 +34,11 @@ This module supports import, export and deletion of user defined replay options
 
 import csv
 
-from PyQt5.QtWidgets import QDialog, QFileDialog, QTableWidgetItem, QAbstractItemView
-from PyQt5.QtWidgets import QHeaderView, QMessageBox
-from PyQt5.QtCore import pyqtSlot
+from PySide6.QtWidgets import QDialog, QFileDialog, QTableWidgetItem, QAbstractItemView
+from PySide6.QtWidgets import QHeaderView, QMessageBox
+from PySide6.QtCore import Slot
 
-from .table_def import Session, Replay, ResultsTranslator
+from .table_def import Session, Replay, ResultsTranslator, ReplayTypes
 from .ui_generated import ui_manage_replays_dialog
 from src.rase_settings import RaseSettings
 from .replay_dialog import ReplayDialog
@@ -59,39 +59,49 @@ class ManageReplaysDialog(ui_manage_replays_dialog.Ui_Dialog, QDialog):
         self.buttonExport.clicked.connect(self.handleExport)
         self.buttonImport.clicked.connect(self.handleImport)
         self.addNewReplayButton.clicked.connect(self.on_btnNewReplay_clicked)
+        self.tblStandaloneReplays.cellDoubleClicked.connect(self.on_cellDoubleClicked)
+        self.tblWebReplays.cellDoubleClicked.connect(self.on_cellDoubleClicked)
 
     def setReplaysTable(self):
-        replays = list(self.session.query(Replay))
-        if self.tblReplays:
-            self.tblReplays.clear()
-        self.tblReplays.setColumnCount(NUM_COL)
-        self.tblReplays.setRowCount(len(replays))
-        self.tblReplays.setHorizontalHeaderLabels(['Name', 'Replay exe', 'Cmd Line', 'Settings', 'n42 Input Template', 'Results Translator Exe', 'Cmd Line' , 'Settings'])
-        self.tblReplays.setSelectionBehavior(QAbstractItemView.SelectRows)
-        self.tblReplays.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
-        row = 0
-        for replay in replays:
-            self.tblReplays.setItem(row, NAME, QTableWidgetItem(replay.name))
-            self.tblReplays.setItem(row, REPL_PATH, QTableWidgetItem(replay.exe_path))
-            if replay.is_cmd_line:
-                self.tblReplays.setItem(row, REPL_IS_CMD_LINE, QTableWidgetItem("Yes"))
-            else:
-                self.tblReplays.setItem(row, REPL_IS_CMD_LINE, QTableWidgetItem("No"))
-            self.tblReplays.setItem(row, REPL_SETTING, QTableWidgetItem(replay.settings))
-            self.tblReplays.setItem(row, TEMPLATE_PATH, QTableWidgetItem(replay.n42_template_path))
+        # Load Standalone Replay Tools
+        replays = list(self.session.query(Replay).filter_by(type=ReplayTypes.standalone))
+        if self.tblStandaloneReplays:
+            self.tblStandaloneReplays.clear()
+        self.tblStandaloneReplays.setColumnCount(NUM_COL)
+        self.tblStandaloneReplays.setRowCount(len(replays))
+        self.tblStandaloneReplays.setHorizontalHeaderLabels(['Name', 'Replay exe', 'Cmd Line', 'Settings', 'n42 Input Template', 'Results Translator Exe', 'Cmd Line' , 'Settings'])
+        self.tblStandaloneReplays.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.tblStandaloneReplays.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
+        for row, replay in enumerate(replays):
+            self.tblStandaloneReplays.setItem(row, NAME, QTableWidgetItem(replay.name))
+            self.tblStandaloneReplays.setItem(row, REPL_PATH, QTableWidgetItem(replay.exe_path))
+            self.tblStandaloneReplays.setItem(row, REPL_IS_CMD_LINE, QTableWidgetItem("Yes" if replay.is_cmd_line else "No"))
+            self.tblStandaloneReplays.setItem(row, REPL_SETTING, QTableWidgetItem(replay.settings))
+            self.tblStandaloneReplays.setItem(row, TEMPLATE_PATH, QTableWidgetItem(replay.n42_template_path))
             resultsTranslator = self.session.query(ResultsTranslator).filter_by(name=replay.name).first()
             if resultsTranslator:
-                self.tblReplays.setItem(row, TRANSL_PATH, QTableWidgetItem(resultsTranslator.exe_path))
-                if resultsTranslator.is_cmd_line:
-                    self.tblReplays.setItem(row, TRANSL_IS_CMD_LINE, QTableWidgetItem("Yes"))
-                else:
-                    self.tblReplays.setItem(row, TRANSL_IS_CMD_LINE, QTableWidgetItem("No"))
-                self.tblReplays.setItem(row, TRANSL_SETTING, QTableWidgetItem(resultsTranslator.settings))
+                self.tblStandaloneReplays.setItem(row, TRANSL_PATH, QTableWidgetItem(resultsTranslator.exe_path))
+                self.tblStandaloneReplays.setItem(row, TRANSL_IS_CMD_LINE, QTableWidgetItem("Yes" if resultsTranslator.is_cmd_line else "No"))
+                self.tblStandaloneReplays.setItem(row, TRANSL_SETTING, QTableWidgetItem(resultsTranslator.settings))
             else:
-                self.tblReplays.setItem(row, TRANSL_IS_CMD_LINE, QTableWidgetItem(" "))
-                self.tblReplays.setItem(row, TRANSL_SETTING, QTableWidgetItem(" "))
-            row = row + 1
-        self.tblReplays.setEditTriggers(QAbstractItemView.NoEditTriggers)
+                self.tblStandaloneReplays.setItem(row, TRANSL_IS_CMD_LINE, QTableWidgetItem(" "))
+                self.tblStandaloneReplays.setItem(row, TRANSL_SETTING, QTableWidgetItem(" "))
+        self.tblStandaloneReplays.setEditTriggers(QAbstractItemView.NoEditTriggers)
+
+        # Load Web ID Replay Tools
+        replays = list(self.session.query(Replay).filter_by(type=ReplayTypes.gadras_web))
+        if self.tblWebReplays:
+            self.tblWebReplays.clear()
+        self.tblWebReplays.setColumnCount(3)
+        self.tblWebReplays.setRowCount(len(replays))
+        self.tblWebReplays.setHorizontalHeaderLabels(['Name', 'URL', 'Instrument DRF'])
+        self.tblWebReplays.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.tblWebReplays.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        for row, replay in enumerate(replays):
+            self.tblWebReplays.setItem(row, 0, QTableWidgetItem(replay.name))
+            self.tblWebReplays.setItem(row, 1, QTableWidgetItem(replay.web_address))
+            self.tblWebReplays.setItem(row, 2, QTableWidgetItem(replay.drf_name))
+        self.tblWebReplays.setEditTriggers(QAbstractItemView.NoEditTriggers)
 
     def on_btnNewReplay_clicked(self, checked):
         """
@@ -104,15 +114,15 @@ class ManageReplaysDialog(ui_manage_replays_dialog.Ui_Dialog, QDialog):
             self.session.commit()
             self.setReplaysTable()
 
-    @pyqtSlot(int, int)
-    def on_tblReplays_cellDoubleClicked(self, row, col):
+    @Slot(int, int)
+    def on_cellDoubleClicked(self, row, col):
         """
         Edit existing replay on double clicking a row
         """
         replay = self.session.query(Replay).filter_by(
-            name=self.tblReplays.item(row, NAME).text()).first()
+            name=self.tblStandaloneReplays.item(row, NAME).text()).first()
         resultsTranslator = self.session.query(ResultsTranslator).filter_by(
-            name=self.tblReplays.item(row, NAME).text()).first()
+            name=self.tblStandaloneReplays.item(row, NAME).text()).first()
         if ReplayDialog(self, replay, resultsTranslator).exec_():
             self.setReplaysTable()
 
@@ -120,14 +130,15 @@ class ManageReplaysDialog(ui_manage_replays_dialog.Ui_Dialog, QDialog):
         """
         Exports to CSV
         """
+        # FIXME: works only for the standalone replay tools
         path = QFileDialog.getSaveFileName(self, 'Save File', self.settings.getDataDirectory(), 'CSV (*.csv)')
         if path[0]:
             with open(path[0], mode='w', newline='') as stream:
                 writer = csv.writer(stream)
-                for row in range(self.tblReplays.rowCount()):
+                for row in range(self.tblStandaloneReplays.rowCount()):
                     rowdata = []
-                    for column in range(self.tblReplays.columnCount()):
-                        item = self.tblReplays.item(row, column)
+                    for column in range(self.tblStandaloneReplays.columnCount()):
+                        item = self.tblStandaloneReplays.item(row, column)
                         if item is not None:
                             rowdata.append(item.text())
                         else:
@@ -138,20 +149,21 @@ class ManageReplaysDialog(ui_manage_replays_dialog.Ui_Dialog, QDialog):
         """
         Imports from CSV
         """
+        # FIXME: works only for the standalone replay tools
         path = QFileDialog.getOpenFileName(self, 'Open File', self.settings.getDataDirectory(), 'CSV(*.csv)')
         if path[0]:
             # FIXME: This doesn't check in any way that the format of the file is correct
             with open(path[0], mode='r') as stream:
-                self.tblReplays.setRowCount(0)
-                self.tblReplays.setColumnCount(0)
+                self.tblStandaloneReplays.setRowCount(0)
+                self.tblStandaloneReplays.setColumnCount(0)
                 for rowdata in csv.reader(stream):
-                    row = self.tblReplays.rowCount()
-                    self.tblReplays.insertRow(row)
-                    self.tblReplays.setColumnCount(len(rowdata))
+                    row = self.tblStandaloneReplays.rowCount()
+                    self.tblStandaloneReplays.insertRow(row)
+                    self.tblStandaloneReplays.setColumnCount(len(rowdata))
                     for column, data in enumerate(rowdata):
                         item = QTableWidgetItem(data)
-                        self.tblReplays.setItem(row, column, item)
-            self.tblReplays.setHorizontalHeaderLabels(
+                        self.tblStandaloneReplays.setItem(row, column, item)
+            self.tblStandaloneReplays.setHorizontalHeaderLabels(
                 ['Name', 'Replay exe', 'Cmd Line', 'Settings', 'n42 Input Template', 'Results Translator Exe',
                  'Cmd Line', 'Settings'])
 
@@ -159,22 +171,20 @@ class ManageReplaysDialog(ui_manage_replays_dialog.Ui_Dialog, QDialog):
         """
         Deletes Selected Replays
         """
-        rows = self.tblReplays.selectionModel().selectedRows()
-        indices =[]
-        for r in rows:
-            indices.append(r.row())
-        indices.sort(reverse=True)
-        for index in indices:
-            name = self.tblReplays.item(index,0).text()
-            self.tblReplays.removeRow(index)
-            replayDelete = self.session.query(Replay).filter(Replay.name == name)
-            replayDelete.delete()
-            resTranslatorDelete = self.session.query(ResultsTranslator).filter(ResultsTranslator.name == name)
-            if resTranslatorDelete:
-                resTranslatorDelete.delete()
-            self.session.commit()
-            if self.parent:
-                self.parent.cmbReplay.removeItem(self.parent.cmbReplay.findText(name))
+        for tbl in [self.tblWebReplays, self.tblStandaloneReplays]:
+            indices = [r.row() for r in tbl.selectionModel().selectedRows()]
+            indices.sort(reverse=True)
+            for index in indices:
+                name = tbl.item(index, 0).text()
+                tbl.removeRow(index)
+                replayDelete = self.session.query(Replay).filter(Replay.name == name)
+                replayDelete.delete()
+                resTranslatorDelete = self.session.query(ResultsTranslator).filter(ResultsTranslator.name == name)
+                if resTranslatorDelete:
+                    resTranslatorDelete.delete()
+                self.session.commit()
+                if self.parent:
+                    self.parent.cmbReplay.removeItem(self.parent.cmbReplay.findText(name))
 
     def oK(self):
         """

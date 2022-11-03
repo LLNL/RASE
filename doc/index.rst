@@ -15,6 +15,7 @@ Welcome to RASE documentation!
    Using_RASE
    ReplayToolSettings
    Advanced_topics
+   dynamic_doc/Dynamic_RASE
    Release_notes
    References
    disclaimer

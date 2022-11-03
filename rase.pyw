@@ -1,11 +1,11 @@
 ###############################################################################
-# Copyright (c) 2018-2021 Lawrence Livermore National Security, LLC.
+# Copyright (c) 2018-2022 Lawrence Livermore National Security, LLC.
 # Produced at the Lawrence Livermore National Laboratory
 #
 # Written by J. Brodsky, J. Chavez, S. Czyz, G. Kosinovsky, V. Mozin, S. Sangiorgio.
 # RASE-support@llnl.gov.
 #
-# LLNL-CODE-819515
+# LLNL-CODE-841943, LLNL-CODE-829509
 #
 # All rights reserved.
 #
@@ -36,12 +36,12 @@ import traceback
 import os
 import logging
 
-from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QApplication, QMessageBox
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import QApplication, QMessageBox
 from src.rase import Rase
 from src.rase_settings import RaseSettings
 
-RASE_VERSION = 'v2.2'
+RASE_VERSION = 'v2.3'
 
 if getattr(sys, 'frozen', False):
     # we are in a pyinstaller bundle
@@ -52,9 +52,14 @@ else:
 # configure the logger
 # TODO: Remember to update the version number at each release!
 logFile = os.path.join(application_path, "rase.log")
-FORMAT = '%(asctime)-15s' + RASE_VERSION + '%(levelname)s %(message)s'
+FORMAT = '%(asctime)-15s RASE' + RASE_VERSION + ' %(levelname)s %(message)s'
 logging.basicConfig(filename=logFile, level=logging.DEBUG, format=FORMAT)
 
+# hide annoying matplotlib debug logs
+logging.getLogger("matplotlib.backends.backend_pdf").setLevel(logging.ERROR)
+logging.getLogger("matplotlib.colorbar").setLevel(logging.ERROR)
+logging.getLogger("matplotlib.font_manager").setLevel(logging.ERROR)
+logging.getLogger("matplotlib.ticker").setLevel(logging.ERROR)
 
 def log_except_hook(eType, eValue, tracebackobj):
     """
@@ -72,14 +77,17 @@ def log_except_hook(eType, eValue, tracebackobj):
     traceback.print_exception(eType, eValue, tracebackobj)
 
     # Tell the user
+    msg_box = QMessageBox()
+    msg_box.setText('An unhandled exception occurred.')
     notice = \
-        """An unhandled exception occurred. \n\n """ \
-        """Please report the problem\n""" \
-        """via email to rase-support@llnl.gov.\n""" \
-        """A log has been written to "%s".\n\n""" \
-        """Error information:\n""" % logFile
-    errmsg = '%s: \n%s' % (str(eType), str(eValue))
-    QMessageBox().critical(None, "Unhandled Exception", notice + errmsg)
+        """Please report the problem """ \
+        """via email to rase-support@llnl.gov.\n\n""" \
+        """A log has been written to \n "%s".""" % logFile
+    msg_box.setInformativeText(notice)
+    err_msg = ''.join(traceback.format_exception(eType, eValue, tracebackobj))
+    msg_box.setDetailedText(err_msg)
+    msg_box.setIcon(QMessageBox.Critical)
+    msg_box.exec()
 
     # quit
     sys.exit(1)
@@ -95,5 +103,5 @@ if __name__ == '__main__':
     app = QApplication(sys.argv)
     win = Rase(sys.argv)
     win.show()
-    app.exec_()
+    app.exec()
 

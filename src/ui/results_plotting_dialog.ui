@@ -94,20 +94,6 @@
             <property name="horizontalSpacing">
              <number>14</number>
             </property>
-            <item row="0" column="0">
-             <widget class="QLabel" name="label">
-              <property name="text">
-               <string>Confidence Intervals for S-curve fit</string>
-              </property>
-             </widget>
-            </item>
-            <item row="0" column="1">
-             <widget class="QComboBox" name="alphaCBox">
-              <property name="layoutDirection">
-               <enum>Qt::LeftToRight</enum>
-              </property>
-             </widget>
-            </item>
             <item row="1" column="0">
              <widget class="QLabel" name="setValueForIDThresholdEstimationLabel">
               <property name="text">
@@ -135,45 +121,6 @@
              </widget>
             </item>
             <item row="2" column="0">
-             <widget class="QLabel" name="label_3">
-              <property name="text">
-               <string>Fit x parameter in linear or log space</string>
-              </property>
-             </widget>
-            </item>
-            <item row="2" column="1">
-             <widget class="QComboBox" name="combo_fitspace">
-              <property name="sizePolicy">
-               <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-                <horstretch>0</horstretch>
-                <verstretch>0</verstretch>
-               </sizepolicy>
-              </property>
-              <property name="minimumSize">
-               <size>
-                <width>120</width>
-                <height>0</height>
-               </size>
-              </property>
-              <property name="maximumSize">
-               <size>
-                <width>16777215</width>
-                <height>16777215</height>
-               </size>
-              </property>
-              <item>
-               <property name="text">
-                <string>Linear</string>
-               </property>
-              </item>
-              <item>
-               <property name="text">
-                <string>Logarithmic</string>
-               </property>
-              </item>
-             </widget>
-            </item>
-            <item row="3" column="0">
              <widget class="QCheckBox" name="check_idshow">
               <property name="layoutDirection">
                <enum>Qt::LeftToRight</enum>
@@ -186,15 +133,28 @@
               </property>
              </widget>
             </item>
-            <item row="3" column="1">
+            <item row="3" column="0">
              <widget class="QCheckBox" name="check_confint">
               <property name="text">
-               <string>Show confidence intervals</string>
+               <string>Show fit 1-sigma confidence band</string>
               </property>
               <property name="checked">
                <bool>true</bool>
               </property>
              </widget>
+            </item>
+            <item row="0" column="0">
+             <spacer name="verticalSpacer">
+              <property name="orientation">
+               <enum>Qt::Vertical</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size>
+                <width>20</width>
+                <height>40</height>
+               </size>
+              </property>
+             </spacer>
             </item>
            </layout>
           </item>
@@ -202,6 +162,13 @@
            <widget class="QPushButton" name="btnPlotData">
             <property name="text">
              <string>Plot S-Curve(s)</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="btnEditParams">
+            <property name="text">
+             <string>Edit S-Curve Fit Parameters</string>
             </property>
            </widget>
           </item>

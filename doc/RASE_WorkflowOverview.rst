@@ -12,9 +12,11 @@ First, instruments are defined and their corresponding base spectra loaded. Scen
 
 RASE has been tested to be compatible with about 30 different spectrometric instruments and their base spectra. Access to the base spectra library is given upon request and requires approval. For most of the RASE-compatible instruments, a vendor-supplied replay tool has been integrated.
 
+|
+
 .. _rase-workflow:
 
 .. figure:: _static/rase_workflow.png
     :scale: 50 %
 
-    RASE analysis workflow and functionality.
+    **RASE analysis workflow and functionality.**

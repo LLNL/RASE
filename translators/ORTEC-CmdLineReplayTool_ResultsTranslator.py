@@ -2,7 +2,7 @@ import os
 import xml.etree.ElementTree as ET
 import re
 
-from src.rase_functions import write_results
+from translators.translator_functions import write_results
 
 
 def retrieveResults(filepath):
@@ -17,17 +17,14 @@ def retrieveResults(filepath):
     # Element.find() finds the child with a particular tag so the following
     # finds the first spectrum which is the item spectrum in RASE base spectra files
 
-    resultsArray = [[], []]
-
     nuclideID = root.find('Isotope')
     confidenceValue = root.find('ConfidenceIndex')
 
     # split all identifications using regex
-    resultsArray[0] = [m.strip() for mm in re.findall('"([^"]*)"|( [^"]\S*)|(^[^"]\S*)', nuclideID.text) for m in mm if m]
+    nuclides = [m.strip() for mm in re.findall('"([^"]*)"|( [^"]\S*)|(^[^"]\S*)', nuclideID.text) for m in mm if m]
+    confidences = confidenceValue.text.split()
 
-    resultsArray[1] = confidenceValue.text.split()
-
-    return resultsArray
+    return list(zip(nuclides, confidences))
 
 
 def main(input_dir, output_dir):

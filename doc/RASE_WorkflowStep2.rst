@@ -21,7 +21,7 @@ RASE will not allow the user to define a material/units combination that is not 
 
 The user is free to mix materials that are defined in units of flux and in units dose rate in a single scenario.
 
-Input the dose rate above background (uSv/h), or the flux in a key photopeak (gammas/cm2s), for each material in the third cell of the table (the default value is 0.1 [uSv/h] / [gammas/cm2s] for flux/dose, respectively.
+Input the dose rate above background (:math:`{\mu}`\ Sv/h), or the flux in a key photopeak (gammas/cm\ :superscript:`2`\ s), for each material in the third cell of the table (the default value is 0.1 [:math:`{\mu}`\ Sv/h] / [gammas/cm\ :superscript:`2`\ s] for flux/dose, respectively.
 Entering a range of dose rates/fluxes in the format [min]-[max]:[number of steps] will produce multiple scenarios, one with each of the requested dose rates/fluxes. If the user right-clicks on the dose
 rate/photopeak flux box, a dialog can be brought up where the user can interactively set a min, max, number of steps, and linear vs logrithmic spacing and RASE will automatically define a range of values.
 
@@ -31,6 +31,8 @@ Define the acquisition time in seconds (the default value is 30 sec.). A range o
 the dose rates: [min]-[max]:[step]
 
 Define the number of replications (the default value is 100). This parameter determines how many sampled spectra will be created in this scenario.
+
+An optional comment field is available to provide any additional context that may be useful to the user. The comment field is searchable from the main window.
 
 Scenarios can be a part of groups for improved workflow organization. By clicking the "Scenario Groups" button in the top left of the scenario creation window, an additional dialog allows the user to define
 any number of groups that the scenario (or scenarios) being defined should be a member of. The user can also create new groups through this dialog. If the scenario is not associated with any group, it is
@@ -43,9 +45,19 @@ can be duplicated as a set (so long as the user changes one material, the materi
 material and wanted to see how the detector would perform at those same doses for a different material, the user can simply select those scenarios in the main window, choose the option to duplicate the scenarios, and change that
 one material to generate a whole new set of scenarios with the desired material.
 
+|
+
 .. _rase-WorkflowStep2:
 
-.. figure:: _static/rase_WorkflowStep2.png
-    :scale: 80 %
+.. figure:: _static/rase_WorkflowStep2-1.png
+    :scale: 33 %
 
-    “Add Scenario" dialog.
+    **Basic “Add Scenario" dialog.**
+
+|
+
+.. figure:: _static/rase_WorkflowStep2-2.png
+    :scale: 33 %
+
+    **“Add Scenario" dialog with various additional features.**
+

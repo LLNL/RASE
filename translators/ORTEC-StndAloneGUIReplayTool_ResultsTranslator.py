@@ -2,7 +2,7 @@ import os
 import xml.etree.ElementTree as ET
 from shutil import copyfile
 
-from src.rase_functions import write_results
+from translators.translator_functions import write_results
 
 
 def FileListing(TargetDirectory):
@@ -50,14 +50,13 @@ def retrieve_ORTEC_StdAlone_Results(filepath):
 
     resultsElements = resultsAll.findall('Nuclide')
    
-    resultsArray = [[],[]]
-    
+    resultsArray = []
+
     for element in resultsElements:
         nuclideID = element.find('NuclideName')
         confidenceValue = element.find('NuclideIDConfidence')
-        resultsArray[0].append(nuclideID.text)
-        resultsArray[1].append(confidenceValue.text)
-    
+        resultsArray.append(nuclideID.text, confidenceValue.text)
+
     return resultsArray
 
 

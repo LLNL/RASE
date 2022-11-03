@@ -1,11 +1,11 @@
 ###############################################################################
-# Copyright (c) 2018-2021 Lawrence Livermore National Security, LLC.
+# Copyright (c) 2018-2022 Lawrence Livermore National Security, LLC.
 # Produced at the Lawrence Livermore National Laboratory
 #
 # Written by J. Chavez, S. Czyz, G. Kosinovsky, V. Mozin, S. Sangiorgio.
 # RASE-support@llnl.gov.
 #
-# LLNL-CODE-819515
+# LLNL-CODE-841943, LLNL-CODE-829509
 #
 # All rights reserved.
 #
@@ -33,8 +33,8 @@ This module allows user to input seed for Random Number Generation to ensure rep
 validation results
 """
 
-from PyQt5.QtCore import pyqtSlot
-from PyQt5.QtWidgets import QDialog, QMessageBox
+from PySide6.QtCore import Slot
+from PySide6.QtWidgets import QDialog, QMessageBox
 
 from src.rase_settings import RaseSettings
 from .ui_generated import ui_input_random_seed
@@ -57,7 +57,7 @@ class RandomSeedDialog(ui_input_random_seed.Ui_InputRandomSeedDialog, QDialog):
         self.buttonBox.accepted.connect(self.accept)
         self.buttonBox.rejected.connect(self.reject)
 
-    @pyqtSlot()
+    @Slot()
     def accept(self):
         randomText = self.txtRandomVal.text()
         if randomText and self.is_number(randomText) and float(randomText) >= 1 and float(randomText) <= pow(2,30):
@@ -71,7 +71,7 @@ class RandomSeedDialog(ui_input_random_seed.Ui_InputRandomSeedDialog, QDialog):
             super().accept()
             dialog = RandomSeedDialog(self)
             dialog.exec_()
-    @pyqtSlot()
+    @Slot()
     def reject(self):
         super().accept()
 

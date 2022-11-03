@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>784</width>
-    <height>591</height>
+    <width>980</width>
+    <height>595</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -92,25 +92,49 @@
    <item>
     <layout class="QHBoxLayout" name="horizontalLayout_6">
      <item>
-      <widget class="QLabel" name="label_3">
+      <widget class="QLabel" name="Config_file_label">
        <property name="text">
-        <string>Spectrum ID Tagname or Sequence Number</string>
+        <string>Configuration File: </string>
        </property>
       </widget>
      </item>
      <item>
-      <widget class="QLineEdit" name="txtSpectrumTag">
+      <widget class="QLineEdit" name="txtConfigFile"/>
+     </item>
+     <item>
+      <widget class="QPushButton" name="btnBrowseConfig">
+       <property name="text">
+        <string>Browse...</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="layoutConfigSelect">
+     <item>
+      <widget class="QLabel" name="label_3">
+       <property name="text">
+        <string>Configuration: </string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QComboBox" name="comboConfig">
        <property name="sizePolicy">
-        <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+        <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
          <horstretch>0</horstretch>
          <verstretch>0</verstretch>
         </sizepolicy>
        </property>
-       <property name="maximumSize">
+       <property name="minimumSize">
         <size>
-         <width>200</width>
-         <height>16777215</height>
+         <width>100</width>
+         <height>0</height>
         </size>
+       </property>
+       <property name="currentText">
+        <string/>
        </property>
       </widget>
      </item>
@@ -139,6 +163,13 @@
       </widget>
      </item>
      <item>
+      <widget class="QCheckBox" name="checkBox_ComboFolder">
+       <property name="text">
+        <string>Sum sources in subfolders</string>
+       </property>
+      </widget>
+     </item>
+     <item>
       <spacer name="horizontalSpacer_2">
        <property name="orientation">
         <enum>Qt::Horizontal</enum>
@@ -163,7 +194,7 @@
    <item>
     <widget class="QTableWidget" name="sourceTable">
      <property name="columnCount">
-      <number>7</number>
+      <number>9</number>
      </property>
      <attribute name="horizontalHeaderStretchLastSection">
       <bool>true</bool>
@@ -176,6 +207,11 @@
      <column>
       <property name="text">
        <string>File</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>#</string>
       </property>
      </column>
      <column>
@@ -201,6 +237,11 @@
      <column>
       <property name="text">
        <string>Base Spectrum Name</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>Notes</string>
       </property>
      </column>
     </widget>
@@ -269,29 +310,6 @@
       </spacer>
      </item>
     </layout>
-   </item>
-   <item>
-    <widget class="QCheckBox" name="checkBox">
-     <property name="enabled">
-      <bool>false</bool>
-     </property>
-     <property name="text">
-      <string>Include background in base spectra</string>
-     </property>
-    </widget>
-   </item>
-   <item>
-    <widget class="QCheckBox" name="checkBox_2">
-     <property name="enabled">
-      <bool>false</bool>
-     </property>
-     <property name="text">
-      <string>Exposure rates are background subtracted</string>
-     </property>
-     <property name="checked">
-      <bool>true</bool>
-     </property>
-    </widget>
    </item>
    <item>
     <layout class="QHBoxLayout" name="horizontalLayout_4">

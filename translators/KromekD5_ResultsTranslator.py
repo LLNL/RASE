@@ -1,6 +1,6 @@
 import os
 
-from src.rase_functions import write_results
+from translators.translator_functions import write_results
 
 
 def retrieve_KromekD5_results(filepath):
@@ -19,7 +19,7 @@ def retrieve_KromekD5_results(filepath):
         f.readline()  # skip header line
         line = f.readline()
         results = [s.strip() for s in line.split(',')[4:]]
-    return zip(results[1::2], results[0::2])
+    return list(zip(results[1::2], results[0::2]))
 
 
 def main(input_dir, output_dir):

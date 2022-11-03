@@ -64,10 +64,11 @@ Though not strictly necessary for base spectra building and not included in the 
 It is good practice to create a summary file for any created base spectra set for a given instrument, which should be included whenever the base spectra set is distributed. An example of such a summary file can be seen below.
 
 .. figure:: _static/Generic_Base_Spectra_Summary_File.png
-    :scale: 60 %
+    :scale: 100 %
 
-    An example of a summary file created when the base spectra were acquired/processed which a user might include when sharing the base spectra set.
+    **An example of a summary file created when the base spectra were acquired/processed which a user might include when sharing the base spectra set.**
 
+|
 
 Data Collection
 ---------------

@@ -1,11 +1,11 @@
 ###############################################################################
-# Copyright (c) 2018-2021 Lawrence Livermore National Security, LLC.
+# Copyright (c) 2018-2022 Lawrence Livermore National Security, LLC.
 # Produced at the Lawrence Livermore National Laboratory
 #
 # Written by J. Chavez, S. Czyz, G. Kosinovsky, V. Mozin, S. Sangiorgio.
 # RASE-support@llnl.gov.
 #
-# LLNL-CODE-819515
+# LLNL-CODE-841943, LLNL-CODE-829509
 #
 # All rights reserved.
 #
@@ -34,8 +34,8 @@ This module defines the progress bar module used when loading base spectra
 
 import time
 
-from PyQt5.QtCore import QThread, pyqtSlot, pyqtSignal
-from PyQt5.QtWidgets import QDialog, QProgressBar, QPushButton, QLabel, QGridLayout
+from PySide6.QtCore import QThread, Slot, Signal
+from PySide6.QtWidgets import QDialog, QProgressBar, QPushButton, QLabel, QGridLayout
 
 
 class ProgressBar(QDialog):
@@ -46,8 +46,8 @@ class ProgressBar(QDialog):
     Once finished, a sig_finished signal is emitted.
     """
 
-    sig_abort_worker = pyqtSignal()
-    sig_finished = pyqtSignal(bool)
+    sig_abort_worker = Signal()
+    sig_finished = Signal(bool)
 
     def __init__(self, parent, dispProg=True):
         super(ProgressBar, self).__init__(parent)
@@ -101,7 +101,7 @@ class ProgressBar(QDialog):
         self.thread.start()  # this will emit 'started' and start thread's event loop
         self.t = time.time()
 
-    @pyqtSlot(int)
+    @Slot(int)
     def onCountChanged(self, value):
         """Rolling average across 50 samples"""
         self.progress.setValue(value)
@@ -115,14 +115,14 @@ class ProgressBar(QDialog):
         time_str = str(int(dT * (self.progress.maximum() - value)) + 1)
         self.label.setText("Time Remaining: " + time_str + " seconds")
 
-    @pyqtSlot(bool)
+    @Slot(bool)
     def on_worker_done(self, value):
         self.thread.quit()
         self.thread.wait()
         self.close()
         self.sig_finished.emit(value)
 
-    @pyqtSlot()
+    @Slot()
     def abort_worker(self):
         self.sig_abort_worker.emit()
 

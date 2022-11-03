@@ -10,7 +10,7 @@ The RASE main window appears when the executable is launched, and is depicted in
 Prior to executing the RASE workflow, the user is encouraged to define a custom work directory where the RASE-generated
 data (sampled spectra, replay tool outputs, and analysis reports) will be located. The work directory can be defined
 using the “Preferences” dialog accessible through the “Setup” menu. The default location of data for Windows machines
-is :code:`C:\Windows\Users\[UserName]\RaseData`  If the RASE work directory is modified, RASE should be restarted in order
+is :code:`C:\\Windows\\Users\\[UserName]\\RaseData`  If the RASE work directory is modified, RASE should be restarted in order
 for the change to take effect.
 
 The RASE work directory can be accessed at any time from the RASE main window by clicking on the “Sample Spectra Dir”
@@ -30,7 +30,7 @@ The capability to model dynamic, in-motion measurement scenarios is also under d
 The main window provides access to the instrument and scenario definitions. Once these are defined, the steps of the RASE
 workflow are executed using buttons in the bottom-right "Actions" area.
 
-Materials that make up scenarios are shown in plain text, italics, or a combination of both. Materials that are in plain text are in units of dose rate (uSv/h), while those in italics are in units of flux (gammas/cm2s).
+Materials that make up scenarios are shown in plain text, italics, or a combination of both. Materials that are in plain text are in units of dose rate (:math:`{\mu}`\ Sv/h), while those in italics are in units of flux (gammas/cm\ :superscript:`2`\ s).
 
 The color-coding of the alphanumeric scenario IDs in the RASE main window corresponds to different stages of the RASE
 workflow. It is activated when an instrument is selected:
@@ -52,9 +52,11 @@ instrument.
 The replay tool has a simpler color scheme: the name is green if there is a command line replay tool executable
 defined and the command line checkbox is checked. Otherwise, it is black.
 
+|
+
 .. _rase_mainWindow:
 
 .. figure:: _static/rase_mainWindow.png
-    :scale: 75 %
+    :scale: 33 %
 
-    RASE main window at the first start without pre-defined instruments or scenarios.
+    **RASE main window at the first start without pre-defined instruments or scenarios.**

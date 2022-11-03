@@ -1,11 +1,11 @@
 ###############################################################################
-# Copyright (c) 2018-2021 Lawrence Livermore National Security, LLC.
+# Copyright (c) 2018-2022 Lawrence Livermore National Security, LLC.
 # Produced at the Lawrence Livermore National Laboratory
 #
 # Written by J. Chavez, S. Czyz, G. Kosinovsky, V. Mozin, S. Sangiorgio.
 # RASE-support@llnl.gov.
 #
-# LLNL-CODE-819515
+# LLNL-CODE-841943, LLNL-CODE-829509
 #
 # All rights reserved.
 #
@@ -33,7 +33,7 @@ This module defines RASE settings infrastructure and default settings
 """
 import os
 
-from PyQt5 import QtCore
+from PySide6 import QtCore
 
 from src import sampling_algos
 from src import table_def
@@ -64,6 +64,9 @@ MWEIGHTS_USED_IN_CALCS_DEFAULT = True
 
 RESULTS_TBL_COLS_KEY = "Results Table Columns"
 RESULTS_TBL_COLS_DEFAULT = []
+
+BASE_SPECTRUM_CREATION_CONFIG_KEY = 'Base Spectrum Creation Configuration File'
+BASE_SPECTRUM_CREATION_CONFIG_DEFAULT = ''
 
 
 class RaseSettings:
@@ -102,6 +105,9 @@ class RaseSettings:
 
         if not self.settings.value(RESULTS_TBL_COLS_KEY):
             self.settings.setValue(RESULTS_TBL_COLS_KEY, RESULTS_TBL_COLS_DEFAULT)
+
+        if self.settings.value(BASE_SPECTRUM_CREATION_CONFIG_KEY) is None:
+            self.settings.setValue(BASE_SPECTRUM_CREATION_CONFIG_KEY,BASE_SPECTRUM_CREATION_CONFIG_DEFAULT)
 
         # this is qt internal settings store
         self.qtsettings = QtCore.QSettings(QtCore.QSettings.UserScope, "qtproject")
@@ -272,3 +278,15 @@ class RaseSettings:
         Sets Results Table Settings
         """
         self.settings.setValue(RESULTS_TBL_COLS_KEY, col_list)
+
+    def getBaseSpectrumCreationConfig(self):
+        """
+        Returns path to base spectrum creation configuration file
+        """
+        return self.settings.value(BASE_SPECTRUM_CREATION_CONFIG_KEY)
+
+    def setBaseSpectrumCreationConfig(self, path):
+        """
+        Returns path to base spectrum creation configuration file
+        """
+        self.settings.setValue(BASE_SPECTRUM_CREATION_CONFIG_KEY, path)

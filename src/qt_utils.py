@@ -1,11 +1,11 @@
 ###############################################################################
-# Copyright (c) 2018-2021 Lawrence Livermore National Security, LLC.
+# Copyright (c) 2018-2022 Lawrence Livermore National Security, LLC.
 # Produced at the Lawrence Livermore National Laboratory
 #
 # Written by J. Chavez, S. Czyz, G. Kosinovsky, V. Mozin, S. Sangiorgio.
 # RASE-support@llnl.gov.
 #
-# LLNL-CODE-819515
+# LLNL-CODE-841943, LLNL-CODE-829509
 #
 # All rights reserved.
 #
@@ -29,10 +29,10 @@
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ###############################################################################
 
-from PyQt5 import QtCore, QtGui, QtWidgets
-from PyQt5.QtCore import Qt, QRect
+from PySide6 import QtCore, QtGui, QtWidgets
+from PySide6.QtCore import Qt, QRect
 import sys
-from PyQt5.QtCore import QEventLoop, pyqtSlot, QObject
+from PySide6.QtCore import QEventLoop, Slot, QObject, Signal
 
 
 class QSignalWait(QObject):
@@ -46,10 +46,10 @@ class QSignalWait(QObject):
         self.signal = signal
         self.loop = QEventLoop()
 
-    @pyqtSlot()
-    @pyqtSlot(bool)
-    @pyqtSlot(str)
-    @pyqtSlot(int)
+    @Slot()
+    @Slot(bool)
+    @Slot(str)
+    @Slot(int)
     def _quit(self, state = None):
         self.state = state
         self.loop.quit()
@@ -61,3 +61,50 @@ class QSignalWait(QObject):
         self.loop.exec()
         self.signal.disconnect(self._quit)
         return self.state
+
+
+class DoubleValidator(QtGui.QDoubleValidator):
+    '''Reimplements QDoubleValidator with signal when validation changes'''
+    validationChanged = Signal(QtGui.QValidator.State)
+
+    def validate(self, input, pos):
+        state, input, pos = super().validate(input, pos)
+        self.validationChanged.emit(state)
+        return state, input, pos
+
+
+class DoubleValidatorInfinity(QtGui.QDoubleValidator):
+    '''
+    Reimplements QDoubleValidator with signal when validation changes
+    and accepts '+inf' and '-inf' values
+    '''
+    validationChanged = Signal(QtGui.QValidator.State)
+
+    def validate(self, input, pos):
+        state, input, pos = super().validate(input, pos)
+        if input == 'i' or input == 'in' or input == '-i' or input == '-in':
+            state = QtGui.QValidator.Intermediate
+        if input == 'inf' or input == '-inf':
+            state = QtGui.QValidator.Acceptable
+        self.validationChanged.emit(state)
+        return state, input, pos
+
+
+class IntValidator(QtGui.QIntValidator):
+    '''Reimplements QIntValidator with signal when validation changes'''
+    validationChanged = Signal(QtGui.QValidator.State)
+
+    def validate(self, input, pos):
+        state, input, pos = super().validate(input, pos)
+        self.validationChanged.emit(state)
+        return state, input, pos
+
+
+class RegExpValidator(QtGui.QRegularExpressionValidator):
+    """Reimplements QRegularExpressionValidator with signal when validation changes"""
+    validationChanged = Signal(QtGui.QValidator.State)
+
+    def validate(self, input, pos):
+        state, input, pos = super().validate(input, pos)
+        self.validationChanged.emit(state)
+        return state, input, pos

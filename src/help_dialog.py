@@ -1,11 +1,11 @@
 ###############################################################################
-# Copyright (c) 2018-2021 Lawrence Livermore National Security, LLC.
+# Copyright (c) 2018-2022 Lawrence Livermore National Security, LLC.
 # Produced at the Lawrence Livermore National Laboratory
 #
 # Written by J. Chavez, S. Czyz, G. Kosinovsky, V. Mozin, S. Sangiorgio.
 # RASE-support@llnl.gov.
 #
-# LLNL-CODE-819515
+# LLNL-CODE-841943, LLNL-CODE-829509
 #
 # All rights reserved.
 #
@@ -32,23 +32,26 @@
 This module provides information and documentation about RASE
 """
 
-import os, sys
+import os
 
-from PyQt5.QtCore import QUrl
-from PyQt5.QtWebEngineWidgets import QWebEngineView
+from PySide6.QtCore import QUrl
+from PySide6.QtWebEngineWidgets import QWebEngineView
 from src.utils import get_bundle_dir
 
 
 class HelpDialog(QWebEngineView):
-    def __init__(self, parent):
-        super(HelpDialog, self).__init__()
+    def __init__(self, parent=None, page='index.html'):
+        super().__init__(parent)
 
         self.resize(1200, 800)
         self.setWindowTitle('RASE Help')
 
         self.setZoomFactor(1.0)
 
-        index_path = os.path.join(get_bundle_dir(), "doc", "_build", "html", "index.html")
+        self.load_page(page)
+
+    def load_page(self, page):
+        index_path = os.path.join(get_bundle_dir(), "doc", "_build", "html", page)
         self.load(QUrl.fromLocalFile(index_path))
 
 

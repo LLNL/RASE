@@ -152,7 +152,6 @@
           </layout>
          </item>
         </layout>
-        <zorder></zorder>
        </widget>
       </item>
      </layout>
@@ -160,7 +159,7 @@
     <item>
      <layout class="QHBoxLayout" name="horizontalLayout_12">
       <item>
-       <widget class="QGroupBox" name="groupBox">
+       <widget class="QGroupBox" name="groupBox1">
         <property name="title">
          <string>Instruments</string>
         </property>
@@ -255,12 +254,11 @@
           </widget>
          </item>
         </layout>
-        <zorder></zorder>
         <zorder>tblDetectorReplay</zorder>
        </widget>
       </item>
       <item>
-       <widget class="QGroupBox" name="groupBox">
+       <widget class="QGroupBox" name="groupBox2">
         <property name="title">
          <string>Actions</string>
         </property>
@@ -403,7 +401,6 @@ Replay Results...</string>
      </layout>
     </item>
    </layout>
-   <zorder></zorder>
   </widget>
   <widget class="QMenuBar" name="menubar">
    <property name="geometry">
@@ -411,7 +408,7 @@ Replay Results...</string>
      <x>0</x>
      <y>0</y>
      <width>1000</width>
-     <height>22</height>
+     <height>24</height>
     </rect>
    </property>
    <property name="nativeMenuBar">

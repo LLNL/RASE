@@ -57,8 +57,9 @@ material weight for Tp defaults to 1, and since it was identified with a confide
 (the user provided a Fn weight of 3 for HEU, and because HEU was not identified there is no ID confidence associated with it). If more replications are run, the
 results will be averaged across all replications.
 
+|
 
 .. figure:: _static/WeightsTable.png
     :scale: 75 %
 
-    "Material Weights Table" dialog, accessible from the "Setup" menu in the main RASE window.
+    **"Material Weights Table" dialog, accessible from the "Setup" menu in the main RASE window.**

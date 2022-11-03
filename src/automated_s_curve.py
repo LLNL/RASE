@@ -1,11 +1,11 @@
 ###############################################################################
-# Copyright (c) 2018-2021 Lawrence Livermore National Security, LLC.
+# Copyright (c) 2018-2022 Lawrence Livermore National Security, LLC.
 # Produced at the Lawrence Livermore National Laboratory
 #
 # Written by J. Chavez, S. Czyz, G. Kosinovsky, V. Mozin, S. Sangiorgio
 # RASE-support@llnl.gov.
 #
-# LLNL-CODE-819515
+# LLNL-CODE-841943, LLNL-CODE-829509
 #
 # All rights reserved.
 #
@@ -29,9 +29,9 @@
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ###############################################################################
 
-from PyQt5.QtCore import QSize, Qt
+from PySide6.QtCore import QSize, Qt
 from src.rase_functions import *
-from PyQt5.QtWidgets import QApplication, QMessageBox, QProgressDialog
+from PySide6.QtWidgets import QApplication, QMessageBox, QProgressDialog
 from src.table_def import Scenario, Session, ScenarioMaterial, Material, \
     ScenarioBackgroundMaterial, ScenarioGroup, CorrespondenceTable
 from src.correspondence_table_dialog import CorrespondenceTableDialog

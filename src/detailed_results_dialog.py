@@ -1,11 +1,11 @@
 ###############################################################################
-# Copyright (c) 2018-2021 Lawrence Livermore National Security, LLC.
+# Copyright (c) 2018-2022 Lawrence Livermore National Security, LLC.
 # Produced at the Lawrence Livermore National Laboratory
 #
 # Written by J. Chavez, S. Czyz, G. Kosinovsky, V. Mozin, S. Sangiorgio.
 # RASE-support@llnl.gov.
 #
-# LLNL-CODE-819515
+# LLNL-CODE-841943, LLNL-CODE-829509
 #
 # All rights reserved.
 #
@@ -35,10 +35,10 @@ instrument/scenario combination
 
 import csv
 
-from PyQt5.QtWidgets import QTableWidgetItem, QDialog, QFileDialog, \
-    QHeaderView, QAction, QMenu, QApplication, QMessageBox
-from PyQt5.QtCore import QPoint, Qt, pyqtSlot
-from PyQt5.QtGui import QKeySequence
+from PySide6.QtWidgets import QTableWidgetItem, QDialog, QFileDialog, \
+    QHeaderView, QMenu, QApplication, QMessageBox
+from PySide6.QtCore import QPoint, Qt, Slot
+from PySide6.QtGui import QKeySequence, QAction
 
 from src.table_def import Session
 from src.plotting import SampleSpectraViewerDialog
@@ -114,7 +114,7 @@ class DetailedResultsDialog(ui_detailed_results_dialog.Ui_dlgDetailedResults, QD
         if e.key() == Qt.Key_Copy or e.key == QKeySequence(QKeySequence.Copy) or e.key() == 67:
             QApplication.clipboard().setText(self.get_selected_cells_as_text())
 
-    @pyqtSlot(QPoint)
+    @Slot(QPoint)
     def on_tblDetailedResults_customContextMenuRequested(self, point):
         """
         Handles "Copy" right click selections on the table
@@ -126,7 +126,7 @@ class DetailedResultsDialog(ui_detailed_results_dialog.Ui_dlgDetailedResults, QD
         if action == copy_action:
             QApplication.clipboard().setText(self.get_selected_cells_as_text())
 
-    @pyqtSlot(int, int)
+    @Slot(int, int)
     def on_tblDetailedResults_cellDoubleClicked(self, row, col):
         """
         Listens for cell double click and launches sample spectra viewer

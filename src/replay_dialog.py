@@ -1,11 +1,11 @@
 ###############################################################################
-# Copyright (c) 2018-2021 Lawrence Livermore National Security, LLC.
+# Copyright (c) 2018-2022 Lawrence Livermore National Security, LLC.
 # Produced at the Lawrence Livermore National Laboratory
 #
 # Written by J. Chavez, S. Czyz, G. Kosinovsky, V. Mozin, S. Sangiorgio.
 # RASE-support@llnl.gov.
 #
-# LLNL-CODE-819515
+# LLNL-CODE-841943, LLNL-CODE-829509
 #
 # All rights reserved.
 #
@@ -33,11 +33,11 @@ This module allows the user to select replay and results translator executables
 as well as the translator template
 """
 
-from PyQt5.QtCore import pyqtSlot
-from PyQt5.QtWidgets import QDialog, QFileDialog, QMessageBox
+from PySide6.QtCore import Slot
+from PySide6.QtWidgets import QDialog, QFileDialog, QMessageBox
 
 from src.rase_settings import RaseSettings
-from .table_def import Replay, ResultsTranslator, Session
+from .table_def import Replay, ResultsTranslator, Session, ReplayTypes
 from .ui_generated import ui_new_replay_dialog
 
 
@@ -50,7 +50,25 @@ class ReplayDialog(ui_new_replay_dialog.Ui_ReplayDialog, QDialog):
         self.replay = replay
         self.resultsTranslator = resultsTranslator
 
+        self.stack.setCurrentIndex(0)
+        self.radioStandalone.toggled.connect(lambda x: self.stack.setCurrentIndex(0) if x else None)
+        self.radioWeb.toggled.connect(lambda x: self.stack.setCurrentIndex(1) if x else None)
+
+        self.cmbDRFs.addItems(
+            ['1x1/BGO Side', '1x1/CsI Side', '1x1/LaCl3', '1x1/NaI Front', '1x1/NaI Side', '3x3/NaI AboveSource',
+             '3x3/NaI InCorner', '3x3/NaI LowScat', '3x3/NaI MidScat', '3x3/NaI OnGround', 'ASP-Thermo',
+             'Apollo/Bottom', 'Apollo/Front', 'Atomex-AT6102', 'D3S', 'Detective', 'Detective-EX', 'Detective-EX100',
+             'Detective-EX200', 'Detective-Micro', 'Detective-Micro/Variant-LowEfficiency', 'Detective-X',
+             'Falcon 5000', 'FieldSpec', 'GR130', 'GR135', 'GR135Plus', 'IdentiFINDER-LaBr3', 'IdentiFINDER-N',
+             'IdentiFINDER-NG', 'IdentiFINDER-NGH', 'IdentiFINDER-R300', 'IdentiFINDER-R500-NaI',
+             'InSpector 1000 LaBr3', 'InSpector 1000 NaI', 'Interceptor', 'LaBr3Marlow', 'LaBr3PNNL', 'MKC-A03',
+             'Mirion PDS-100', 'Polimaster PM1704-GN', 'RIIDEyeX-GN1', 'RadEagle', 'RadEye', 'RadPack', 'RadSeeker-NaI',
+             'Radseeker-LaBr3', 'Raider', 'Ranger', 'SAM-935', 'SAM-945', 'SAM-950GN-N30', 'SAM-Eagle-LaBr3',
+             'SAM-Eagle-NaI-3x3', 'SpiR-ID/LaBr3', 'SpiR-ID/NaI', 'Thermo ARIS Portal', 'Transpec', 'Verifinder'])
+
         if replay:
+            self.radioStandalone.setChecked(self.replay.type == ReplayTypes.standalone)
+            self.radioWeb.setChecked(self.replay.type == ReplayTypes.gadras_web)
             self.setWindowTitle('Edit Replay Software')
             self.txtName.setReadOnly(True)
             self.txtName.setText(replay.name)
@@ -59,12 +77,15 @@ class ReplayDialog(ui_new_replay_dialog.Ui_ReplayDialog, QDialog):
             self.cbCmdLine.setChecked(bool(replay.is_cmd_line))
             self.txtTemplatePath.setText(replay.n42_template_path)
             self.txtFilenameSuffix.setText(replay.input_filename_suffix)
+            self.txtWebAddress.setText(replay.web_address)
+            index = self.cmbDRFs.findText(replay.drf_name)
+            self.cmbDRFs.setCurrentIndex(index) if index >=0 else self.cmbDRFs.setCurrentIndex(0)
         if resultsTranslator:
             self.txtResultsTranslator.setText(resultsTranslator.exe_path)
             self.txtSettings_3.setText(resultsTranslator.settings)
             self.cbCmdLine_3.setChecked(bool(resultsTranslator.is_cmd_line))
 
-    @pyqtSlot(bool)
+    @Slot(bool)
     def on_btnBrowseExecutable_clicked(self, checked):
         """
         Selects Replay executable
@@ -73,7 +94,7 @@ class ReplayDialog(ui_new_replay_dialog.Ui_ReplayDialog, QDialog):
         if filepath:
             self.txtCmdLine.setText(filepath)
 
-    @pyqtSlot(bool)
+    @Slot(bool)
     def on_btnBrowseTranslator_clicked(self, checked):
         """
         Selects Translator Template
@@ -82,7 +103,7 @@ class ReplayDialog(ui_new_replay_dialog.Ui_ReplayDialog, QDialog):
         if filepath:
             self.txtTemplatePath.setText(filepath)
 
-    @pyqtSlot(bool)
+    @Slot(bool)
     def on_btnBrowseResultsTranslator_clicked(self, checked):
         """
         Selects Results Translator Executable
@@ -91,7 +112,7 @@ class ReplayDialog(ui_new_replay_dialog.Ui_ReplayDialog, QDialog):
         if filepath:
             self.txtResultsTranslator.setText(filepath)
 
-    @pyqtSlot()
+    @Slot()
     def accept(self):
         name = self.txtName.text()
         if not name:
@@ -106,11 +127,14 @@ class ReplayDialog(ui_new_replay_dialog.Ui_ReplayDialog, QDialog):
             self.replay = Replay(name=name)
             self.parent.new_replay = self.replay
             session.add(self.replay)
+        self.replay.type = ReplayTypes.gadras_web if self.radioWeb.isChecked() else ReplayTypes.standalone
         self.replay.exe_path    = self.txtCmdLine.text()
         self.replay.is_cmd_line = self.cbCmdLine.isChecked()
         self.replay.settings    = self.txtSettings.text().strip()
         self.replay.n42_template_path = self.txtTemplatePath.text()
         self.replay.input_filename_suffix = self.txtFilenameSuffix.text()
+        self.replay.web_address = self.txtWebAddress.text()
+        self.replay.drf_name = self.cmbDRFs.currentText()
 
         if not self.resultsTranslator:
             self.resultsTranslator = ResultsTranslator(name=name)

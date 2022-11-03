@@ -1,0 +1,109 @@
+<%!
+import datetime
+from src import utils
+now = datetime.datetime.now()
+%>\
+<%def name="sync(syncindex,datetime_obj)">
+    <RadMeasurement id="SyncMeasure${f'{syncindex:06x}'}">
+        <MeasurementClassCode>NotSpecified</MeasurementClassCode>
+        <StartDateTime>${'{}-{}-{}T{}:{}:{}.{}-00:00'.format(datetime_obj.year, datetime_obj.month, datetime_obj.day,
+                                                             datetime_obj.hour, datetime_obj.minute,
+                                                             datetime_obj.second, int(datetime_obj.microsecond/1000))}</StartDateTime>
+        <RealTimeDuration>PT${(datetime_obj-now).total_seconds()}S</RealTimeDuration>
+        <sym:MessageID>${int(str(int((syncindex ) * 1E6)), 16)}</sym:MessageID>
+    </RadMeasurement>
+</%def>\
+<%def name="measurement(syncindex,measindex,datetime_obj,bins,duration)">
+    <RadMeasurement id="ForegroundMeasure${int((syncindex + 111111) * 1E6 + measindex)}">
+		<MeasurementClassCode>Foreground</MeasurementClassCode>
+		<StartDateTime>${'{}-{}-{}T{}:{}:{}.{}-00:00'.format(datetime_obj.year, datetime_obj.month, datetime_obj.day,
+                                                             datetime_obj.hour, datetime_obj.minute,
+                                                             datetime_obj.second, int(datetime_obj.microsecond/1000))}</StartDateTime>
+		<RealTimeDuration>PT${"{:.8f}".format(duration)}S</RealTimeDuration>
+		<Spectrum id="ForegroundMeasure${int((syncindex + 111111) * 1E6 + measindex)}Gamma" radDetectorInformationReference="DetectorInfoGamma" energyCalibrationReference="ECalGamma-190004" FWHMCalibrationReference="RCalGamma-190004">
+			<LiveTimeDuration>PT${"{:.8f}".format(duration)}S</LiveTimeDuration>
+			<ChannelData compressionCode="None"> ${' '.join([str(int(bin)) for bin in bins])} </ChannelData>
+			<sym:RealTimeDuration>${"{:.8f}".format(duration)}</sym:RealTimeDuration>
+		</Spectrum>
+		<OccupancyIndicator>false</OccupancyIndicator>
+	</RadMeasurement>
+</%def>\
+<?xml version="1.0" encoding="utf-8"?>
+<RadInstrumentData xmlns="http://physics.nist.gov/N42/2011/N42" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:sym="http://www.symetrica.com/schemas/ANSIN42-2011Extension" xsi:schemaLocation="http://physics.nist.gov/N42/2011/N42 http://physics.nist.gov/N42/2011/n42.xsd http://www.symetrica.com/schemas/ANSIN42-2011Extension http://www.symetrica.com/schemas/ANSIN42-2011Extension.xsd">
+	<RadDetectorInformation id="DetectorInfoGamma">
+		<RadDetectorCategoryCode>Gamma</RadDetectorCategoryCode>
+		<RadDetectorKindCode>NaI</RadDetectorKindCode>
+		<RadDetectorLengthValue>76.2</RadDetectorLengthValue>
+		<RadDetectorWidthValue>76.2</RadDetectorWidthValue>
+		<RadDetectorDepthValue>76.2</RadDetectorDepthValue>
+		<RadDetectorCharacteristics>
+			<Characteristic valueDateTime="2019-05-31T08:17:05.162-07:00" valueOutOfLimits="false">
+				<Remark>ErrorCode=0,PT0S</Remark>
+				<CharacteristicName>Gamma-Gamma.CalibrationName</CharacteristicName>
+				<CharacteristicValue>Gamma-190004</CharacteristicValue>
+				<CharacteristicValueUnits>unitless</CharacteristicValueUnits>
+				<CharacteristicValueDataClassCode>string</CharacteristicValueDataClassCode>
+			</Characteristic>
+		</RadDetectorCharacteristics>
+	</RadDetectorInformation>
+    <EnergyCalibration id="ECalVirtual3keV">
+		<CoefficientValues>0 3 0</CoefficientValues>
+		<CalibrationDateTime>1970-01-01T00:00:00+00:00</CalibrationDateTime>
+	</EnergyCalibration>
+	<EnergyCalibration id="ECalGamma-190004">
+		<CoefficientValues>${detector.ecal0} ${detector.ecal1} ${detector.ecal2}</CoefficientValues>
+		<CalibrationDateTime>2019-02-11T14:31:15.218-05:00</CalibrationDateTime>
+	</EnergyCalibration>
+	<FWHMCalibration id="RCalGamma-190004">
+		<EnergyValues>1408 778.9 344.3 121.78 42.44 511</EnergyValues>
+		<FWHMValues>74.2368 49.1789 33.7451 17.2124 15.3386 42.9875</FWHMValues>
+		<CalibrationDateTime>2019-02-11T14:31:15.218-05:00</CalibrationDateTime>
+	</FWHMCalibration>
+	<RadMeasurementGroup id="MG-1"/>
+	<RadMeasurement id="BackgroundMeasure1" radMeasurementGroupReferences="MG-1">
+		<MeasurementClassCode>Background</MeasurementClassCode>
+		<StartDateTime>2019-05-31T08:19:03.089-07:00</StartDateTime>
+		<RealTimeDuration>PT${"{:.8f}".format(secondary_spectrum.realtime)}S</RealTimeDuration>
+		<Spectrum id="BackgroundMeasure1Gamma" radDetectorInformationReference="DetectorInfoGamma" energyCalibrationReference="ECalGamma-190004" FWHMCalibrationReference="RCalGamma-190004">
+			<LiveTimeDuration>PT${"{:.8f}".format(secondary_spectrum.livetime)}S</LiveTimeDuration>
+			<ChannelData compressionCode="None"> ${secondary_spectrum.get_counts_as_str()} </ChannelData>
+			<sym:RealTimeDuration>${"{:.8f}".format(secondary_spectrum.realtime)}</sym:RealTimeDuration>
+		</Spectrum>
+		<sym:Degraded>false</sym:Degraded>
+		<sym:ScaleFactor>1</sym:ScaleFactor>
+	</RadMeasurement>
+	${sync(1,now - datetime.timedelta(seconds=1))}
+    <RadMeasurement id="ADBeginMeasure">
+		<MeasurementClassCode>NotSpecified</MeasurementClassCode>
+		<StartDateTime>2019-05-31T09:54:32.179-07:00</StartDateTime>
+		<RealTimeDuration>PT-0.5S</RealTimeDuration>
+		<sym:OccupancyId>1</sym:OccupancyId>
+		<sym:Marker>${int(str(int(1E6)), 16)}</sym:Marker>
+		<sym:Cause>0</sym:Cause>
+		<sym:SuppressionEndMarker>0</sym:SuppressionEndMarker>
+	</RadMeasurement>
+    % for i,period in enumerate(sample_periods):
+        <%
+        time = scenario.output_times[i]
+        if i+1 < len(sample_periods): # if out of bounds, just assume the last duration
+            duration = scenario.output_times[i+1]-time
+        %>
+        ${sync(1+i,now+datetime.timedelta(seconds=int(time)))}
+        ${measurement(1+i,i,now+datetime.timedelta(seconds=int(time)),period,duration)}
+    % endfor
+    <RadMeasurement id="SyncMeasureFFFFFF">
+		<MeasurementClassCode>NotSpecified</MeasurementClassCode>
+		<StartDateTime>2019-05-31T09:56:32.179-07:00</StartDateTime>
+		<RealTimeDuration>PT5967.016847253S</RealTimeDuration>
+		<sym:MessageID>281474959933440</sym:MessageID>
+	</RadMeasurement>
+	<RadMeasurement id="ADEndMeasure">
+		<MeasurementClassCode>NotSpecified</MeasurementClassCode>
+		<StartDateTime>2019-05-31T09:56:32.179-07:00</StartDateTime>
+		<RealTimeDuration>PT5967.031307086S</RealTimeDuration>
+		<sym:OccupancyId>1</sym:OccupancyId>
+		<sym:Marker>281474959933441</sym:Marker>
+		<sym:Cause>0</sym:Cause>
+		<sym:SuppressionEndMarker>281474959933440</sym:SuppressionEndMarker>
+	</RadMeasurement>
+</RadInstrumentData>

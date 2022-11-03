@@ -16,10 +16,11 @@ RASE, the the files can be imported back into RASE using the “Import Results..
 
 The “Run Result Translator” button creates a third sub-directory with the identification report files in a format compatible with the RASE code.
 
+|
 
 .. _rase-WorkflowStep5:
 
 .. figure:: _static/rase_WorkflowStep5.png
     :scale: 75%
 
-    "Run Replay Tool" in main window
+    **"Run Replay Tool" in main window**

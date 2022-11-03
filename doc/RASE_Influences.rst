@@ -117,11 +117,11 @@ mathematical operation.
 Example 2. To mimic a distortion that stretches the spectrum by 10% use the following values for the three coefficients:
 :math:`C_0` = 0, :math:`C_1` = 1.1, :math:`C_2` = 0.
 
-
+|
 
 .. _rase-InfluenceTable:
 
 .. figure:: _static/InfluenceTable.png
     :scale: 70 %
 
-    “Manage influences” dialog, accessible from the main window and from the detector creation window.
+    **“Manage influences” dialog, accessible from the main window and from the detector creation window.**

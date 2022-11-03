@@ -4,6 +4,23 @@
 RASE Release Notes
 ******************
 
+RASE v2.3
+=========
+
+- Integration with Full Spectrum Web ID directly from RASE
+- Base spectra creation tool refactor:
+
+    - config-file based for ease of use
+    - added handling of PCF files
+    - ingestion of PeakEasy/Interspec output
+
+- Improved robustness of S-curve fit
+- Users can manually adjust S-curve fit parameters from the GUI
+- Dose-to-distance conversion in plots and scenario creation
+- Initial handling of background with inseparable internal source
+- Base spectra with different calibration coefficients are now acceptable
+
+
 RASE v2.2
 =========
 
