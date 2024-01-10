@@ -650,7 +650,7 @@ SpectrumChartD3.prototype.do_rebin = function() {
           thisdata[key] = 0;
           for( var j = 0; j < newRebin && i+j<spectrum.y.length; ++j )
             thisdata[key] += spectrum.y[i+j];
-          thisdata[key] *= spectrum.yScaleFactor;
+          thisdata[key] *= 1/spectrum.yScaleFactor;
         }
         spectrum.points.push( thisdata );
       }
@@ -4102,8 +4102,9 @@ SpectrumChartD3.prototype.updateLegend = function() {
   spectra.forEach( function(spectrum,i){
     if( !spectrum || !spectrum.y.length )
       return;
-      
-    const sf = ((typeof spectrum.yScaleFactor === "number") ? spectrum.yScaleFactor: 1);
+
+    const sfinv = ((typeof spectrum.yScaleFactor === "number") ? spectrum.yScaleFactor: 1);
+    const sf = 1/sfinv;
     const lt = spectrum.liveTime;
     const rt = spectrum.realTime;
     const neutsum = spectrum.neutrons;

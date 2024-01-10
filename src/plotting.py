@@ -1,11 +1,13 @@
 ###############################################################################
-# Copyright (c) 2018-2022 Lawrence Livermore National Security, LLC.
+# Copyright (c) 2018-2023 Lawrence Livermore National Security, LLC.
 # Produced at the Lawrence Livermore National Laboratory
 #
-# Written by J. Chavez, S. Czyz, G. Kosinovsky, V. Mozin, S. Sangiorgio.
+# Written by J. Brodsky, J. Chavez, S. Czyz, G. Kosinovsky, V. Mozin,
+#            S. Sangiorgio.
+#
 # RASE-support@llnl.gov.
 #
-# LLNL-CODE-841943, LLNL-CODE-829509
+# LLNL-CODE-858590, LLNL-CODE-829509
 #
 # All rights reserved.
 #
@@ -52,14 +54,15 @@ sns.set(font_scale=1.5)
 sns.set_style("whitegrid")
 
 from PySide6.QtCore import Slot, Qt, QUrl
-from PySide6.QtWidgets import QDialog, QVBoxLayout, QMessageBox, QGridLayout, QLabel, QDialogButtonBox, QLineEdit, \
-    QCheckBox, QWidget, QComboBox
+from PySide6.QtWidgets import QDialog, QVBoxLayout, QMessageBox, QGridLayout, QLabel, QLineEdit, \
+    QCheckBox, QWidget, QComboBox, QFileDialog
 from PySide6.QtGui import QStandardItemModel, QStandardItem, QValidator
 from PySide6.QtWebEngineWidgets import QWebEngineView
 
 from .ui_generated import ui_view_spectra_dialog, ui_results_plotting_dialog, ui_results_plotting_dialog_3d, \
     ui_fit_params_settings_dialog
-from src.rase_functions import calc_result_uncertainty, get_sample_dir, readSpectrumFile
+from src.rase_functions import calc_result_uncertainty, get_sample_dir
+from src.spectrum_file_reading import readSpectrumFile
 import src.s_curve_functions as sCurve
 from src.utils import get_bundle_dir, natural_keys
 from src.base_spectra_dialog import SharedObject, ReadFileObject
@@ -93,7 +96,7 @@ class BaseSpectraViewerDialog(ui_view_spectra_dialog.Ui_Dialog, QDialog):
         baseSpectrum = self.baseSpectra[self.index]
         with open(self.json_file, "w") as json_file:
             print(baseSpectrum.as_json(), file=json_file)
-        self.browser.reload()
+        self.browser.load(self.browser.local_url)
 
     @Slot(bool)
     def on_prevMaterialButton_clicked(self, checked):
@@ -149,7 +152,7 @@ class SampleSpectraViewerDialog(ui_view_spectra_dialog.Ui_Dialog, QDialog):
                             "yScaleFactor": 1,
                             }])
             print(json_str, file=json_file)
-        self.browser.reload()
+        self.browser.load(self.browser.local_url)
 
     @Slot(bool)
     def on_prevMaterialButton_clicked(self, checked):
@@ -164,12 +167,98 @@ class SampleSpectraViewerDialog(ui_view_spectra_dialog.Ui_Dialog, QDialog):
             self.plot_spectrum()
 
 
+class MultiSpecViewerDialog(ui_view_spectra_dialog.Ui_Dialog, QDialog):
+    def __init__(self, parent, sampledirs):
+        QDialog.__init__(self, parent)
+        self.setupUi(self)
+        self.nextMaterialButton.hide()
+        self.sample_dirs = sampledirs
+        if len(self.sample_dirs) == 1:
+            self.prevMaterialButton.setText('Export Summed Spectrum')
+        else:
+            self.prevMaterialButton.hide()
+        self.sample_dirs = sampledirs
+        self.json_file = os.path.join(get_bundle_dir(), "d3_resources", "spectrum.json")
+        self.sum_specs = []
+        for index, sample_path in enumerate(self.sample_dirs):
+            files = glob.glob(os.path.join(sample_path, "*.n42"))
+            self.sum_specs.append(self.sum_spectra(os.path.basename(sample_path), files, index))
+        self.browser = WebSpectraView(self)
+        self.plot_spectrum()
+
+        self.plot_layout = QVBoxLayout(self.widget)
+        self.plot_layout.addWidget(self.browser)
+        self.widget.setFocus()
+
+    @Slot(bool)
+    def on_prevMaterialButton_clicked(self, checked):
+        path = QFileDialog.getSaveFileName(self, 'Save File', os.path.join(RaseSettings().
+                           getDataDirectory(), os.path.basename(self.sample_dirs[0])+'_summed'),
+                                           'n42 (*.n42)')
+        if path[0]:
+            s = self.sum_specs[0]
+            print(self.sum_specs[0]['y'])
+            # write out to RASE n42 file
+            # FIXME: should use ElementTree instead of manually creating the XML text
+            f = open(path[0], 'w')
+            f.write('<?xml version="1.0" encoding="UTF-8"?>\n')
+            f.write('<RadInstrumentData>\n')
+            f.write('  <RadMeasurement>\n')
+            f.write('    <Spectrum>\n')
+            f.write('      <SourceType>Item</SourceType>\n')
+            f.write('      <RealTime Unit="sec">PT{}S</RealTime>\n'.format(s['liveTime']))
+            f.write('      <LiveTime Unit="sec">PT{}S</LiveTime>\n'.format(s['realTime']))
+            f.write('      <Calibration Type="Energy" EnergyUnits="keV">\n')
+            f.write('        <Equation Model="Polynomial">\n')
+            f.write('          <Coefficients>{}</Coefficients>\n'.format(' '.join('{:f}'.format(x) for x in s['xeqn'])))
+            f.write('        </Equation>\n')
+            f.write('      </Calibration>\n')
+            f.write('      <ChannelData>')
+            f.write('{}'.format(' '.join('{:f}'.format(x) for x in s['y'])))
+            f.write('</ChannelData>\n')
+            f.write('    </Spectrum>\n')
+            f.write('  </RadMeasurement>\n')
+            f.write('</RadInstrumentData>\n')
+            f.close()
+
+    def sum_spectra(self, name, files, index):
+        lt = 0
+        rt = 0
+        counts = np.array([])
+        xeqn = [0, 1, 0]
+        for file in files:
+            status = []
+            sharedObject = SharedObject(True)
+            v = readSpectrumFile(file, sharedObject, status, requireRASESen=False)
+            data = ReadFileObject(*v)
+            if len(counts) == 0:
+                counts = np.array([float(c) for c in data.counts.split(',')])
+                xeqn = [data.ecal[0], data.ecal[1], data.ecal[2]]  # only need to set the once
+            else:
+                counts += np.array([float(c) for c in data.counts.split(',')])
+            lt += data.livetime
+            rt += data.realtime
+
+        if index == 0:
+            return {"title": name, "liveTime": lt, "realTime": rt, "xeqn": xeqn,
+                    "y": counts.tolist(), "id": index, 'yScaleFactor': 1}
+        else:
+            return {"title": name, "liveTime": lt, "realTime": rt, "xeqn": xeqn,
+                    "y": counts.tolist(), "id": index}
+
+    def plot_spectrum(self):
+        with open(self.json_file, "w") as json_file:
+            json_str = json.dumps(self.sum_specs)
+            print(json_str, file=json_file)
+        self.browser.reload()
+
+
 class WebSpectraView(QWebEngineView):
     def __init__(self, parent):
         super(WebSpectraView, self).__init__(parent)
         file_path = os.path.join(get_bundle_dir(), "d3_resources", "spectrum.html")
-        local_url = QUrl.fromLocalFile(file_path)
-        self.load(local_url)
+        self.local_url = QUrl.fromLocalFile(file_path)
+        self.load(self.local_url)
 
 
 class Result3DPlottingDialog(ui_results_plotting_dialog_3d.Ui_Dialog, QDialog):

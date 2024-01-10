@@ -1,11 +1,13 @@
 ###############################################################################
-# Copyright (c) 2018-2022 Lawrence Livermore National Security, LLC.
+# Copyright (c) 2018-2023 Lawrence Livermore National Security, LLC.
 # Produced at the Lawrence Livermore National Laboratory
 #
-# Written by J. Chavez, S. Czyz, G. Kosinovsky, V. Mozin, S. Sangiorgio.
+# Written by J. Brodsky, J. Chavez, S. Czyz, G. Kosinovsky, V. Mozin,
+#            S. Sangiorgio.
+#
 # RASE-support@llnl.gov.
 #
-# LLNL-CODE-841943, LLNL-CODE-829509
+# LLNL-CODE-858590, LLNL-CODE-829509
 #
 # All rights reserved.
 #
@@ -37,40 +39,30 @@ from PySide6.QtCore import Slot
 from PySide6.QtWidgets import QDialog, QFileDialog, QMessageBox
 
 from src.rase_settings import RaseSettings
-from .table_def import Replay, ResultsTranslator, Session, ReplayTypes
+from .rase_functions import get_DRFList_from_webid
+from .table_def import Replay, Session, ReplayTypes
 from .ui_generated import ui_new_replay_dialog
 
 
 class ReplayDialog(ui_new_replay_dialog.Ui_ReplayDialog, QDialog):
-    def __init__(self, parent, replay=None, resultsTranslator=None):
+    def __init__(self, parent, replay=None):
         QDialog.__init__(self, parent)
         self.parent = parent
         self.setupUi(self)
         self.settings = RaseSettings()
         self.replay = replay
-        self.resultsTranslator = resultsTranslator
 
         self.stack.setCurrentIndex(0)
         self.radioStandalone.toggled.connect(lambda x: self.stack.setCurrentIndex(0) if x else None)
         self.radioWeb.toggled.connect(lambda x: self.stack.setCurrentIndex(1) if x else None)
 
-        self.cmbDRFs.addItems(
-            ['1x1/BGO Side', '1x1/CsI Side', '1x1/LaCl3', '1x1/NaI Front', '1x1/NaI Side', '3x3/NaI AboveSource',
-             '3x3/NaI InCorner', '3x3/NaI LowScat', '3x3/NaI MidScat', '3x3/NaI OnGround', 'ASP-Thermo',
-             'Apollo/Bottom', 'Apollo/Front', 'Atomex-AT6102', 'D3S', 'Detective', 'Detective-EX', 'Detective-EX100',
-             'Detective-EX200', 'Detective-Micro', 'Detective-Micro/Variant-LowEfficiency', 'Detective-X',
-             'Falcon 5000', 'FieldSpec', 'GR130', 'GR135', 'GR135Plus', 'IdentiFINDER-LaBr3', 'IdentiFINDER-N',
-             'IdentiFINDER-NG', 'IdentiFINDER-NGH', 'IdentiFINDER-R300', 'IdentiFINDER-R500-NaI',
-             'InSpector 1000 LaBr3', 'InSpector 1000 NaI', 'Interceptor', 'LaBr3Marlow', 'LaBr3PNNL', 'MKC-A03',
-             'Mirion PDS-100', 'Polimaster PM1704-GN', 'RIIDEyeX-GN1', 'RadEagle', 'RadEye', 'RadPack', 'RadSeeker-NaI',
-             'Radseeker-LaBr3', 'Raider', 'Ranger', 'SAM-935', 'SAM-945', 'SAM-950GN-N30', 'SAM-Eagle-LaBr3',
-             'SAM-Eagle-NaI-3x3', 'SpiR-ID/LaBr3', 'SpiR-ID/NaI', 'Thermo ARIS Portal', 'Transpec', 'Verifinder'])
+        self.cmbDRFs.addItems(self.settings.getWebIDDRFsList())
 
         if replay:
             self.radioStandalone.setChecked(self.replay.type == ReplayTypes.standalone)
             self.radioWeb.setChecked(self.replay.type == ReplayTypes.gadras_web)
             self.setWindowTitle('Edit Replay Software')
-            self.txtName.setReadOnly(True)
+            # self.txtName.setReadOnly(True)
             self.txtName.setText(replay.name)
             self.txtCmdLine.setText(replay.exe_path)
             self.txtSettings.setText(replay.settings)
@@ -80,10 +72,10 @@ class ReplayDialog(ui_new_replay_dialog.Ui_ReplayDialog, QDialog):
             self.txtWebAddress.setText(replay.web_address)
             index = self.cmbDRFs.findText(replay.drf_name)
             self.cmbDRFs.setCurrentIndex(index) if index >=0 else self.cmbDRFs.setCurrentIndex(0)
-        if resultsTranslator:
-            self.txtResultsTranslator.setText(resultsTranslator.exe_path)
-            self.txtSettings_3.setText(resultsTranslator.settings)
-            self.cbCmdLine_3.setChecked(bool(resultsTranslator.is_cmd_line))
+            if replay.translator_exe_path:
+                self.txtResultsTranslator.setText(replay.translator_exe_path)
+                self.txtSettings_3.setText(replay.translator_settings)
+                self.cbCmdLine_3.setChecked(bool(replay.translator_is_cmd_line))
 
     @Slot(bool)
     def on_btnBrowseExecutable_clicked(self, checked):
@@ -112,6 +104,27 @@ class ReplayDialog(ui_new_replay_dialog.Ui_ReplayDialog, QDialog):
         if filepath:
             self.txtResultsTranslator.setText(filepath)
 
+    @Slot(bool)
+    def on_btnUpdateDRFList_clicked(self, checked):
+        """
+        Obtain the List of DRFs from WebID
+        """
+        url = self.txtWebAddress.text().strip('/')
+        drfList = get_DRFList_from_webid(url)
+        if drfList:
+            currentDRF = self.cmbDRFs.currentText()
+            # remove 'auto' options since RASE does not pass n42s w/ instrument specifications
+            if 'auto' in drfList:
+                drfList.remove('auto')
+            self.settings.setWebIDDRFsList(drfList)
+            self.cmbDRFs.clear()
+            self.cmbDRFs.addItems(self.settings.getWebIDDRFsList())
+            index = self.cmbDRFs.findText(currentDRF)
+            self.cmbDRFs.setCurrentIndex(index) if index >=0 else self.cmbDRFs.setCurrentIndex(0)
+        else:
+            QMessageBox.warning(self, "Connection error",
+                                "Error while connecting to Full Spectrum Web ID. Is the web address correct?")
+
     @Slot()
     def accept(self):
         name = self.txtName.text()
@@ -119,14 +132,15 @@ class ReplayDialog(ui_new_replay_dialog.Ui_ReplayDialog, QDialog):
             QMessageBox.critical(self, 'Insufficient Information', 'Must specify a replay tool name')
             return
         session = Session()
+        repl = session.query(Replay).filter_by(name=name).first()
+        if repl and not (self.replay and self.replay.name == name):
+            QMessageBox.warning(self, 'Bad Replay Name', 'Replay with this name exists. Specify Different Replay Name')
+            return
         if not self.replay:
-            repl = session.query(Replay).filter_by(name=name).first()
-            if repl:
-                QMessageBox.warning(self, 'Bad Replay Name', 'Replay with this name exists. Specify Different Replay Name')
-                return
             self.replay = Replay(name=name)
             self.parent.new_replay = self.replay
             session.add(self.replay)
+        self.replay.name = self.txtName.text()
         self.replay.type = ReplayTypes.gadras_web if self.radioWeb.isChecked() else ReplayTypes.standalone
         self.replay.exe_path    = self.txtCmdLine.text()
         self.replay.is_cmd_line = self.cbCmdLine.isChecked()
@@ -136,12 +150,9 @@ class ReplayDialog(ui_new_replay_dialog.Ui_ReplayDialog, QDialog):
         self.replay.web_address = self.txtWebAddress.text()
         self.replay.drf_name = self.cmbDRFs.currentText()
 
-        if not self.resultsTranslator:
-            self.resultsTranslator = ResultsTranslator(name=name)
-            session.add(self.resultsTranslator)
-        self.resultsTranslator.exe_path    = self.txtResultsTranslator.text()
-        self.resultsTranslator.is_cmd_line = self.cbCmdLine_3.isChecked()
-        self.resultsTranslator.settings    = self.txtSettings_3.text().strip()
+        self.replay.translator_exe_path = self.txtResultsTranslator.text()
+        self.replay.translator_is_cmd_line = self.cbCmdLine_3.isChecked()
+        self.replay.translator_settings = self.txtSettings_3.text().strip()
         session.commit()
         return QDialog.accept(self)
 

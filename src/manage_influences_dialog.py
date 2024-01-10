@@ -1,11 +1,13 @@
 ###############################################################################
-# Copyright (c) 2018-2022 Lawrence Livermore National Security, LLC.
+# Copyright (c) 2018-2023 Lawrence Livermore National Security, LLC.
 # Produced at the Lawrence Livermore National Laboratory
 #
-# Written by J. Chavez, S. Czyz, G. Kosinovsky, V. Mozin, S. Sangiorgio.
+# Written by J. Brodsky, J. Chavez, S. Czyz, G. Kosinovsky, V. Mozin,
+#            S. Sangiorgio.
+#
 # RASE-support@llnl.gov.
 #
-# LLNL-CODE-841943, LLNL-CODE-829509
+# LLNL-CODE-858590, LLNL-CODE-829509
 #
 # All rights reserved.
 #
@@ -243,6 +245,10 @@ class ManageInfluencesDialog(ui_manage_influences_dialog.Ui_Dialog, QDialog):
             det_influence.influence = influence
 
         for influenceDelete in self.influencesToDelete:
+            #TODO: detector influences are not actually deleted, which is where the table is
+            # populated from. This means influences can't really be deleted!
+            #TODO #2: We shouldn't delete the scenarios that have the influence associated with
+            # it. We should leave the scenario existing.
             for scen in self.session.query(Scenario).filter(Scenario.influences.contains(influenceDelete)).all():
                 if influenceDelete.name in [i.name for i in scen.influences]:
                     scen_hash=Scenario.scenario_hash(scen.acq_time, scen.scen_materials, scen.scen_bckg_materials,

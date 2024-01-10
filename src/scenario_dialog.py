@@ -1,11 +1,13 @@
 ###############################################################################
-# Copyright (c) 2018-2022 Lawrence Livermore National Security, LLC.
+# Copyright (c) 2018-2023 Lawrence Livermore National Security, LLC.
 # Produced at the Lawrence Livermore National Laboratory
 #
-# Written by J. Chavez, S. Czyz, G. Kosinovsky, V. Mozin, S. Sangiorgio.
+# Written by J. Brodsky, J. Chavez, S. Czyz, G. Kosinovsky, V. Mozin,
+#            S. Sangiorgio.
+#
 # RASE-support@llnl.gov.
 #
-# LLNL-CODE-841943, LLNL-CODE-829509
+# LLNL-CODE-858590, LLNL-CODE-829509
 #
 # All rights reserved.
 #
@@ -447,8 +449,8 @@ class ScenarioDialog(ui_create_scenario_dialog.Ui_ScenarioDialog, QDialog):
                         # simply having their group changed. In which case, pass by those groups without impact.
                         duplicate = self.add_groups_to_scen(scen_exists, all_groups, add_groups=add_groups)
                     else:
-                        Scenario(float(acqTime), replication, scenMaterials, bcgkScenMaterials, influences, scen_groups,
-                                 self.txtComment.text())
+                        self.session.add(Scenario(float(acqTime), replication, scenMaterials, bcgkScenMaterials, influences, scen_groups,
+                                 self.txtComment.text()))
                 # if inputting multiple scenarios with at least one preexisting scenario (i.e.: this only happens when
                 # the loop traverses more than once and the database is accessed again)
                 except (IntegrityError, FlushError):

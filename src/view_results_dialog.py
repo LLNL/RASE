@@ -1,11 +1,13 @@
 ###############################################################################
-# Copyright (c) 2018-2022 Lawrence Livermore National Security, LLC.
+# Copyright (c) 2018-2023 Lawrence Livermore National Security, LLC.
 # Produced at the Lawrence Livermore National Laboratory
 #
-# Written by J. Chavez, S. Czyz, G. Kosinovsky, V. Mozin, S. Sangiorgio.
+# Written by J. Brodsky, J. Chavez, S. Czyz, G. Kosinovsky, V. Mozin,
+#            S. Sangiorgio.
+#
 # RASE-support@llnl.gov.
 #
-# LLNL-CODE-841943, LLNL-CODE-829509
+# LLNL-CODE-858590, LLNL-CODE-829509
 #
 # All rights reserved.
 #
@@ -34,6 +36,7 @@ This module displays the complete summary of replay results and subsequent analy
 import logging
 import traceback
 import re
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -94,7 +97,7 @@ class ResultsTableModel(QAbstractTableModel):
         bkg_cols = [s for s in self._data.columns.to_list() if (s.startswith('BkgDose_') or s.startswith('BkgFlux_'))]
 
         cols = ['Det/Replay', 'Scen Desc'] + mat_cols + bkg_cols + ['Infl', 'AcqTime', 'Repl', 'Comment',
-                   'PID', 'PID CI', 'C&C', 'C&C CI', 'TP', 'FP', 'FN', 'Precision', 'Recall', 'F_Score',
+                   'PID', 'PID CI', 'PFID', 'C&C', 'C&C CI', 'TP', 'FP', 'FN', 'Precision', 'Recall', 'F_Score',
                                                      'wTP', 'wFP', 'wFN', 'wPrecision', 'wRecall', 'wF_Score']
 
 
@@ -195,15 +198,15 @@ class ViewResultsDialog(ui_results_dialog.Ui_dlgResults, QDialog):
         comboList = ['', 'Det', 'Replay', 'Source Dose', 'Source Flux',
                      'Distance (given dose)', 'Distance (given flux)',
                      'Background Dose', 'Background Flux', 'Infl',
-                     'AcqTime', 'Repl', 'PID', 'C&C', 'TP', 'FP', 'FN', 'Precision', 'Recall', 'F_Score', 'wTP', 'wFP',
+                     'AcqTime', 'Repl', 'PID', 'PFID', 'C&C', 'TP', 'FP', 'FN', 'Precision', 'Recall', 'F_Score', 'wTP', 'wFP',
                      'wFN', 'wPrecision', 'wRecall', 'wF_Score']
         self.cmbXaxis.addItems(comboList)
         self.cmbYaxis.addItems(comboList)
-        comboList = ['', 'PID', 'C&C', 'TP', 'FP', 'FN', 'Precision', 'Recall', 'F_Score', 'wTP', 'wFP', 'wFN',
+        comboList = ['', 'PID',  'PFID', 'C&C', 'TP', 'FP', 'FN', 'Precision', 'Recall', 'F_Score', 'wTP', 'wFP', 'wFN',
                      'wPrecision', 'wRecall', 'wF_Score']
         self.cmbZaxis.addItems(comboList)
         comboList = ['', 'Det', 'Replay', 'Source Material', 'Background Material', 'Infl', 'AcqTime', 'Repl',
-                     'PID', 'C&C', 'TP', 'FP', 'FN', 'Precision', 'Recall', 'F_Score', 'wTP', 'wFP', 'wFN',
+                     'PID',  'PFID', 'C&C', 'TP', 'FP', 'FN', 'Precision', 'Recall', 'F_Score', 'wTP', 'wFP', 'wFN',
                      'wPrecision', 'wRecall', 'wF_Score']
         self.cmbGroupBy.addItems(comboList)
         self.cmbGroupBy.setEnabled(False)
@@ -233,7 +236,8 @@ class ViewResultsDialog(ui_results_dialog.Ui_dlgResults, QDialog):
         self.btnInfoDistanceY.clicked.connect(self.open_help)
 
         self.btnClose.clicked.connect(self.closeSelected)
-        self.buttonExport.clicked.connect(self.handleExport)
+        self.buttonExportCSV.clicked.connect(lambda: self.handleExport('csv'))
+        self.buttonExportJSON.clicked.connect(lambda: self.handleExport('json'))
         self.buttonCorrTable.clicked.connect(lambda: self.openCorrTable(scenIds, detNames))
         self.buttonManageWeights.clicked.connect(lambda: self.openWeightsTable(scenIds, detNames))
         self.btnFreqAnalysis.clicked.connect(self.show_freq_results)
@@ -281,16 +285,25 @@ class ViewResultsDialog(ui_results_dialog.Ui_dlgResults, QDialog):
                                            selected_detectors=detNames)
         self.results_model.reset_data(self.parent.scenario_stats_df)
 
-    def handleExport(self):
+    def handleExport(self, file_type):
         """
-        Exports Results Dataframe to CSV format. Includes ID Frequencies
+        Exports Results Dataframe to different formats. Includes ID Frequencies and detailed ID results
         """
-        path = QFileDialog.getSaveFileName(self, 'Save File', RaseSettings().getDataDirectory(), 'CSV (*.csv)')
+        if file_type not in ['json', 'csv']:
+            return
+        filter_str = f'{file_type.upper()} (*.{file_type})'
+        path = QFileDialog.getSaveFileName(self, 'Save File', RaseSettings().getDataDirectory(), filter_str)
         if path[0]:
             df = self.parent.scenario_stats_df.copy()
             df['Scen Desc'] = df['Scen Desc'].apply(lambda x: re.sub('<[^<]+?>', '', x))
-            df['ID Frequencies'] = [self.compute_freq_results([scen_det_key,]) for scen_det_key in df.index]
-            df.to_csv(path[0])
+            df['ID Frequencies'] = [self.compute_freq_results([scen_det_key, ]) for scen_det_key in df.index]
+            df['ID Results'] = [(lambda k:  {Path(key).name: value[-1]
+                                            for (key, value) in self.parent.result_super_map[k].items()})(scen_det_key)
+                                for scen_det_key in df.index]
+            if file_type == 'csv':
+                df.to_csv(path[0])
+            elif file_type == 'json':
+                df.to_json(path[0], orient='index', indent=4)
 
     def closeSelected(self):
         """
@@ -526,7 +539,10 @@ class ViewResultsDialog(ui_results_dialog.Ui_dlgResults, QDialog):
                         categories = [s for s in df.columns.to_list() if
                                       s.startswith('BkgDose_') or s.startswith('BkgFlux_')]
                     else:
-                        categories = pd.unique(df[cat].values).tolist()
+                        if len(df[cat].values) > 0 and type(df[cat].values[0]) == list:  # this is a workaround for lists of lists of influences
+                            categories = list(pd.unique([', '.join(k) for k in df[cat].values]).tolist())
+                        else:
+                            categories = pd.unique(df[cat].values).tolist()
                 else:
                     categories = [ax_vars[0]]
 
@@ -600,7 +616,7 @@ class ResultsTableSettings(QDialog):
     def __init__(self, parent):
         QDialog.__init__(self, parent)
         cols_list = ['Det/Replay', 'Scen Desc', 'Dose', 'Flux', 'Background Dose', 'Background Flux',
-                     'Infl', 'AcqTime', 'Repl', 'Comment', 'PID', 'PID CI', 'C&C', 'C&C CI', 'TP', 'FP', 'FN',
+                     'Infl', 'AcqTime', 'Repl', 'Comment', 'PID', 'PID CI', 'PFID', 'C&C', 'C&C CI', 'TP', 'FP', 'FN',
                      'Precision', 'Recall', 'F_Score', 'wTP', 'wFP', 'wFN', 'wPrecision', 'wRecall', 'wF_Score']
         # QT treats the ampersand symbol as a special character, so it needs special treatment
         self.cb_list = [QCheckBox(v.replace('&', '&&')) for v in cols_list]

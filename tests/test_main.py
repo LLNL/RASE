@@ -1,10 +1,43 @@
+###############################################################################
+# Copyright (c) 2018-2023 Lawrence Livermore National Security, LLC.
+# Produced at the Lawrence Livermore National Laboratory
+#
+# Written by J. Brodsky, J. Chavez, S. Czyz, G. Kosinovsky, V. Mozin,
+#            S. Sangiorgio.
+#
+# RASE-support@llnl.gov.
+#
+# LLNL-CODE-858590, LLNL-CODE-829509
+#
+# All rights reserved.
+#
+# This file is part of RASE.
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy of
+# this software and associated documentation files (the "Software"), to deal in
+# the Software without restriction, including without limitation the rights to
+# use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
+# of the Software, and to permit persons to whom the Software is furnished to do
+# so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED,INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+# FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+# COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+# IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+# CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+###############################################################################
+
 import sys
 from time import sleep
 
 import pytest
 from PySide6.QtCore import Qt, QTimer, QObject, Signal
 from PySide6.QtGui import QContextMenuEvent
-from PySide6.QtWidgets import QDialogButtonBox, QMenu, QApplication
+from PySide6.QtWidgets import QDialogButtonBox, QMenu, QApplication, QMessageBox
 
 from src.correspondence_table_dialog import CorrespondenceTableDialog as ctd
 from src.detector_dialog import DetectorDialog
@@ -14,44 +47,49 @@ from src.rase_settings import RaseSettings
 from src.scenario_group_dialog import GroupSettings as gsd
 from src.table_def import ScenarioGroup, Replay
 from sqlalchemy.orm import close_all_sessions
-pytest.main(['-s'])
-
-
-@pytest.fixture(scope="class", autouse=True)
-def db_and_output_folder():
-    """Delete and recreate the database between test classes"""
-    settings = RaseSettings()
-    dataDir = settings.getDataDirectory()
-    if not os.path.exists(dataDir):
-        os.makedirs(dataDir, exist_ok=True)
-    initializeDatabase(settings.getDatabaseFilepath())
-    yield Session()
-    close_all_sessions()
-    if os.path.isdir(settings.getSampleDirectory()):
-        shutil.rmtree(settings.getSampleDirectory())
-    if os.path.isfile(settings.getDatabaseFilepath()):
-        os.remove(settings.getDatabaseFilepath())
-
-
+# pytest.main(['-s'])
 
 
 
 @pytest.fixture(scope='session', autouse=True)
-def complete_tests():
+def temp_data_dir():
     """Make sure no sample spectra are left after the final test is run"""
     settings = RaseSettings()
     original_data_dir = settings.getDataDirectory()
     settings.setDataDirectory(os.path.join(os.getcwd(),'__temp_test_rase'))
-    yield None  # anything before this line will be run prior to the tests
-    print('CLEANING UP')  # run after the last test
+    yield settings.getDataDirectory()  # anything before this line will be run prior to the tests
     settings = RaseSettings()
+    settings.setDataDirectory(original_data_dir)
+
+@pytest.fixture(scope="class", autouse=True)
+def db_and_output_folder():
+    settings = RaseSettings()
+    close_all_sessions()
+    """Delete and recreate the database between test classes"""
     if os.path.isdir(settings.getSampleDirectory()):
         shutil.rmtree(settings.getSampleDirectory())
+        print(f'Deleting sample dir at {settings.getSampleDirectory()}')
     if os.path.isfile(settings.getDatabaseFilepath()):
         os.remove(settings.getDatabaseFilepath())
-    settings.setDataDirectory(original_data_dir)
-    print('CLEANUP COMPLETE')
+        print(f'Deleting DB at {settings.getDatabaseFilepath()}')
+    if os.path.isdir(Path(settings.getDataDirectory())/'gadras_injections'):
+        shutil.rmtree(Path(settings.getDataDirectory())/'gadras_injections')
+        print(f'Deleting gadras pcfs at {Path(settings.getDataDirectory())/"gadras_injections"}')
+    if os.path.isdir(Path(settings.getDataDirectory())/'converted_gadras'):
+        shutil.rmtree(Path(settings.getDataDirectory())/'converted_gadras')
+        print(f'Deleting gadras N42s at {Path(settings.getDataDirectory())/"converted_gadras"}')
+    settings = RaseSettings()
+    close_all_sessions()
+    dataDir = settings.getDataDirectory()
 
+    os.makedirs(dataDir, exist_ok=True)
+    initializeDatabase(settings.getDatabaseFilepath())
+    # hoc = HelpObjectCreation()
+    # hoc.create_default_workflow()
+    # hoc.get_default_workflow()
+    # yield hoc
+    yield
+    close_all_sessions()
 
 class Helper(QObject):
     finished = Signal()
@@ -163,9 +201,9 @@ class HelpObjectCreation:
             scen_exists = session.query(Scenario).filter_by(id=scen_hash).first()
             if scen_exists:
                 root_folder = '.'
-                delete_scenario(scen_hash, root_folder)
+                delete_scenario([scen_hash,], root_folder)
                 assert session.query(Scenario).filter_by(id=scen_hash).first() is None
-            Scenario(float(acqTime), replication, baseSpectrum, backSpectrum, [], self.get_scengroups(session))
+            session.add(Scenario(float(acqTime), replication, baseSpectrum, backSpectrum, [], self.get_scengroups(session)))
 
     def create_empty_detector(self):
         detector_name = self.get_default_detector_name()
@@ -216,12 +254,11 @@ class HelpObjectCreation:
         instr_id = 'instr_id'
         class_code = 'class_code'
         hardware_version = 'hardware_version'
-        replay = None
         resultsTranslator = None
         txtDetectorDescription = 'txtDetectorDescription'
 
         spec_properties = [chan_count, ecal0, ecal1, ecal2, ecal3]
-        params = [manufacturer, instr_id, class_code, hardware_version, replay, resultsTranslator, txtDetectorDescription]
+        params = [manufacturer, instr_id, class_code, hardware_version, resultsTranslator, txtDetectorDescription]
 
 
         return spec_properties, params
@@ -235,9 +272,9 @@ class HelpObjectCreation:
     def create_default_replay(self):
         session = Session()
         name = self.get_default_replay_name()
-        exe_path = sys.executable
+        exe_path = f"{Path(__file__).parent / '../tools/fixed_replay.py'}"
         is_cmd_line = True
-        settings = f"fixed_replay.py INPUTDIR OUTPUTDIR"
+        settings = "INPUTDIR OUTPUTDIR"
         n42_template_path = None
         input_filename_suffix = '.n42'
 
@@ -359,7 +396,6 @@ class Test_GUI:
 
         QTimer.singleShot(500, close_d_dialog)
         qtbot.mouseClick(w.btnAddDetector, Qt.LeftButton)
-
         assert not w.d_dialog
 
 
@@ -367,10 +403,10 @@ class Test_GUI:
         """
         Assures all scenarios/tests are appearing
         """
-        session = Session()
+
         w = Rase([])
         qtbot.addWidget(w)
-
+        session = Session()
         assert w.tblScenario.rowCount() == len(session.query(Scenario).all())
         assert w.tblDetectorReplay.rowCount() == len(session.query(Detector).all())
 
@@ -441,6 +477,12 @@ class Test_Inst_Create_Delete:
 
         helper = Helper()
 
+        def handle_yes():
+            messagebox = w.findChild(QMessageBox)
+            yes_button = messagebox.button(QMessageBox.Yes)
+            QTimer.singleShot(200, helper.finished.emit)
+            qtbot.mouseClick(yes_button, Qt.LeftButton, delay=1)
+
         def handle_timeout():
             menu = None
             for tl in QApplication.topLevelWidgets():
@@ -457,8 +499,11 @@ class Test_Inst_Create_Delete:
                     break
             assert delete_action is not None
             rect = menu.actionGeometry(delete_action)
-            QTimer.singleShot(100, helper.finished.emit)
+            QTimer.singleShot(1000, handle_yes)
             qtbot.mouseClick(menu, Qt.LeftButton, pos=rect.center())
+
+
+
 
         with qtbot.waitSignal(helper.finished, timeout=5 * 1000):
             QTimer.singleShot(1000, handle_timeout)
@@ -550,7 +595,7 @@ class Test_Scen_Create_Delete:
                 root_folder = '.'
                 delete_scenario([scen_hash], root_folder)
                 assert session.query(Scenario).filter_by(id=scen_hash).first() is None
-            assert Scenario(float(acqTime), replication, baseSpectrum, backSpectrum, [], hoc.get_scengroups(session))
+            session.add(Scenario(float(acqTime), replication, baseSpectrum, backSpectrum, [], hoc.get_scengroups(session)))
         assert len(session.query(Scenario).all()) == 2
 
     def test_scen_delete(self):
@@ -645,3 +690,38 @@ class Test_Sampling:
             assert len(sc) == d.chan_count
         assert max(sum_rip) - min(sum_rip) < min_sqrt_rip
 
+class Test_Import_Export:
+    hoc = HelpObjectCreation()
+    def test_export(self, qtbot):
+        settings = RaseSettings()
+        file_target = Path(settings.getDataDirectory()) / 'test_export.yaml'
+        w = Rase([])
+        hoc = HelpObjectCreation()
+        hoc.create_default_workflow()
+        det_names, scen_ids = hoc.get_default_workflow()
+        d_dialog = DetectorDialog(None, det_names[0])
+        d_dialog.on_btnExportDetector_clicked(savefilepath=file_target)
+
+    def test_import(self, qtbot):
+        settings = RaseSettings()
+        file_target = Path(settings.getDataDirectory()) / 'test_export.yaml'
+        hoc = HelpObjectCreation()
+        det_names, scen_ids = hoc.get_default_workflow()
+        d_dialog = DetectorDialog(None)
+        d_dialog.on_btnImportDetector_clicked(importfilepath=file_target)
+        d_dialog.accept()
+
+        d_dialog = DetectorDialog(None)
+        d_dialog.on_btnImportDetector_clicked(importfilepath=file_target)
+        d_dialog.accept()
+
+    def test_delete_new(self):
+        det_names, scen_ids = self.hoc.get_default_workflow()
+        delete_instrument(Session(), det_names[0]+'_Imported')
+        delete_instrument(Session(), det_names[0] + '_Imported_Imported')
+
+    def test_open_old(self):
+        det_names, scen_ids = self.hoc.get_default_workflow()
+        d_dialog = DetectorDialog(None, det_names[0])
+        d_dialog.show()
+        d_dialog.accept()

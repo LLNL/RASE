@@ -16,3 +16,4 @@ Advanced Topics
    Results_file_format
    Use_distance
    Intrinsic_source_handling
+   RASE-GADRAS_Integration

@@ -1,11 +1,13 @@
 ###############################################################################
-# Copyright (c) 2018-2022 Lawrence Livermore National Security, LLC.
+# Copyright (c) 2018-2023 Lawrence Livermore National Security, LLC.
 # Produced at the Lawrence Livermore National Laboratory
 #
-# Written by J. Chavez, S. Czyz, G. Kosinovsky, V. Mozin, S. Sangiorgio.
+# Written by J. Brodsky, J. Chavez, S. Czyz, G. Kosinovsky, V. Mozin,
+#            S. Sangiorgio.
+#
 # RASE-support@llnl.gov.
 #
-# LLNL-CODE-841943, LLNL-CODE-829509
+# LLNL-CODE-858590, LLNL-CODE-829509
 #
 # All rights reserved.
 #
@@ -39,9 +41,8 @@ import numpy as np
 
 def generate_sample_counts_rejection(scenario, detector, countsDoseAndSensitivity, seed):
     """ Rejection Sampling
-    This is the improved IAEA rejection algorithm implemented by Samuele. Considerable
-    speed-up and stable execution. This sampling method will be the "original" baseline version for the V&V
-    analysis.
+    This is a modified version of the rejection algorithm employed by the IAEA in the original
+    iteration of RASE (10.1109/NSSMIC.2009.5402448)
 
     :param seed:
     :param scenario:
@@ -85,7 +86,7 @@ def generate_sample_counts_rejection(scenario, detector, countsDoseAndSensitivit
 
 
 def generate_sample_counts_poisson(scenario, detector, countsDoseAndSensitivity, seed):
-    """Poisson Re-sampling
+    """Poisson Re-sampling (Default)
     Very quick downsampling method based on bin-by-bin Poisson re-sampling.
 
     :param scenario:
@@ -108,7 +109,7 @@ def generate_sample_counts_poisson(scenario, detector, countsDoseAndSensitivity,
 
 
 def generate_sample_counts_inversion(scenario, detector, countsDoseAndSensitivity, seed):
-    """Inverse Transform Sampling (Default)
+    """Inverse Transform Sampling
     This uses np.random.choice() which is rather fast and employs the inverse transform sampling method
     which generates random numbers from a probability distribution given its cumulative distribution function.
 

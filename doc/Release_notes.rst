@@ -4,6 +4,37 @@
 RASE Release Notes
 ******************
 
+RASE v2.4
+=========
+
+- Introduce detector import/export functionality
+- Enable instrument cloning
+- Allow users to rename detectors/replay tools
+- Added a base spectrum creation wizard
+- Expanded base spectrum template library
+- Sample spectra can now be summed for visualization, comparison, and export
+- Improved secondary spectrum handling
+
+    - Can simultanously define on-board background and internal source spectrum
+    - Base spectra can now include multiple secondaries
+    - User can specify dwell time and sampling behavior of secondary background
+
+- Improve compatibility with FullSpec WebID replay tool
+
+    - Better DRF selection
+    - Point web address to the appropriate url
+
+- Export results improvements
+
+    - Include detailed ID results
+    - Export results into JSON format
+
+- Automatic translation of isotope ID results for FLIR, Symetrica, Kromek, and RadSeeker replay tools, as well as instruments outputting in the standard n42-2011 format.
+- Include python script compatible with GADRAS 19.3.3 API which creates base spectra for a new user-specified instrument from the source list in an exported RASE detector file.
+- Various bug fixes
+- Documentation updates
+
+
 RASE v2.3
 =========
 

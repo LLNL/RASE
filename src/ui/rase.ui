@@ -254,7 +254,6 @@
           </widget>
          </item>
         </layout>
-        <zorder>tblDetectorReplay</zorder>
        </widget>
       </item>
       <item>
@@ -444,6 +443,7 @@ Replay Results...</string>
     </property>
     <addaction name="actionInput_Random_Seed"/>
     <addaction name="actionBase_Spectra_Creation_Tool"/>
+    <addaction name="actionBase_Spectra_Creation_Wizard"/>
     <addaction name="actionAutomated_Scurve"/>
     <addaction name="actionDynamic_Scenarios_under_development"/>
    </widget>
@@ -550,6 +550,11 @@ Replay Results...</string>
   <action name="actionModify_Material_Weights">
    <property name="text">
     <string>Weighted F-score Manager...</string>
+   </property>
+  </action>
+  <action name="actionBase_Spectra_Creation_Wizard">
+   <property name="text">
+    <string>Base Spectra Creation Wizard</string>
    </property>
   </action>
  </widget>

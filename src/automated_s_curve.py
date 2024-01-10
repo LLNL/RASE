@@ -1,11 +1,13 @@
 ###############################################################################
-# Copyright (c) 2018-2022 Lawrence Livermore National Security, LLC.
+# Copyright (c) 2018-2023 Lawrence Livermore National Security, LLC.
 # Produced at the Lawrence Livermore National Laboratory
 #
-# Written by J. Chavez, S. Czyz, G. Kosinovsky, V. Mozin, S. Sangiorgio
+# Written by J. Brodsky, J. Chavez, S. Czyz, G. Kosinovsky, V. Mozin,
+#            S. Sangiorgio.
+#
 # RASE-support@llnl.gov.
 #
-# LLNL-CODE-841943, LLNL-CODE-829509
+# LLNL-CODE-858590, LLNL-CODE-829509
 #
 # All rights reserved.
 #
@@ -127,10 +129,10 @@ def generate_curve(r, input_data, advanced):
                     if prev_point:
                         ids_on_edge = []  # rose and then dropped back down (i.e.: fluctuations)
                         prev_point = False
-                elif advanced['lower_bound'] <= result <= advanced['upper_bound']:
+                if advanced['lower_bound'] <= result <= advanced['upper_bound']:
                     ids_on_edge.append(results.index[index].split('*')[0])
                     prev_point = True
-                elif (not input_data['invert_curve'] and result >= advanced['upper_bound']) or \
+                if (not input_data['invert_curve'] and result >= advanced['upper_bound']) or \
                         (input_data['invert_curve'] and result <= advanced['lower_bound']):
                     end_list.append(results.index[index].split('*')[0])
             # Grab doses for scenarios on the edges of the S-curve. The first value in each list is
@@ -144,11 +146,11 @@ def generate_curve(r, input_data, advanced):
                     if start_val[1] == -1 or scen.scen_materials[0].dose >= start_val[1]:
                         start_val = set_bounds(start_val, scen.scen_materials[0].dose)
                 if scen.id in end_list:
-                    if end_val[1] == -1 or scen.scen_materials[0].dose < end_val[1]:
+                    if end_val[1] == -1 or scen.scen_materials[0].dose <= end_val[1]:
                         end_val = set_bounds(end_val, scen.scen_materials[0].dose)
 
             # check if there are enough points on the rising edge
-            if len(ids_on_edge) >= advanced['rise_points']:
+            if len(ids_on_edge) >= advanced['rise_points'] and len(end_list) > 1 and len(start_list) > 1:
                 condition = True
                 # to avoid persistence errors by reusing a value with the same ID but different replications
                 edge_count, bound_scens_start, bound_scens_end = check_edge_ids(session, input_data['input_reps'],
@@ -162,12 +164,15 @@ def generate_curve(r, input_data, advanced):
                     already_done = True
             else:
                 # avoid infinite loop due to being stuck on edge cases. Moves slightly inward to better populate edge
+                if end_val[1] < 0:
+                    end_val[1] = 2 * start_val[1]
+
                 if start_val[1] == advanced['min_guess']:
-                    advanced['min_guess'] = start_val[1] + (end_val[1] - start_val[1]) * 0.01
+                    advanced['min_guess'] = start_val[1] + (end_val[1] - start_val[1]) * 0.01 * np.random.normal(1, 0.1)
                 else:
                     advanced['min_guess'] = start_val[1]
                 if end_val[1] == advanced['max_guess']:
-                    advanced['max_guess'] = end_val[1] - (end_val[1] - start_val[1]) * 0.01
+                    advanced['max_guess'] = end_val[1] - (end_val[1] - start_val[1]) * 0.01 * np.random.normal(1, 0.1)
                 else:
                     advanced['max_guess'] = end_val[1]
                 advanced['num_points'] = advanced['rise_points']  # + 4
@@ -272,7 +277,7 @@ def check_edge_ids(session, replications, start_list, end_list, edge_ids, detect
         for id in ids_list:
             scen = session.query(Scenario).filter_by(id=id).first()
             results_dir = get_results_dir(settings.getSampleDirectory(), detector, id)
-            if files_endswith_exists(results_dir, (".n42", ".res")) and scen.replication >= replications:
+            if files_endswith_exists(results_dir, (".n42", ".res", ".xml")) and scen.replication >= replications:
                 counter[i] += 1
 
     return counter[0], counter[1], counter[2]
@@ -333,12 +338,16 @@ def make_scenIdall(session, input_data):
             ScenarioBackgroundMaterial.material_name == bkgd[1].name,
             ScenarioBackgroundMaterial.dose == bkgd[2]).all()
 
+    for s in list(repeat_scens):
+        if len(s.scen_materials) > 1:
+            repeat_scens.remove(s)
+
     common_scens = [x for x in set(repeat_scens) if repeat_scens.count(x) == len(input_data['background'])]
 
     scenIdall = []
     for scen in common_scens:
         results_dir = get_results_dir(settings.getSampleDirectory(), detector, scen.id)
-        if files_endswith_exists(results_dir, (".n42", ".res")):
+        if files_endswith_exists(results_dir, (".n42", ".res", ".xml")):
             scenIdall.append(scen.id)
 
     return scenIdall
@@ -437,8 +446,8 @@ def run_scenarios(r, scenIds, detector, replay_name, condition=False, expand=0, 
         results_dir = get_results_dir(settings.getSampleDirectory(), detector, scenId)
         # do not regenerate already existing results
         # using scenIds instead of scenIds_no_persist in case the scenario exists but with no results
-        if not files_endswith_exists(results_dir, (".n42", ".res")):
-            r.genSpectra([scenId], [detector.name], False)
+        if not files_endswith_exists(results_dir, (".n42", ".res", ".xml")):
+            r.genSpectra([scenId], [detector.name], False, True)
             if len(scenIds) == 1:
                 count += 1
                 progress.setValue(count)

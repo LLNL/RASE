@@ -1,11 +1,13 @@
 ###############################################################################
-# Copyright (c) 2018-2022 Lawrence Livermore National Security, LLC.
+# Copyright (c) 2018-2023 Lawrence Livermore National Security, LLC.
 # Produced at the Lawrence Livermore National Laboratory
 #
-# Written by J. Chavez, S. Czyz, G. Kosinovsky, V. Mozin, S. Sangiorgio.
+# Written by J. Brodsky, J. Chavez, S. Czyz, G. Kosinovsky, V. Mozin,
+#            S. Sangiorgio.
+#
 # RASE-support@llnl.gov.
 #
-# LLNL-CODE-841943, LLNL-CODE-829509
+# LLNL-CODE-858590, LLNL-CODE-829509
 #
 # All rights reserved.
 #
@@ -34,177 +36,128 @@ This module handles the base spectra creation dialog
 import os
 import sys
 import csv
+from enum import IntEnum, auto
+
 import yaml
 from PySide6.QtCore import Slot, Qt, QRegularExpression, QTemporaryDir
 from PySide6.QtGui import QRegularExpressionValidator, QDoubleValidator, QColor, QValidator
 from PySide6.QtWidgets import QDialog, QFileDialog, QTableWidgetItem, QDialogButtonBox, QItemDelegate, QMessageBox, \
-    QLineEdit, QAbstractItemView
+    QLineEdit, QAbstractItemView, QWidget, QTableWidget, QPushButton, QVBoxLayout, QHBoxLayout
 from src.rase_settings import RaseSettings
 from .pcf_tools import readpcf, PCFtoN42Writer
+from .qt_utils import DoubleOrEmptyDelegate
 from .ui_generated import ui_create_base_spectra_dialog
-from src.rase_functions import BaseSpectraFormatException
+from src.spectrum_file_reading import BaseSpectraFormatException
 import traceback
 
 from glob import glob
 
-from .base_building_algos import base_output_filename, do_all, do_glob, validate_output
-
-hh = {'folder': 0, 'file': 1, 'specID': 2, 'matID': 3, 'otherID': 4, 'dose': 5, 'flux': 6, 'base_name': 7, 'notes': 8}
-
-pcf_config_txt = 'PCF File'
-default_config = {
-    'default n42':
-        {
-            'measurement_spectrum_xpath': './RadMeasurement[MeasurementClassCode="Foreground"]/Spectrum',
-            'realtime_xpath': './RadMeasurement[MeasurementClassCode="Foreground"]/RealTimeDuration',
-            'livetime_xpath': './RadMeasurement[MeasurementClassCode="Foreground"]/Spectrum/LiveTimeDuration',
-            'calibration': './EnergyCalibration/CoefficientValues',
-            'subtraction_spectrum_xpath': './RadMeasurement[@id="Foreground"]/Spectrum',
-            'additionals': ['./RadMeasurement[MeasurementClassCode="Background"]',
-                            './RadMeasurement[MeasurementClassCode="IntrinsicActivity"]'
-                            ]
-        },
-    pcf_config_txt:     # We will translate PCF files into n42s
-        {
-            'measurement_spectrum_xpath': './RadMeasurement/Spectrum',
-            'realtime_xpath': './RadMeasurement/Spectrum/RealTimeDuration',
-            'livetime_xpath': './RadMeasurement/Spectrum/LiveTimeDuration',
-            'calibration': './EnergyCalibration/CoefficientValues',
-            'subtraction_spectrum_xpath': './RadMeasurement/Spectrum',
-        }
-}
+from .base_building_algos import base_output_filename, do_glob, validate_output, default_config, pcf_config, \
+    pcf_config_txt
 
 
-class CreateBaseSpectraDialog(ui_create_base_spectra_dialog.Ui_Dialog, QDialog):
-    def __init__(self, session):
-        QDialog.__init__(self)
-        self.setupUi(self)
-        self.buttonBox.addButton("Create", QDialogButtonBox.AcceptRole)
-        self.buttonBox.accepted.connect(self.accept)
-        self.buttonBox.rejected.connect(self.reject)
-        self.settings = RaseSettings()
+class ColNum(IntEnum):
+    folder = 0  # Enforce starting from zero, then go in order
+    file = auto()
+    specID = auto()
+    matID = auto()
+    otherID = auto()
+    dose = auto()
+    flux = auto()
+    base_name = auto()
+    notes = auto()
 
-        # TODO: Add a delegate to the flux column as well; doing so now via a simple copy and paste operation is
-        #  creating a SIGSEGV
+
+class CreateBaseSpectraTableWidget(QWidget):
+    def __init__(self):
+        super().__init__()
+
+        self.VendorID = ''
+        self.ModelID = ''
+
+        self.layout = QVBoxLayout(self)
+
+        self.sourceTable = QTableWidget(self)
+        self.sourceTable.setColumnCount(len(ColNum))
         self._dbl_empty_delegate = DoubleOrEmptyDelegate()
-        self.sourceTable.setItemDelegateForColumn(hh['dose'], self._dbl_empty_delegate)
-        self.sourceTable.horizontalHeaderItem(hh['dose']).setToolTip("μSv / h")
-        self.sourceTable.setItemDelegateForColumn(hh['flux'], self._dbl_empty_delegate)
-        self.sourceTable.horizontalHeaderItem(hh['flux']).setToolTip("counts / cm<sup>2</sup> / s")
+        self.sourceTable.setHorizontalHeaderItem(ColNum.folder, QTableWidgetItem("Folder"))
+        self.sourceTable.setColumnHidden(ColNum.folder, True)
+        self.sourceTable.setHorizontalHeaderItem(ColNum.file, QTableWidgetItem("File"))
+        self.sourceTable.setHorizontalHeaderItem(ColNum.matID, QTableWidgetItem("Source ID"))
+        self.sourceTable.setHorizontalHeaderItem(ColNum.otherID, QTableWidgetItem("Description"))
+        self.sourceTable.setHorizontalHeaderItem(ColNum.dose, QTableWidgetItem("Exposure Rate"))
+        self.sourceTable.setItemDelegateForColumn(ColNum.dose, self._dbl_empty_delegate)
+        self.sourceTable.horizontalHeaderItem(ColNum.dose).setToolTip("μSv / h")
+        self.sourceTable.setHorizontalHeaderItem(ColNum.flux, QTableWidgetItem("Flux"))
+        self.sourceTable.setItemDelegateForColumn(ColNum.flux, self._dbl_empty_delegate)
+        self.sourceTable.horizontalHeaderItem(ColNum.flux).setToolTip("counts / cm<sup>2</sup> / s")
+        self.sourceTable.setHorizontalHeaderItem(ColNum.base_name, QTableWidgetItem("Base Spectrum Name"))
+        self.sourceTable.setHorizontalHeaderItem(ColNum.notes, QTableWidgetItem("Notes"))
+        self.sourceTable.setHorizontalHeaderItem(ColNum.specID, QTableWidgetItem("#"))
+        self.sourceTable.horizontalHeader().setStretchLastSection(True)
         self.sourceTable.setSelectionBehavior(QAbstractItemView.SelectRows)
-        self.sourceTable.setColumnHidden(hh['folder'], True)  # folder is hidden but shown as tooltip on filename cell
 
-        self.txtVendorID.setValidator(QRegularExpressionValidator(QRegularExpression('[a-zA-Z0-9]{0,4}')))
-        self.txtModelID.setValidator(QRegularExpressionValidator(QRegularExpression('[a-zA-Z0-9]{0,3}')))
+        self.buttonLayout = QHBoxLayout()
+        self.btnSetAsBkg = QPushButton("Set Selected Entry as Background")
+        self.btnClearBkgSel = QPushButton("Clear Background Selection")
+        self.btnRemoveSrc = QPushButton("Remove Selected Entry")
+        self.buttonLayout.addWidget(self.btnSetAsBkg)
+        self.buttonLayout.addWidget(self.btnClearBkgSel)
+        self.buttonLayout.addWidget(self.btnRemoveSrc)
 
         self.btnRemoveSrc.clicked.connect(self.delete_selected)
         self.sourceTable.itemChanged.connect(self.update_base_fname)
-        self.txtVendorID.textChanged.connect(self.update_base_fname_all)
-        self.txtModelID.textChanged.connect(self.update_base_fname_all)
-        self.btnExport.clicked.connect(self.handleExport)
-        self.btnImport.clicked.connect(self.handleImport)
         self.btnClearBkgSel.clicked.connect(self.clear_background_selection)
+        self.btnSetAsBkg.clicked.connect(self.set_row_as_bkg)
         self.sourceTable.itemSelectionChanged.connect(self.activate_SetAsBkg_button)
 
-        self.txtConfigFile.setText(self.settings.getBaseSpectrumCreationConfig())
-        self.configs = default_config
-        self.default_config = default_config
-        self.comboConfig.currentIndexChanged.connect(self.combo_config_changed)
-        self.loadConfigsFromFile()
+        self.layout.addWidget(self.sourceTable)
+        self.layout.addLayout(self.buttonLayout)
 
         self.backgroundFileRow = None
         self.unselectedBkgColor = None
         self.btnSetAsBkg.setEnabled(False)
 
-    def create_table_row(self, table, filename, folder, index=1, notes=''):
+    def initialize_table(self, state):
+        self.sourceTable.setColumnHidden(ColNum.specID, state)
+        self.sourceTable.setColumnWidth(ColNum.base_name, 150)
+        self.sourceTable.setColumnHidden(ColNum.notes, state)
+
+    def set_vendorID_modelID(self, vendorID, modelID):
+        self.VendorID = vendorID
+        self.ModelID = modelID
+
+    def create_table_row(self, filename, folder, index=1, notes=''):
         """
         Creates one row in 'table' and enters 'filename' at the filename column
         """
-        row = table.rowCount()
-        table.setRowCount(row + 1)
-        table.blockSignals(True)
-        for col in range(table.columnCount()):
+        row = self.sourceTable.rowCount()
+        self.sourceTable.setRowCount(row + 1)
+        self.sourceTable.blockSignals(True)
+        for col in range(self.sourceTable.columnCount()):
             label = ""
-            if col == hh['file']:
+            if col == ColNum.file:
                 label = filename
-            if col == hh['folder']:
+            if col == ColNum.folder:
                 label = folder
-            elif col == hh['specID']:
+            elif col == ColNum.specID:
                 label = str(index)
-            elif col == hh['notes']:
+            elif col == ColNum.notes:
                 label = notes
             item = QTableWidgetItem(label)
-            if col == hh['base_name']:
+            if col == ColNum.base_name:
                 item.setFlags(item.flags() & ~Qt.ItemIsEditable)
-            table.setItem(row, col, item)
-        table.blockSignals(False)
-        self.update_base_fname(table.item(row, 0))
-        self.set_table_folder_tooltip(table.item(row, 0))
-        self.unselectedBkgColor = table.item(row, 0).background()
+            self.sourceTable.setItem(row, col, item)
+        self.sourceTable.blockSignals(False)
+        self.update_base_fname(self.sourceTable.item(row, 0))
+        self.set_table_folder_tooltip(self.sourceTable.item(row, 0))
+        self.unselectedBkgColor = self.sourceTable.item(row, 0).background()
 
     def set_table_folder_tooltip(self, item):
         t = item.tableWidget()
         row = item.row()
-        t.item(row, hh["file"]).setToolTip(t.item(row, hh['folder']).text())
-        t.item(row, hh["file"]).setFlags(item.flags() & ~Qt.ItemIsEditable)
-
-    @Slot(bool)
-    def on_btnLoadSources_clicked(self, checked):
-        """
-        Loads source spectra files in the source table
-        """
-        options = QFileDialog.ShowDirsOnly
-        if sys.platform.startswith('win'): options = QFileDialog.DontUseNativeDialog
-        path = QFileDialog.getExistingDirectory(self, 'Choose Base Spectra Directory',
-                                                self.settings.getLastDirectory(), options)
-        if not path:
-            return
-
-        if self.comboConfig.currentText() == pcf_config_txt:
-            filenames = [f for f in os.listdir(path) if f.lower().endswith(".pcf")]
-            if not filenames:
-                QMessageBox.critical(self, 'Invalid Directory Selection',
-                                     'No PCF Files in selected Directory')
-                return
-
-            for f in sorted(filenames):
-                for index, spectrum in enumerate(readpcf(os.path.join(path, f))):
-                    self.create_table_row(self.sourceTable, f, path, index+1, spectrum.title)
-        else:
-            if not self.checkBox_ComboFolder.isChecked():  # normal load
-                filenames = [f for f in os.listdir(path) if f.lower().endswith(".n42")]
-                if not filenames:
-                    QMessageBox.critical(self, 'Invalid Directory Selection',
-                                         'No n42 Files in selected Directory')
-                    return
-
-                for f in sorted(filenames):
-                    # TODO: check that the n42 is sane otherwise skip the file and notify the user
-                    self.create_table_row(self.sourceTable, f, path)
-            else:  # Load each subfolder as one source and sum its files
-                found_all = True
-                bad_dirs = []
-                for it in os.scandir(path):
-                    if it.is_dir():
-                        self.create_table_row(self.sourceTable, os.path.join(it.name, '*.n42'), path)
-                        inputfiles = glob(os.path.join(it.path, '*.n42'))
-                        if not bool(inputfiles):
-                            found_all = False
-                            bad_dirs.append(it.name)
-
-                if not found_all:
-                    bad_dir_str = ', '.join(bad_dirs)
-                    QMessageBox.critical(self, 'Invalid Directory Selection',
-                                         f'Subdirectory(s) {bad_dir_str} does not contain n42 files.')
-
-    @Slot(int)
-    def combo_config_changed(self, index):
-        state = False if self.comboConfig.currentText() == pcf_config_txt else True
-        self.checkBox_ComboFolder.setVisible(state)
-        self.checkBox_ComboFolder.setEnabled(state)
-        self.sourceTable.setColumnHidden(hh['specID'], state)
-        self.sourceTable.setColumnWidth(hh['base_name'], 150)
-        self.sourceTable.setColumnHidden(hh['notes'], state)
+        t.item(row, ColNum.file).setToolTip(t.item(row, ColNum.folder).text())
+        t.item(row, ColNum.file).setFlags(item.flags() & ~Qt.ItemIsEditable)
 
     @Slot(QTableWidgetItem)
     def update_base_fname(self, item):
@@ -213,9 +166,9 @@ class CreateBaseSpectraDialog(ui_create_base_spectra_dialog.Ui_Dialog, QDialog):
         """
         t = item.tableWidget()
         row = item.row()
-        label = base_output_filename(self.txtVendorID.text(), self.txtModelID.text(),
-                                     t.item(row, hh['matID']).text(), t.item(row, hh['otherID']).text())
-        t.item(row, hh["base_name"]).setText(label)
+        label = base_output_filename(self.VendorID, self.ModelID,
+                                     t.item(row, ColNum.matID).text(), t.item(row, ColNum.otherID).text())
+        t.item(row, ColNum.base_name).setText(label)
 
     def update_base_fname_all(self):
         """
@@ -242,6 +195,187 @@ class CreateBaseSpectraDialog(ui_create_base_spectra_dialog.Ui_Dialog, QDialog):
         rows.sort(reverse=True)
         for r in rows:
             self.sourceTable.removeRow(r)
+
+    def clear_table(self) -> None:
+        """
+        delete all rows and resets the background row reference
+        """
+        self.sourceTable.setRowCount(0)
+        self.backgroundFileRow = None
+
+    def activate_SetAsBkg_button(self):
+        items = self.sourceTable.selectedItems()
+        self.btnSetAsBkg.setEnabled(True) if items else self.btnSetAsBkg.setEnabled(False)
+
+    @Slot(bool)
+    def set_row_as_bkg(self, checked):
+        rows = self.sourceTable.selectionModel().selectedRows()
+        if len(rows) > 1:
+            QMessageBox.information(self, 'Background File Selection', 'Please select only one row')
+            return
+        self.clear_background_selection()
+        row = rows[0].row()
+        for col in range(self.sourceTable.columnCount()):
+            self.sourceTable.item(row, col).setBackground(QColor('yellow'))
+        self.backgroundFileRow = row
+
+    def clear_background_selection(self):
+        if self.backgroundFileRow is not None:
+            for col in range(self.sourceTable.columnCount()):
+                self.sourceTable.item(self.backgroundFileRow, col).setBackground(self.unselectedBkgColor)
+        self.backgroundFileRow = None
+
+    def get_table_data_as_list(self) -> list:
+        ''' Returns content of the table as a 2D list of strings'''
+        data = []
+        for row in range(self.sourceTable.rowCount()):
+            row_data = []
+            for column in range(self.sourceTable.columnCount()):
+                item = self.sourceTable.item(row, column)
+                if item is not None:
+                    row_data.append(item.text())
+                else:
+                    row_data.append('')
+            data.append(row_data)
+        return data
+
+    def handleExport(self, directory):
+        """
+        exports to CSV
+        """
+        path = QFileDialog.getSaveFileName(self, 'Save File', directory, 'CSV (*.csv)')
+        if path[0]:
+            with open(path[0], mode='w', newline='') as stream:
+                writer = csv.writer(stream)
+                writer.writerow([col.name for col in ColNum])
+                data = self.get_table_data_as_list()
+                for rowdata in data:
+                    writer.writerow(rowdata)
+
+    def validate_table_entries(self) -> bool:
+        data = self.get_table_data_as_list()
+        if not data:
+            return False
+        for row in data:
+            if not(row[ColNum.dose] or row[ColNum.flux]):
+                return False
+            if not(row[ColNum.matID]):
+                return False
+        return True
+
+    def handleImport(self, directory):
+        """
+        imports from CSV
+        """
+        path = QFileDialog.getOpenFileName(self, 'Open File', directory, 'CSV(*.csv)')
+        if path[0]:
+            # FIXME: This doesn't check in any way that the format of the file is correct
+            with open(path[0], mode='r') as stream:
+                self.sourceTable.setRowCount(0)
+                self.sourceTable.blockSignals(True)
+                for rowdata in csv.reader(stream):
+                    row = self.sourceTable.rowCount()
+                    if [col.name for col in ColNum][0] in str(rowdata): continue
+                    self.sourceTable.insertRow(row)
+                    for column, data in enumerate(rowdata):
+                        if column < len(ColNum):
+                            item = QTableWidgetItem(data)
+                            self.sourceTable.setItem(row, column, item)
+                    item = QTableWidgetItem()
+                    item.setFlags(item.flags() & ~Qt.ItemIsEditable)
+                    self.sourceTable.setItem(row, ColNum.base_name, item)
+                    self.update_base_fname(self.sourceTable.item(row, 0))
+                    self.set_table_folder_tooltip(self.sourceTable.item(row, 0))
+                self.sourceTable.blockSignals(False)
+
+
+class CreateBaseSpectraDialog(ui_create_base_spectra_dialog.Ui_Dialog, QDialog):
+    def __init__(self, session):
+        QDialog.__init__(self)
+        self.setupUi(self)
+        self.buttonBox.button(QDialogButtonBox.Ok).setText("Create")
+        self.buttonBox.accepted.connect(self.accept)
+        self.buttonBox.rejected.connect(self.reject)
+        self.buttonBox.button(QDialogButtonBox.Ok).setEnabled(False)
+
+        self.settings = RaseSettings()
+
+        self.txtVendorID.setValidator(QRegularExpressionValidator(QRegularExpression('[a-zA-Z0-9]{0,4}')))
+        self.txtModelID.setValidator(QRegularExpressionValidator(QRegularExpression('[a-zA-Z0-9]{0,3}')))
+
+        self.createBSTable = CreateBaseSpectraTableWidget()
+        self.verticalLayout_reserved.addWidget(self.createBSTable)
+
+        self.txtVendorID.textChanged.connect(self.createBSTable.update_base_fname_all)
+        self.txtModelID.textChanged.connect(self.createBSTable.update_base_fname_all)
+        self.btnExport.clicked.connect(lambda: self.createBSTable.handleExport(self.settings.getLastDirectory()))
+        self.btnImport.clicked.connect(lambda: self.createBSTable.handleImport(self.settings.getLastDirectory()))
+
+        self.txtConfigFile.setText(self.settings.getBaseSpectrumCreationConfig())
+        self.configs = {**default_config, **pcf_config}
+        self.comboConfig.currentIndexChanged.connect(self.combo_config_changed)
+        self.loadConfigsFromFile()
+
+        self.createBSTable.sourceTable.cellChanged.connect(self.update_Ok_button_state)
+        self.txtVendorID.textChanged.connect(self.update_Ok_button_state)
+        self.txtModelID.textChanged.connect(self.update_Ok_button_state)
+        self.txtOutFolder.textChanged.connect(self.update_Ok_button_state)
+
+    @Slot(bool)
+    def on_btnLoadSources_clicked(self, checked):
+        """
+        Loads source spectra files in the source table
+        """
+        options = QFileDialog.ShowDirsOnly
+        if sys.platform.startswith('win'): options = QFileDialog.DontUseNativeDialog
+        path = QFileDialog.getExistingDirectory(self, 'Choose Base Spectra Directory',
+                                                self.settings.getLastDirectory(), options)
+        if not path:
+            return
+
+        if self.comboConfig.currentText() == pcf_config_txt:
+            filenames = [f for f in os.listdir(path) if f.lower().endswith(".pcf")]
+            if not filenames:
+                QMessageBox.critical(self, 'Invalid Directory Selection',
+                                     'No PCF Files in selected Directory')
+                return
+
+            for f in sorted(filenames):
+                for index, spectrum in enumerate(readpcf(os.path.join(path, f))):
+                    self.createBSTable.create_table_row(f, path, index+1, spectrum.title)
+        else:
+            if not self.checkBox_ComboFolder.isChecked():  # normal load
+                filenames = [f for f in os.listdir(path) if f.lower().endswith(".n42")]
+                if not filenames:
+                    QMessageBox.critical(self, 'Invalid Directory Selection',
+                                         'No n42 Files in selected Directory')
+                    return
+
+                for f in sorted(filenames):
+                    # TODO: check that the n42 is sane otherwise skip the file and notify the user
+                    self.createBSTable.create_table_row(f, path)
+            else:  # Load each subfolder as one source and sum its files
+                found_all = True
+                bad_dirs = []
+                for it in os.scandir(path):
+                    if it.is_dir():
+                        self.createBSTable.create_table_row(os.path.join(it.name, '*.n42'), path)
+                        inputfiles = glob(os.path.join(it.path, '*.n42'))
+                        if not bool(inputfiles):
+                            found_all = False
+                            bad_dirs.append(it.name)
+
+                if not found_all:
+                    bad_dir_str = ', '.join(bad_dirs)
+                    QMessageBox.critical(self, 'Invalid Directory Selection',
+                                         f'Subdirectory(s) {bad_dir_str} does not contain n42 files.')
+
+    @Slot(int)
+    def combo_config_changed(self, index):
+        state = False if self.comboConfig.currentText() == pcf_config_txt else True
+        self.checkBox_ComboFolder.setVisible(state)
+        self.checkBox_ComboFolder.setEnabled(state)
+        self.createBSTable.initialize_table(state)
 
     @Slot(bool)
     def on_btnOutFolder_clicked(self, checked):
@@ -270,86 +404,20 @@ class CreateBaseSpectraDialog(ui_create_base_spectra_dialog.Ui_Dialog, QDialog):
             self.settings.setBaseSpectrumCreationConfig(path)
             self.loadConfigsFromFile()
 
-    def activate_SetAsBkg_button(self):
-        items = self.sourceTable.selectedItems()
-        self.btnSetAsBkg.setEnabled(True) if items else self.btnSetAsBkg.setEnabled(False)
+    def update_Ok_button_state(self):
+        entries_are_valid = self.validate_entries()
+        self.buttonBox.button(QDialogButtonBox.Ok).setEnabled(entries_are_valid)
 
-    @Slot(bool)
-    def on_btnSetAsBkg_clicked(self, checked):
-        rows = self.sourceTable.selectionModel().selectedRows()
-        if len(rows) > 1:
-            QMessageBox.information(self, 'Background File Selection', 'Please select only one row')
-            return
-        self.clear_background_selection()
-        row = rows[0].row()
-        for col in range(self.sourceTable.columnCount()):
-            self.sourceTable.item(row, col).setBackground(QColor('yellow'))
-        self.backgroundFileRow = row
-
-    def clear_background_selection(self):
-        if self.backgroundFileRow is not None:
-            for col in range(self.sourceTable.columnCount()):
-                self.sourceTable.item(self.backgroundFileRow, col).setBackground(self.unselectedBkgColor)
-        self.backgroundFileRow = None
-
-    def handleExport(self):
-        """
-        exports to CSV
-        """
-        path = QFileDialog.getSaveFileName(self, 'Save File', self.settings.getLastDirectory(), 'CSV (*.csv)')
-        if path[0]:
-            with open(path[0], mode='w', newline='') as stream:
-                writer = csv.writer(stream)
-                writer.writerow(list(hh.keys())[:-1])
-                for row in range(self.sourceTable.rowCount()):
-                    rowdata = []
-                    for column in range(self.sourceTable.columnCount() - 1):
-                        item = self.sourceTable.item(row, column)
-                        if item is not None:
-                            rowdata.append(item.text())
-                        else:
-                            rowdata.append('')
-                    writer.writerow(rowdata)
-
-    def handleImport(self):
-        """
-        imports from CSV
-        """
-        path = QFileDialog.getOpenFileName(self, 'Open File', self.settings.getLastDirectory(), 'CSV(*.csv)')
-        if path[0]:
-            # FIXME: This doesn't check in any way that the format of the file is correct
-            with open(path[0], mode='r') as stream:
-                self.sourceTable.setRowCount(0)
-                self.sourceTable.blockSignals(True)
-                for rowdata in csv.reader(stream):
-                    row = self.sourceTable.rowCount()
-                    if list(hh.keys())[0] in str(rowdata): continue
-                    self.sourceTable.insertRow(row)
-                    for column, data in enumerate(rowdata):
-                        if column < len(hh):
-                            item = QTableWidgetItem(data)
-                            self.sourceTable.setItem(row, column, item)
-                    item = QTableWidgetItem()
-                    item.setFlags(item.flags() & ~Qt.ItemIsEditable)
-                    self.sourceTable.setItem(row, hh['base_name'], item)
-                    self.update_base_fname(self.sourceTable.item(row, 0))
-                    self.set_table_folder_tooltip(self.sourceTable.item(row, 0))
-                self.sourceTable.blockSignals(False)
+    def validate_entries(self) -> bool:
+        '''Validates that all entries are properly set and enable the "Create" button'''
+        # TODO: add text box or tooltip explaining what is missing
+        if not (self.txtVendorID.text() and self.txtModelID.text()
+                and self.txtOutFolder.text()):
+            return False
+        return self.createBSTable.validate_table_entries()
 
     def accept(self):
         # TODO: If there is no background selected, ensure the user know what they are doing?
-        # check presence of required inputs
-        missing_msg = ""
-        if not self.txtOutFolder.text():
-            missing_msg += " - Output Folder\n"
-        if not self.txtVendorID.text():
-            missing_msg += " - Vendor ID\n"
-        if not self.txtModelID.text():
-            missing_msg += " - Model ID\n"
-        if missing_msg:
-            QMessageBox.warning(self, 'Missing required inputs',
-                                'Please specify the following required inputs:\n' + missing_msg)
-            return
 
         configdict = self.configs[self.comboConfig.currentText()]
 
@@ -365,170 +433,136 @@ class CreateBaseSpectraDialog(ui_create_base_spectra_dialog.Ui_Dialog, QDialog):
                                                            'instrument from the drop-down configuration menu.')
             return
 
-        v = {}
-        throw_err = False
-
-        # replace PCF files with n42 files before processing
-        if self.comboConfig.currentText() == pcf_config_txt:
-            # get list of PCF files
-            pcf_files = set(
-                [os.path.join(self.sourceTable.item(row, hh['folder']).text(), self.sourceTable.item(row, hh['file']).text())
-                 for row in range(self.sourceTable.rowCount())])
-
-            # for each PDF file create the n42 files and get their location in a map
-            pcf_map = {}
-            temp_dirs = {pcf_file: QTemporaryDir() for pcf_file in pcf_files}
-            if all([temp_dir.isValid() for temp_dir in temp_dirs.values()]):
-                for pcf in pcf_files:
-                    pcf_map[pcf] = PCFtoN42Writer(pcf).generate_n42(temp_dirs[pcf].path())
-            else:
-                #  TODO: raise error
-                pass
-
-            # loop over the table and replace the folder and file details
-            for row in range(self.sourceTable.rowCount()):
-                pcf_file = os.path.join(self.sourceTable.item(row, hh['folder']).text(),
-                                        self.sourceTable.item(row, hh['file']).text())
-                specid = int(self.sourceTable.item(row, hh['specID']).text()) - 1
-                self.sourceTable.item(row, hh['folder']).setText(temp_dirs[pcf_file].path())
-                self.sourceTable.item(row, hh['file']).setText(pcf_map[pcf_file][specid])
-
-        rows_to_run = list(range(self.sourceTable.rowCount()))
-        bkg_out_file = None
-        if self.backgroundFileRow is not None:
-            # reorder processing so BG is always done first & figure out BG output so it can be used for subtraction
-            rows_to_run.insert(0, rows_to_run.pop(self.backgroundFileRow))
-            bgv={}
-            for col in hh.keys():
-                bgitem = self.sourceTable.item(self.backgroundFileRow, hh[col])
-                bgv[col] = bgitem.text() if bgitem is not None else ''
-            bkg_out_file = os.path.join(self.txtOutFolder.text(),
-                                   base_output_filename(manufacturer=self.txtVendorID.text(), model=self.txtModelID.text(),
-                                                        source=bgv['matID'], description=bgv['otherID']))
-            print(bkg_out_file)
-
-        for row in rows_to_run:
-            for col in hh.keys():
-                item = self.sourceTable.item(row, hh[col])
-                v[col] = item.text() if item is not None else ''
-
-            in_file = os.path.join(v['folder'], v['file'])
-            # If this is the background spectrum, don't do background subtraction
-
-            if row == rows_to_run[0]:
-                subtraction=None
-
-            else:
-                #BG subtraction in the GUI is handled by subtracting the output base spectrum file for the background run, rather than the input/raw file
-                #This is important for handling cases where the BG "file" is actually a folder of short runs that need to be summed first.
-                subtraction = bkg_out_file
-                configdict['subtraction_spectrum_xpath']='./RadMeasurement[@id="Foreground"]/Spectrum'
-
-            os.makedirs(self.txtOutFolder.text(), exist_ok=True)
-
-            # TODO: allow to indicate a different "radid" for the background spectrum to be subtracted
-            # TODO: should 'containername' be part of the user inputs? Or can we just try default container names?
-            for mode in ['flux', 'dose']:
-                if not v[mode]:
-                    pass
-                else:
-                    v[mode] = float(v[mode])
-            try:
-                do_glob(inputfileglob=in_file, config=configdict, outputfolder=self.txtOutFolder.text(),
-                    manufacturer=self.txtVendorID.text(), model=self.txtModelID.text(), source=v['matID'],
-                    uSievertsph=v['dose'], fluxValue=v['flux'], subtraction=subtraction,
-                    description=v['otherID'])
-
-                # TODO:  load the created file, so we can check if it was made acceptably.
-            except BaseSpectraFormatException as e:
-                QMessageBox.warning(self, 'Base Spectrum Creation Error', e.args   )
-                return
-            except Exception as e:
-                QMessageBox.warning(self, 'Error', str(e) + traceback.format_exc())
-                return
-
-            try:
-                validate_output(outputfolder=self.txtOutFolder.text(),
-                    manufacturer=self.txtVendorID.text(), model=self.txtModelID.text(), source=v['matID'],description=v['otherID'])
-            except BaseSpectraFormatException as e:
-                QMessageBox.warning(self, 'File Validation Error', f'Base spectrum file was created, but the result could not be successfully read. Reading error was: \n{e.args}')
-                return
-
-            if not (v['dose'] or v['flux']):
-                throw_err = True
-
-        if throw_err:
-            QMessageBox.warning(self, 'No Exposure Rate or Flux defined',
-                                'At least one spectrum has neither an exposure rate or flux defined.\n' +
-                                'RASE_sensitivity and FLUX_sensitivity are both set to 1 for said spectrum/spectra.')
+        pcf = (self.comboConfig.currentText() == pcf_config_txt)
+        try:
+            create_base_spectra_from_input_data(configdict,
+                                                pcf,
+                                                self.createBSTable.get_table_data_as_list(),
+                                                self.createBSTable.backgroundFileRow,
+                                                self.txtOutFolder.text(),
+                                                self.txtVendorID.text(),
+                                                self.txtModelID.text())
+        except BaseSpectraFormatException as e:
+            QMessageBox.warning(self, 'Base Spectrum Creation Error', e.args)
+            return
+        # except BaseSpectraFormatException as e:
+        #     QMessageBox.warning(self, 'File Validation Error',
+        #                         f'Base spectrum file was created, but the result could not be successfully read. Reading error was: \n{e.args}')
+        #     return
+        except Exception as e:
+            QMessageBox.warning(self, 'Error', str(e) + traceback.format_exc())
+            return
 
         return QDialog.accept(self)
 
     def loadConfigsFromFile(self):
         self.comboConfig.clear()
-        self.configs = self.default_config
+        self.configs = {**default_config, **pcf_config}
+        file_configs = {}
+        if self.txtConfigFile.text() and self.txtConfigFile.text().strip():
+            file_configs = load_configs_from_file(self, self.txtConfigFile.text())
+            self.configs = {**self.configs, **file_configs}
         self.comboConfig.addItems([key for key in self.configs.keys()])
-        try:
-            with open(self.txtConfigFile.text(),'r') as file:
-                fileconfigs = yaml.safe_load(file)
-                self.configs = {**self.configs, **fileconfigs}
-
-            self.comboConfig.addItems([key for key in fileconfigs.keys()])
-        except yaml.YAMLError as ex:
-            QMessageBox.warning(self, 'Config File Error',
-                                'Config file cannot be read. Look for YAML format errors.\n' +
-                                str(ex))
+        if not file_configs:
             self.txtConfigFile.clear()
             self.settings.setBaseSpectrumCreationConfig('')
-        except FileNotFoundError:
-            if self.txtConfigFile.text() and self.txtConfigFile.text().strip(): #only warn if config file box isn't empty
-                QMessageBox.warning(self, 'Config File Error',
-                                    'Config file not found. Load a working config file.\n')
 
 
-class DoubleOrEmptyDelegate(QItemDelegate):
-    def __init__(self):
-        QItemDelegate.__init__(self)
+def create_base_spectra_from_input_data(config_dict: dict, pcf: bool, data: list,
+                                        background_file_row: int,
+                                        out_folder, vendorID, modelID):
 
-    def createEditor(self, parent, option, index):
-        editor = QLineEdit(parent)
-        editor.setValidator(DoubleAndEmptyValidator(bottom=0))
-        return editor
+    # replace PCF files with n42 files before processing
+    if pcf:
+        # get list of PCF files
+        pcf_files = set([os.path.join(row[ColNum.folder], row[ColNum.file]) for row in data])
 
-class DoubleAndEmptyValidator(QDoubleValidator):
-    """
-    Validate double values or empty string.
-    """
+        # for each PDF file create the n42 files and get their location in a map
+        pcf_map = {}
+        temp_dirs = {pcf_file: QTemporaryDir() for pcf_file in pcf_files}
+        if all([temp_dir.isValid() for temp_dir in temp_dirs.values()]):
+            for pcf in pcf_files:
+                pcf_map[pcf] = PCFtoN42Writer(pcf).generate_n42(temp_dirs[pcf].path())
+        else:
+            #  TODO: raise error
+            pass
 
-    def validate(self, inputText, pos):
-        """
-        Reimplemented from `QDoubleValidator.validate`.
-        Allow to provide an empty value.
-        :param str inputText: Text to validate
-        :param int pos: Position of the cursor
-        """
-        if inputText.strip() == "":
-            # python API is not the same as C++ one
-            return QValidator.Acceptable, inputText, pos
-        return super(DoubleAndEmptyValidator, self).validate(inputText, pos)
+        # loop over the table and replace the folder and file details
+        for n, row in enumerate(data):
+            pcf_file = os.path.join(row[ColNum.folder], row[ColNum.file])
+            specid = int(row[ColNum.specID]) - 1
+            data[n][ColNum.folder] = temp_dirs[pcf_file].path()
+            data[n][ColNum.file] = pcf_map[pcf_file][specid]
 
-    def toValue(self, text):
-        """Convert the input string into an interpreted value
-        :param str text: Input string
-        :rtype: Tuple[object,bool]
-        :returns: A tuple containing the resulting object and True if the
-            string is valid
-        """
-        if text.strip() == "":
-            return None, True
-        value, validated = self.locale().toDouble(text)
-        return value, validated
+    bkg_out_file = None
+    if background_file_row is not None:
+        # reorder processing so BG is always done first
+        bkg_row = data.pop(background_file_row)
+        data.insert(0, bkg_row)
 
-    def toText(self, value):
-        """Convert the input string into an interpreted value
-        :param object value: Input object
-        :rtype: str
-        """
-        if value is None:
-            return ""
-        return str(value)
+        # figure out BG output so it can be used for subtraction
+        bkg_out_file = os.path.join(out_folder,
+                                    base_output_filename(manufacturer=vendorID,
+                                                         model=modelID,
+                                                         source=bkg_row[ColNum.matID],
+                                                         description=bkg_row[ColNum.otherID]))
+
+    for n, row in enumerate(data):
+        in_file = os.path.join(row[ColNum.folder], row[ColNum.file])
+
+        if n == 0:  # first row is background as per above
+            subtraction = None
+        else:
+            # BG subtraction in the GUI is handled by subtracting the output base spectrum file for the background run, rather than the input/raw file
+            # This is important for handling cases where the BG "file" is actually a folder of short runs that need to be summed first.
+            subtraction = bkg_out_file
+            config_dict['subtraction_spectrum_xpath'] = './RadMeasurement[@id="Foreground"]/Spectrum'
+
+        os.makedirs(out_folder, exist_ok=True)
+
+        # TODO: allow to indicate a different "radid" for the background spectrum to be subtracted
+        # TODO: should 'containername' be part of the user inputs? Or can we just try default container names?
+        for mode in [ColNum.flux, ColNum.dose]:
+            if not row[mode]:
+                pass
+            else:
+                row[mode] = float(row[mode])
+        try:
+            do_glob(inputfileglob=in_file, config=config_dict, outputfolder=out_folder,
+                    manufacturer=vendorID, model=modelID, source=row[ColNum.matID],
+                    uSievertsph=row[ColNum.dose], fluxValue=row[ColNum.flux],
+                    subtraction=subtraction, description=row[ColNum.otherID])
+
+        except BaseSpectraFormatException as e:
+            print('Base Spectrum Creation Error', e.args)
+            raise
+        except Exception as e:
+            print('Error', str(e) + traceback.format_exc())
+            raise
+
+        try:
+            validate_output(outputfolder=out_folder,
+                            manufacturer=vendorID, model=modelID,
+                            source=row[ColNum.matID],
+                            description=row[ColNum.otherID])
+        except BaseSpectraFormatException as e:
+            print('File Validation Error',
+                  f'Base spectrum file was created, but the result could not be successfully read. '
+                  f'Reading error was: \n{e.args}')
+            raise
+
+
+def load_configs_from_file(parent, file_path) -> dict:
+    file_configs = {}
+    try:
+        with open(file_path, 'r') as file:
+            file_configs = yaml.safe_load(file)
+    except yaml.YAMLError as ex:
+        QMessageBox.warning(parent, 'Config File Error',
+                            f'Config file {file_path} cannot be read. '
+                            'Look for YAML format errors.\n' +
+                            str(ex))
+    except FileNotFoundError:
+        QMessageBox.warning(parent, 'Config File Error',
+                            'Config file not found. Load a working config file.\n')
+    return file_configs

@@ -1,11 +1,13 @@
 ###############################################################################
-# Copyright (c) 2018-2022 Lawrence Livermore National Security, LLC.
+# Copyright (c) 2018-2023 Lawrence Livermore National Security, LLC.
 # Produced at the Lawrence Livermore National Laboratory
 #
-# Written by J. Brodsky, J. Chavez, S. Czyz, G. Kosinovsky, V. Mozin, S. Sangiorgio.
+# Written by J. Brodsky, J. Chavez, S. Czyz, G. Kosinovsky, V. Mozin,
+#            S. Sangiorgio.
+#
 # RASE-support@llnl.gov.
 #
-# LLNL-CODE-841943, LLNL-CODE-829509
+# LLNL-CODE-858590, LLNL-CODE-829509
 #
 # All rights reserved.
 #
@@ -28,6 +30,7 @@
 # IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ###############################################################################
+
 """
 This module defines the top level executable of RASE
 """
@@ -39,19 +42,14 @@ import logging
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QApplication, QMessageBox
 from src.rase import Rase
-from src.rase_settings import RaseSettings
+from src.rase_settings import RaseSettings, APPLICATION_PATH
 
-RASE_VERSION = 'v2.3'
+RASE_VERSION = 'v2.4'
 
-if getattr(sys, 'frozen', False):
-    # we are in a pyinstaller bundle
-    application_path = os.path.dirname(sys.executable)
-else:
-    application_path = os.path.dirname(os.path.abspath(__file__))
 
 # configure the logger
 # TODO: Remember to update the version number at each release!
-logFile = os.path.join(application_path, "rase.log")
+logFile = os.path.join(APPLICATION_PATH, "rase.log")
 FORMAT = '%(asctime)-15s RASE' + RASE_VERSION + ' %(levelname)s %(message)s'
 logging.basicConfig(filename=logFile, level=logging.DEBUG, format=FORMAT)
 

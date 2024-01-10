@@ -1,11 +1,13 @@
 ###############################################################################
-# Copyright (c) 2018-2022 Lawrence Livermore National Security, LLC.
+# Copyright (c) 2018-2023 Lawrence Livermore National Security, LLC.
 # Produced at the Lawrence Livermore National Laboratory
 #
-# Written by J. Brodsky, J. Chavez, S. Czyz, G. Kosinovsky, V. Mozin, S. Sangiorgio.
+# Written by J. Brodsky, J. Chavez, S. Czyz, G. Kosinovsky, V. Mozin,
+#            S. Sangiorgio.
+#
 # RASE-support@llnl.gov.
 #
-# LLNL-CODE-841943, LLNL-CODE-829509
+# LLNL-CODE-858590, LLNL-CODE-829509
 #
 # All rights reserved.
 #
@@ -32,11 +34,13 @@
 This module defines persistable objects in sqlalchemy framework
 """
 import enum
+import random
+import string
 
-from sqlalchemy import ForeignKey, Column, Integer, String, Float, Boolean, Enum, JSON, PrimaryKeyConstraint
+from sqlalchemy import ForeignKey, Column, Integer, String, Float, Boolean, Enum, JSON, UniqueConstraint
 from sqlalchemy.ext.declarative import declarative_base, declared_attr
 from sqlalchemy.ext.hybrid import hybrid_property
-from sqlalchemy.orm             import relationship, sessionmaker, scoped_session, backref
+from sqlalchemy.orm             import relationship, sessionmaker, scoped_session, backref, Mapped
 from sqlalchemy.sql.schema import Table, CheckConstraint
 from sqlalchemy import event
 import numpy as np
@@ -45,7 +49,7 @@ from typing import Set, Sequence, MutableSequence
 import json
 from src.utils import compress_counts
 
-DB_VERSION_NAME = 'rase_db_v1_7'
+DB_VERSION_NAME = 'rase_db_v1_8'
 
 Base    = declarative_base()
 # Session = sessionmaker()
@@ -60,13 +64,19 @@ scen_infl_assoc_tbl = Table('scenario_influences', Base.metadata,
     Column('influence_name', String, ForeignKey('influences.name')))
 
 det_infl_assoc_tbl = Table('det_influences', Base.metadata,
-    Column('det_name', String, ForeignKey('detectors.name')),
+    Column('det_id', String, ForeignKey('detectors.id')),
     Column('influence_name', String, ForeignKey('influences.name')))
 
 scen_group_assoc_tbl = Table('scen_group_association', Base.metadata,
     Column('group_id', Integer, ForeignKey('scenario_groups.id',ondelete='cascade')),
     Column('scenario_id', String, ForeignKey('scenarios.id', ondelete='cascade'))
 )
+
+
+def generate_random_string(length=8):
+    characters = string.ascii_uppercase + string.digits
+    return ''.join(random.choice(characters) for _ in range(length))
+
 
 class CorrespondenceTableElement(Base):
     __tablename__   = 'correspondence_table_element'
@@ -180,9 +190,9 @@ class SampleSpectraSeed(Base):
     id       = Column(Integer, primary_key=True)
     seed     = Column(Integer)
     scenario = relationship('Scenario')
-    detector = relationship('Detector')
+    detector = relationship('Detector', backref='sample_spectra_seed', cascade='all')
     scen_id  = Column(String, ForeignKey('scenarios.id', ondelete='cascade'))
-    det_name = Column(String, ForeignKey('detectors.name', ondelete='cascade'))
+    det_name = Column(String, ForeignKey('detectors.name', ondelete='cascade', onupdate='cascade'))
 
 
 class ScenarioGroup(Base):
@@ -214,7 +224,9 @@ class ScenarioBackgroundMaterial(Base):
 
 class Detector(Base):
     __tablename__= 'detectors'
-    name         = Column(String, primary_key=True)
+
+    id           = Column(String(8), primary_key=True, default=generate_random_string)
+    name         = Column(String, unique=True, nullable=False)
     description  = Column(String)
     manufacturer = Column(String)
     class_code   = Column(String)
@@ -226,15 +238,21 @@ class Detector(Base):
     ecal2        = Column(Float)
     ecal3        = Column(Float)
     includeSecondarySpectrum = Column(Boolean)
-    secondary_type = Column(Integer)    # 0=long_back from scen, 1=long_back from basespec, 2=internal_source, 3=long_back from file
-    replay_name  = Column(String, ForeignKey('replays.name'))
-    replay       = relationship('Replay')
-    results_translator_name  = Column(String, ForeignKey('resultsTranslators.name'))
-    resultsTranslator       = relationship('ResultsTranslator')
-    influences          = relationship('Influence', secondary=det_infl_assoc_tbl, lazy='joined', backref='detectors')
-    base_spectra : MutableSequence = relationship('BaseSpectrum',backref='detectors')
-    base_spectra_xyz : MutableSequence = relationship('BaseSpectrumXYZ',backref='detectors')
+    secondary_type = Column(Integer)    # 0=long_back from scen, 1=long_back from basespec, 2=long_back from file
+    secondary_classcode = Column(String)
+    sample_intrinsic = Column(Boolean)
+    intrinsic_classcode = Column(String)
+    replay_name  = Column(String, ForeignKey('replays.name', ondelete='SET NULL', onupdate='CASCADE'))
+    replay       = relationship('Replay', backref='detectors', cascade="all")
+    influences          = relationship('Influence', secondary=det_infl_assoc_tbl, cascade='all', lazy='joined', backref='detectors')
+    base_spectra : Mapped[list] = relationship('BaseSpectrum',backref='detectors')
+    base_spectra_xyz : Mapped[list] = relationship('BaseSpectrumXYZ',backref='detectors')
     bckg_spectra = relationship('BackgroundSpectrum',backref='detectors')
+    bckg_spectra_dwell = Column(Integer, default=0)
+    bckg_spectra_resample = Column(Boolean, default=True)  # resampling the background at each replication?
+    secondary_spectra : Mapped[list] = relationship('SecondarySpectrum',backref='detectors')
+
+    __table_args__ =  (UniqueConstraint('name'),)
 
     @property
     def ecal(self):
@@ -262,6 +280,8 @@ class Detector(Base):
         return True
 
 
+
+
 class DetectorInfluence(Base):
     __tablename__   = 'detector_influences'
     id              = Column(Integer, primary_key=True)
@@ -275,7 +295,7 @@ class DetectorInfluence(Base):
     degrade_infl2   = Column(Float)
     degrade_f_smear = Column(Float)
     degrade_l_smear = Column(Float)
-    influence       = relationship('Influence', backref="detector_influence", cascade="all,delete", uselist=False)
+    influence       = relationship('Influence', backref=backref("detector_influence",uselist=False), cascade="all,delete", uselist=False)
     influence_name  = Column(String, ForeignKey('influences.name'))
 
 
@@ -286,7 +306,8 @@ class ReplayTypes(enum.Enum):
 
 class Replay(Base):
     __tablename__  = 'replays'
-    name           = Column(String, primary_key=True)
+    id           = Column(String(8), primary_key=True, default=generate_random_string)
+    name           = Column(String, unique=True, nullable=False)
     type           = Column(Enum(ReplayTypes), default=ReplayTypes.standalone)
     exe_path       = Column(String)
     is_cmd_line    = Column(Boolean)
@@ -295,6 +316,9 @@ class Replay(Base):
     input_filename_suffix = Column(String)
     web_address = Column(String)
     drf_name = Column(String)
+    translator_exe_path = Column(String)
+    translator_is_cmd_line = Column(Boolean)
+    translator_settings = Column(String)
 
     def settings_str_u(self):
         """Settings string independent of the replay type"""
@@ -318,14 +342,8 @@ class Replay(Base):
             return True
 
 
-class ResultsTranslator(Base):
-    __tablename__  = 'resultsTranslators'
-    name           = Column(String, primary_key=True)
-    exe_path       = Column(String)
-    is_cmd_line    = Column(Boolean)
-    settings       = Column(String)
-
-class Spectrum_mixin():
+class Spectrum(Base):
+    __tablename__ = 'spectra'
     id            = Column(Integer, primary_key=True)
     filename      = Column(String)
     baseCounts    = Column(String)
@@ -335,6 +353,11 @@ class Spectrum_mixin():
     ecal1         = Column(Float)
     ecal2         = Column(Float)
     ecal3         = Column(Float)
+    spectrum_type = Column(Integer)
+    __mapper_args__ = {
+        'polymorphic_identity': 'spectrum',
+        'polymorphic_on': spectrum_type
+    }
 
 
     @declared_attr
@@ -342,7 +365,7 @@ class Spectrum_mixin():
 
     @declared_attr
     def detector_name(cls):
-        return Column(String, ForeignKey('detectors.name', ondelete='cascade'))
+        return Column(String, ForeignKey('detectors.name', ondelete='cascade', onupdate='cascade'))
 
     def is_spectrum_float(self):
         """Checks if spectrum has floats in it or not"""
@@ -354,7 +377,7 @@ class Spectrum_mixin():
 
 
     @declared_attr
-    def material_name(cls): return Column(String, ForeignKey('materials.name', ondelete='cascade'))
+    def material_name(cls): return Column(String, ForeignKey('materials.name', ondelete='cascade'), nullable=True)
 
     def as_json(self):
         return json.dumps([{"title": self.material_name,
@@ -401,8 +424,12 @@ class Spectrum_mixin():
             return ' '.join('{:d}'.format(x) for x in
                             compress_counts(np.array([int(float(c)) for c in self.baseCounts.split(",")])))
 
-class BaseSpectrum(Spectrum_mixin,Base):
+class BaseSpectrum(Spectrum):
     __tablename__ = 'base_spectra'
+    __mapper_args__ = {
+        'polymorphic_identity': 'base_spectrum',
+    }
+    id = Column(String, ForeignKey('spectra.id', ondelete='CASCADE'), primary_key=True)
     rase_sensitivity = Column(Float)
     flux_sensitivity = Column(Float)
 
@@ -416,18 +443,39 @@ class BaseSpectrum(Spectrum_mixin,Base):
             intensity_flux = float(f'{(sum(self.counts) / self.livetime / self.flux_sensitivity):.3g}')
         return intensity_dose, intensity_flux
 
-class BaseSpectrumXYZ(Spectrum_mixin,Base):
+class BaseSpectrumXYZ(Spectrum):
     __tablename__ = 'base_spectra_xyz'
+    __mapper_args__ = {
+        'polymorphic_identity': 'base_spectrum_xyz',
+    }
+    id = Column(String, ForeignKey('spectra.id', ondelete='CASCADE'), primary_key=True)
     sensitivity   = Column(Float)
     x             = Column(Float)  # units of cm
     y             = Column(Float)  # units of cm
     z             = Column(Float)  # units of cm
 
-class BackgroundSpectrum(Spectrum_mixin,Base):
+
+class BackgroundSpectrum(Spectrum):
     __tablename__ = 'background_spectra'
-    sensitivity = Column(Float)  # aka static efficiency
+    __mapper_args__ = {
+        'polymorphic_identity': 'background_spectrum',
+    }
+    id = Column(String, ForeignKey('spectra.id', ondelete='CASCADE'), primary_key=True)
+    classcode = Column(String)
+    sensitivity = Column(Float)  # aka static efficiency ##TODO: is this ever used?
     # def __init__(self, material, filename, realtime, livetime,baseCounts,ecal):
     #     self.material=material ##TODO: do we need an init here, or will it be taken care of automatically?
+
+class SecondarySpectrum(Spectrum):
+    __tablename__ = 'secondary_spectra'
+    __mapper_args__ = {
+        'polymorphic_identity': 'secondary_spectrum',
+    }
+    id = Column(String, ForeignKey('spectra.id', ondelete='CASCADE'), primary_key=True)
+    classcode = Column(String)  # aka static efficiency
+    # def __init__(self, material, filename, realtime, livetime,baseCounts,ecal):
+    #     self.material=material ##TODO: do we need an init here, or will it be taken care of automatically?
+
 
 class MaterialWeight(Base):
     __tablename__   = 'material_weight'
@@ -438,7 +486,7 @@ class MaterialWeight(Base):
     FNWF            = Column(Float)
 
 
-from sqlalchemy import PickleType, UniqueConstraint
+from sqlalchemy import PickleType
 
 def are_elements_equal(x, y):
     return x == y
@@ -454,6 +502,73 @@ class DynamicModelStorage(Base):
     __table_args__ = (UniqueConstraint('detector_name', 'material_name', 'model_name', 'model_def',
                                        name='_customer_location_uc'),
                       )
+
+from marshmallow_sqlalchemy import SQLAlchemySchema, SQLAlchemyAutoSchema, auto_field, fields, field_for
+from marshmallow import fields as mfields
+# from marshmallow_enum import EnumField
+
+class MaterialSchema(SQLAlchemyAutoSchema):
+    class Meta:
+        model = Material
+        load_instance = True
+
+
+class BaseSpectrumSchema(SQLAlchemyAutoSchema):
+    class Meta:
+        model=BaseSpectrum
+        load_instance=True
+        include_relationships = True
+        exclude = ("id","spectrum_type")
+
+    material = fields.Nested(MaterialSchema)
+
+class SecondarySpectrumSchema(SQLAlchemyAutoSchema):
+    class Meta:
+        model=SecondarySpectrum
+        load_instance=True
+        include_relationships = True
+        exclude = ("id","spectrum_type","material","filename")
+
+
+class BackgroundSpectrumSchema(SQLAlchemyAutoSchema):
+    class Meta:
+        model=BackgroundSpectrum
+        load_instance=True
+        include_relationships = True
+        exclude = ("id","spectrum_type")
+    material = fields.Nested(MaterialSchema)
+
+class ReplaySchema(SQLAlchemyAutoSchema):
+    class Meta:
+        model=Replay
+        load_instance=True
+        exclude = ("id",) #exclude so we can import without having ID collision
+    type = mfields.Enum(ReplayTypes)
+
+
+class DetectorInfluenceSchema(SQLAlchemyAutoSchema):
+    class Meta:
+        model = DetectorInfluence
+        load_instance = True
+        exclude = ("id",)
+
+class InfluenceSchema(SQLAlchemyAutoSchema):
+    class Meta:
+        model=Influence
+        load_instance=True
+    detector_influence = fields.Nested(DetectorInfluenceSchema)
+
+class DetectorSchema(SQLAlchemyAutoSchema):
+    class Meta:
+        model=Detector
+        load_instance=True
+        include_relationships = True
+        exclude = ("id",) #exclude so we can import without having ID collision
+    base_spectra = fields.Nested(BaseSpectrumSchema, many=True, exclude=('detectors',))
+    replay = fields.Nested(ReplaySchema, allow_none=True, many=False)
+    influences = fields.Nested(InfluenceSchema, many=True,)
+    secondary_spectra = fields.Nested(SecondarySpectrumSchema, many=True, exclude=('detectors',))
+    bckg_spectra = fields.Nested(BackgroundSpectrumSchema, many=True, exclude=('detectors','material'))
 
 # class ProxySource(Base): #removed for the moment, since I am trying to specify proxies in the train set instead
 #     __tablename__ = 'proxy_sources'

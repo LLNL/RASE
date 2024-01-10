@@ -1,0 +1,53 @@
+<?xml version="1.0" ?>
+<RadInstrumentData n42DocDateTime="2023-01-23T16:36:46Z" n42DocUUID="204643c6-9b3c-11ed-997a-b07e11be14fd" xmlns="http://physics.nist.gov/N42/2011/N42" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://physics.nist.gov/N42/2011/N42 http://physics.nist.gov/N42/2011/n42.xsd">
+   <RadInstrumentDataCreatorName>RADEAGLET</RadInstrumentDataCreatorName>
+   <RadInstrumentInformation id="device">
+      <RadInstrumentManufacturerName>innoRIID GmbH</RadInstrumentManufacturerName>
+      <RadInstrumentIdentifier>22582</RadInstrumentIdentifier>
+      <RadInstrumentModelName>RADEAGLET</RadInstrumentModelName>
+      <RadInstrumentClassCode>Radionuclide Identifier</RadInstrumentClassCode>
+      <RadInstrumentVersion>
+         <RadInstrumentComponentName>Model</RadInstrumentComponentName>
+         <RadInstrumentComponentVersion>RTR 2SG-N-P</RadInstrumentComponentVersion>
+      </RadInstrumentVersion>
+      <RadInstrumentVersion>
+         <RadInstrumentComponentName>Hardware</RadInstrumentComponentName>
+         <RadInstrumentComponentVersion>2.1</RadInstrumentComponentVersion>
+      </RadInstrumentVersion>
+      <RadInstrumentVersion>
+         <RadInstrumentComponentName>Software</RadInstrumentComponentName>
+         <RadInstrumentComponentVersion>3.3.4</RadInstrumentComponentVersion>
+      </RadInstrumentVersion>
+   </RadInstrumentInformation>
+   <RadDetectorInformation id="primary">
+      <RadDetectorCategoryCode>Gamma</RadDetectorCategoryCode>
+      <RadDetectorKindCode>NaI</RadDetectorKindCode>
+      <RadDetectorDescription>PMT Type: R106001 / NaI(Tl) 2x1</RadDetectorDescription>
+   </RadDetectorInformation>
+   <RadDetectorInformation id="secondary">
+      <RadDetectorCategoryCode>Gamma</RadDetectorCategoryCode>
+      <RadDetectorKindCode>GMT</RadDetectorKindCode>
+      <RadDetectorDescription>GM Type: 716</RadDetectorDescription>
+   </RadDetectorInformation>
+   <EnergyCalibration id="ENCAL">
+      <CoefficientValues>${detector.ecal0} ${detector.ecal1} ${detector.ecal2}</CoefficientValues>
+   </EnergyCalibration>
+   <RadMeasurement id="Measurement-1">
+      <MeasurementClassCode>Foreground</MeasurementClassCode>
+      <StartDateTime>2023-01-23T10:26:43-06:00</StartDateTime>
+      <RealTimeDuration>PT${scenario.acq_time}S</RealTimeDuration>
+      <Spectrum energyCalibrationReference="ENCAL" id="Spectrum-1" radDetectorInformationReference="primary">
+         <LiveTimeDuration>PT${scenario.acq_time}S</LiveTimeDuration>
+         <ChannelData compressionCode="None">${sample_counts}</ChannelData>
+      </Spectrum>
+   </RadMeasurement>
+   <RadMeasurement id="Measurement-2">
+      <MeasurementClassCode>Background</MeasurementClassCode>
+      <StartDateTime>2023-01-20T18:00:01</StartDateTime>
+      <RealTimeDuration>PT${secondary_spectrum.realtime}S</RealTimeDuration>
+      <Spectrum energyCalibrationReference="ENCAL" id="Spectrum-2" radDetectorInformationReference="primary">
+         <LiveTimeDuration>PT${secondary_spectrum.livetime}S</LiveTimeDuration>
+         <ChannelData compressionCode="None">${secondary_spectrum.get_counts_as_str()}</ChannelData>
+      </Spectrum>
+   </RadMeasurement>
+</RadInstrumentData>

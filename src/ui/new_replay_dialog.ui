@@ -81,7 +81,7 @@
    <item>
     <widget class="QStackedWidget" name="stack">
      <property name="currentIndex">
-      <number>0</number>
+      <number>1</number>
      </property>
      <widget class="QWidget" name="standaloneStackPage">
       <layout class="QVBoxLayout" name="verticalLayout_2">
@@ -315,7 +315,7 @@
           </size>
          </property>
          <property name="text">
-          <string>http://127.0.0.1:8082</string>
+          <string>https://full-spectrum.sandia.gov/</string>
          </property>
          <property name="cursorPosition">
           <number>0</number>
@@ -331,6 +331,19 @@
        </item>
        <item row="1" column="1">
         <widget class="QComboBox" name="cmbDRFs"/>
+       </item>
+       <item row="2" column="1">
+        <widget class="QPushButton" name="btnUpdateDRFList">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="text">
+          <string>Get List of Instrument DRFs from Web ID</string>
+         </property>
+        </widget>
        </item>
       </layout>
      </widget>

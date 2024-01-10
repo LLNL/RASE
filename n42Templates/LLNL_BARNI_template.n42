@@ -1,0 +1,17 @@
+﻿<IdentificationInput>
+  <Spectrum name='sample'>
+    <counts>${sample_counts} </counts>
+    <EnergyScale>
+      <edges>${bin_edges}</edges>
+    </EnergyScale>
+    <livetime>${scenario.acq_time}</livetime>
+    <realtime>${scenario.acq_time}</realtime>
+    <title>${', '.join(['({}, {} ({}))'.format(mat.material_name, mat.dose, mat.fd_mode) for mat in scenario.scen_materials + scenario.scen_bckg_materials])}</title>
+  </Spectrum>
+  <Label>
+    <name>${scenario.id}</name>
+    <ad>0.0</ad>
+    <z>0.0</z>
+  </Label>
+  <distance>1.0</distance>
+</IdentificationInput>

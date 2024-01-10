@@ -1,11 +1,13 @@
 ###############################################################################
-# Copyright (c) 2018-2022 Lawrence Livermore National Security, LLC.
+# Copyright (c) 2018-2023 Lawrence Livermore National Security, LLC.
 # Produced at the Lawrence Livermore National Laboratory
 #
-# Written by J. Chavez, S. Czyz, G. Kosinovsky, V. Mozin, S. Sangiorgio.
+# Written by J. Brodsky, J. Chavez, S. Czyz, G. Kosinovsky, V. Mozin,
+#            S. Sangiorgio.
+#
 # RASE-support@llnl.gov.
 #
-# LLNL-CODE-841943, LLNL-CODE-829509
+# LLNL-CODE-858590, LLNL-CODE-829509
 #
 # All rights reserved.
 #
@@ -31,18 +33,27 @@
 """
 This module defines RASE settings infrastructure and default settings
 """
-import os
+import os, sys
+import shutil
 
 from PySide6 import QtCore
 
 from src import sampling_algos
 from src import table_def
+from src.utils import get_bundle_dir
+
+# global variable with the executable application path (rase.exe or rase.pyw)
+APPLICATION_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+if getattr(sys, 'frozen', False):
+    # we are in a pyinstaller bundle
+    APPLICATION_PATH = os.path.dirname(sys.executable)
 
 RASE_DATA_DIR_KEY = 'files/data_directory'
-DEFAULT_DATA_DIR = os.path.expanduser(os.path.join('~', 'RaseData'))
+# DEFAULT_DATA_DIR = os.path.expanduser(os.path.join('~', 'RaseData'))
+DEFAULT_DATA_DIR = os.path.join(APPLICATION_PATH, 'RaseData')
 
 RASE_SAMPLING_ALGO_KEY = "sampling algorithm"
-DEFAULT_SAMPLING_ALGO = sampling_algos.generate_sample_counts_inversion
+DEFAULT_SAMPLING_ALGO = sampling_algos.generate_sample_counts_poisson
 
 LAST_SCENARIO_GRPNAME_KEY = 'last_scenario_grpname'
 DEFAULT_SCENARIO_GRPNAME = 'default_group'
@@ -66,8 +77,11 @@ RESULTS_TBL_COLS_KEY = "Results Table Columns"
 RESULTS_TBL_COLS_DEFAULT = []
 
 BASE_SPECTRUM_CREATION_CONFIG_KEY = 'Base Spectrum Creation Configuration File'
-BASE_SPECTRUM_CREATION_CONFIG_DEFAULT = ''
+BASE_SPECTRUM_CREATION_CONFIG_DEFAULT = os.path.join(APPLICATION_PATH, 'base_spectra_config.yaml')
 
+WEBID_DRFS_KEY = 'WebID DRFs'
+WEBID_DRFS_DEFAULT = []
+# WEBID_DRFS_DEFAULT = ['1x1/BGO Side', '1x1/CsI Side', '1x1/LaCl3', '1x1/NaI Front', '1x1/NaI Side', '3x3/NaI AboveSource', '3x3/NaI InCorner', '3x3/NaI LowScat', '3x3/NaI MidScat', '3x3/NaI OnGround', 'ASP-Thermo', 'Apollo/Bottom', 'Apollo/Front', 'Atomex-AT6102', 'D3S', 'Detective', 'Detective-EX', 'Detective-EX100', 'Detective-EX200', 'Detective-Micro', 'Detective-Micro/Variant-LowEfficiency', 'Detective-X', 'Falcon 5000', 'FieldSpec', 'GR130', 'GR135', 'GR135Plus', 'IdentiFINDER-LaBr3', 'IdentiFINDER-N', 'IdentiFINDER-NG', 'IdentiFINDER-NGH', 'IdentiFINDER-R300', 'IdentiFINDER-R500-NaI', 'InSpector 1000 LaBr3', 'InSpector 1000 NaI', 'Interceptor', 'LaBr3Marlow', 'LaBr3PNNL', 'MKC-A03', 'Mirion PDS-100', 'Polimaster PM1704-GN', 'RIIDEyeX-GN1', 'RadEagle', 'RadEye', 'RadPack', 'RadSeeker-NaI', 'Radseeker-LaBr3', 'Raider', 'Ranger', 'SAM-935', 'SAM-945', 'SAM-950GN-N30', 'SAM-Eagle-LaBr3', 'SAM-Eagle-NaI-3x3', 'SpiR-ID/LaBr3', 'SpiR-ID/NaI', 'Thermo ARIS Portal', 'Transpec', 'Verifinder']
 
 class RaseSettings:
     def __init__(self):
@@ -106,8 +120,14 @@ class RaseSettings:
         if not self.settings.value(RESULTS_TBL_COLS_KEY):
             self.settings.setValue(RESULTS_TBL_COLS_KEY, RESULTS_TBL_COLS_DEFAULT)
 
-        if self.settings.value(BASE_SPECTRUM_CREATION_CONFIG_KEY) is None:
-            self.settings.setValue(BASE_SPECTRUM_CREATION_CONFIG_KEY,BASE_SPECTRUM_CREATION_CONFIG_DEFAULT)
+        if not os.path.isfile(BASE_SPECTRUM_CREATION_CONFIG_DEFAULT):
+            shutil.copyfile(os.path.join(get_bundle_dir(), 'tools', 'base_spectra_config.yaml'),
+                            BASE_SPECTRUM_CREATION_CONFIG_DEFAULT)
+        if not self.settings.value(BASE_SPECTRUM_CREATION_CONFIG_KEY):
+            self.settings.setValue(BASE_SPECTRUM_CREATION_CONFIG_KEY, BASE_SPECTRUM_CREATION_CONFIG_DEFAULT)
+
+        if not self.settings.value(WEBID_DRFS_KEY):
+            self.settings.setValue(WEBID_DRFS_KEY, WEBID_DRFS_DEFAULT)
 
         # this is qt internal settings store
         self.qtsettings = QtCore.QSettings(QtCore.QSettings.UserScope, "qtproject")
@@ -290,3 +310,15 @@ class RaseSettings:
         Returns path to base spectrum creation configuration file
         """
         self.settings.setValue(BASE_SPECTRUM_CREATION_CONFIG_KEY, path)
+
+    def getWebIDDRFsList(self):
+        """
+         Gets List of DRFs in WebID
+         """
+        return self.settings.value(WEBID_DRFS_KEY)
+
+    def setWebIDDRFsList(self, drf_list):
+        """
+        Sets List of DRFs in WebID
+        """
+        self.settings.setValue(WEBID_DRFS_KEY, drf_list)

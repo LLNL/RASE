@@ -1,11 +1,12 @@
 ###############################################################################
-# Copyright (c) 2018-2022 Lawrence Livermore National Security, LLC.
+# Copyright (c) 2018-2023 Lawrence Livermore National Security, LLC.
 # Produced at the Lawrence Livermore National Laboratory
 #
-# Written by J. Chavez, S. Czyz, G. Kosinovsky, V. Mozin, S. Sangiorgio.
+# Written by L. Bently-Tammero, J. Brodsky, J. Chavez, S. Czyz, G. Kosinovsky,
+#            V. Mozin, S. Sangiorgio.
 # RASE-support@llnl.gov.
 #
-# LLNL-CODE-841943, LLNL-CODE-829509
+# LLNL-CODE-858590, LLNL-CODE-829509
 #
 # All rights reserved.
 #
@@ -158,7 +159,7 @@ def nullstrip(string_in):
     """strip a string of all '\x00' characters
     """
     # fix for python3
-    string_in = string_in.decode("utf-8")
+    string_in = string_in.decode("ISO-8859-1")
     # nonNullLocations = []
     str_ret = ''
     for str_val in string_in:
@@ -179,7 +180,7 @@ def file_eof(filehandle):
     # if filehandle.read(1) == '':
 
     # use this for python 3.x
-    if filehandle.read(1).decode("utf-8") == '':
+    if filehandle.read(1).decode("ISO-8859-1") == '':
         return True
     else:
         # move the pointer back one from the current position

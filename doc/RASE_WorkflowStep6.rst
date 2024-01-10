@@ -30,14 +30,14 @@ The tables in the "View Results" and "Detailed Results" dialogs can be exported 
 .. _rase-WorkflowStep6a:
 
 .. figure:: _static/rase_WorkflowStep6.png
-    :scale: 75%
+    :scale: 35%
 
     **Main RASE window showing how to access identification results dialogs**
 
 |
 
 .. figure:: _static/rase_WorkflowStep6-2.png
-    :scale: 65%
+    :scale: 35%
 
     **“View Results” and "Detailed Results" tables.**
 

@@ -183,85 +183,6 @@
       </spacer>
      </item>
      <item>
-      <widget class="QPushButton" name="btnRemoveSrc">
-       <property name="text">
-        <string>Remove Selected</string>
-       </property>
-      </widget>
-     </item>
-    </layout>
-   </item>
-   <item>
-    <widget class="QTableWidget" name="sourceTable">
-     <property name="columnCount">
-      <number>9</number>
-     </property>
-     <attribute name="horizontalHeaderStretchLastSection">
-      <bool>true</bool>
-     </attribute>
-     <column>
-      <property name="text">
-       <string>Folder</string>
-      </property>
-     </column>
-     <column>
-      <property name="text">
-       <string>File</string>
-      </property>
-     </column>
-     <column>
-      <property name="text">
-       <string>#</string>
-      </property>
-     </column>
-     <column>
-      <property name="text">
-       <string>Source ID</string>
-      </property>
-     </column>
-     <column>
-      <property name="text">
-       <string>Description</string>
-      </property>
-     </column>
-     <column>
-      <property name="text">
-       <string>Exposure Rate</string>
-      </property>
-     </column>
-     <column>
-      <property name="text">
-       <string>Flux</string>
-      </property>
-     </column>
-     <column>
-      <property name="text">
-       <string>Base Spectrum Name</string>
-      </property>
-     </column>
-     <column>
-      <property name="text">
-       <string>Notes</string>
-      </property>
-     </column>
-    </widget>
-   </item>
-   <item>
-    <layout class="QHBoxLayout" name="horizontalLayout_7">
-     <item>
-      <spacer name="horizontalSpacer_5">
-       <property name="orientation">
-        <enum>Qt::Horizontal</enum>
-       </property>
-       <property name="sizeHint" stdset="0">
-        <size>
-         <width>40</width>
-         <height>20</height>
-        </size>
-       </property>
-      </spacer>
-     </item>
-     <item>
       <widget class="QPushButton" name="btnImport">
        <property name="text">
         <string>Import from csv</string>
@@ -278,38 +199,7 @@
     </layout>
    </item>
    <item>
-    <layout class="QHBoxLayout" name="horizontalLayout">
-     <property name="topMargin">
-      <number>10</number>
-     </property>
-     <item>
-      <widget class="QPushButton" name="btnSetAsBkg">
-       <property name="text">
-        <string>Set Selected File as Background</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QPushButton" name="btnClearBkgSel">
-       <property name="text">
-        <string>Clear Background File Selection</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <spacer name="horizontalSpacer">
-       <property name="orientation">
-        <enum>Qt::Horizontal</enum>
-       </property>
-       <property name="sizeHint" stdset="0">
-        <size>
-         <width>40</width>
-         <height>20</height>
-        </size>
-       </property>
-      </spacer>
-     </item>
-    </layout>
+    <layout class="QVBoxLayout" name="verticalLayout_reserved"/>
    </item>
    <item>
     <layout class="QHBoxLayout" name="horizontalLayout_4">
@@ -341,7 +231,10 @@
    <item>
     <widget class="QDialogButtonBox" name="buttonBox">
      <property name="standardButtons">
-      <set>QDialogButtonBox::Cancel</set>
+      <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
+     </property>
+     <property name="centerButtons">
+      <bool>false</bool>
      </property>
     </widget>
    </item>

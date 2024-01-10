@@ -1,11 +1,13 @@
 ###############################################################################
-# Copyright (c) 2018-2022 Lawrence Livermore National Security, LLC.
+# Copyright (c) 2018-2023 Lawrence Livermore National Security, LLC.
 # Produced at the Lawrence Livermore National Laboratory
 #
-# Written by J. Brodsky, J. Chavez, S. Czyz, G. Kosinovsky, V. Mozin, S. Sangiorgio.
+# Written by J. Brodsky, J. Chavez, S. Czyz, G. Kosinovsky, V. Mozin,
+#            S. Sangiorgio.
+#
 # RASE-support@llnl.gov.
 #
-# LLNL-CODE-841943, LLNL-CODE-829509
+# LLNL-CODE-858590, LLNL-CODE-829509
 #
 # All rights reserved.
 #
@@ -41,13 +43,9 @@ if not os.path.exists(distpath):
      os.makedirs(distpath)
 
 # Naming convention: <Vendor><Model>-<Notes>_ResultsTranslator.py
-translators = ['FLIRIdentiFinder_ResultsTranslator.py',
-               'KromekD5_ResultsTranslator.py',
-               'KromekD5-data_ResultsTranslator.py',
-               'ORTEC-CmdLineReplayTool_ResultsTranslator.py',
+translators = ['ORTEC-CmdLineReplayTool_ResultsTranslator.py',
                'ORTEC-StndAloneGUIReplayTool_ResultsTranslator.py',
-               'SmithRadSeeker_ResultsTranslator.py',
-               'Symetrica_ResultsTranslator.py',
+               'SandiaWebID-CmdLine_ResultsTranslator',
                ]
 translators = map(lambda x: os.path.join(dirname, x), translators)
 

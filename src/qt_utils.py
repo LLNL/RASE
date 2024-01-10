@@ -1,11 +1,13 @@
 ###############################################################################
-# Copyright (c) 2018-2022 Lawrence Livermore National Security, LLC.
+# Copyright (c) 2018-2023 Lawrence Livermore National Security, LLC.
 # Produced at the Lawrence Livermore National Laboratory
 #
-# Written by J. Chavez, S. Czyz, G. Kosinovsky, V. Mozin, S. Sangiorgio.
+# Written by J. Brodsky, J. Chavez, S. Czyz, G. Kosinovsky, V. Mozin,
+#            S. Sangiorgio.
+#
 # RASE-support@llnl.gov.
 #
-# LLNL-CODE-841943, LLNL-CODE-829509
+# LLNL-CODE-858590, LLNL-CODE-829509
 #
 # All rights reserved.
 #
@@ -108,3 +110,52 @@ class RegExpValidator(QtGui.QRegularExpressionValidator):
         state, input, pos = super().validate(input, pos)
         self.validationChanged.emit(state)
         return state, input, pos
+
+
+class DoubleOrEmptyDelegate(QtWidgets.QItemDelegate):
+    def __init__(self):
+        QtWidgets.QItemDelegate.__init__(self)
+
+    def createEditor(self, parent, option, index):
+        editor = QtWidgets.QLineEdit(parent)
+        editor.setValidator(DoubleAndEmptyValidator(bottom=0))
+        return editor
+
+
+class DoubleAndEmptyValidator(QtGui.QDoubleValidator):
+    """
+    Validate double values or empty string.
+    """
+
+    def validate(self, inputText, pos):
+        """
+        Reimplemented from `QDoubleValidator.validate`.
+        Allow to provide an empty value.
+        :param str inputText: Text to validate
+        :param int pos: Position of the cursor
+        """
+        if inputText.strip() == "":
+            # python API is not the same as C++ one
+            return QtGui.QValidator.Acceptable, inputText, pos
+        return super(DoubleAndEmptyValidator, self).validate(inputText, pos)
+
+    def toValue(self, text):
+        """Convert the input string into an interpreted value
+        :param str text: Input string
+        :rtype: Tuple[object,bool]
+        :returns: A tuple containing the resulting object and True if the
+            string is valid
+        """
+        if text.strip() == "":
+            return None, True
+        value, validated = self.locale().toDouble(text)
+        return value, validated
+
+    def toText(self, value):
+        """Convert the input string into an interpreted value
+        :param object value: Input object
+        :rtype: str
+        """
+        if value is None:
+            return ""
+        return str(value)

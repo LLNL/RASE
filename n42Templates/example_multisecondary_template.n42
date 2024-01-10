@@ -1,0 +1,42 @@
+
+<?xml version='1.0' encoding='UTF-8'?>
+<RadInstrumentData>
+  <RadMeasurement id="Foreground">
+    <MeasurementClassCode>Foreground</MeasurementClassCode>
+    <RealTimeDuration>PT${scenario.acq_time}S</RealTimeDuration>
+    <Spectrum>
+      <LiveTimeDuration Unit="sec">PT${scenario.acq_time}S</LiveTimeDuration>
+      <ChannelData> ${sample_counts} </ChannelData>
+    </Spectrum>
+  </RadMeasurement>
+  <EnergyCalibration>
+    <CoefficientValues>${detector.ecal0} ${detector.ecal1} ${detector.ecal2}</CoefficientValues>
+  </EnergyCalibration>
+<%
+calspec = next(s for s in detector.secondary_spectra if s.classcode == 'Calibration')
+%>
+  <RadMeasurement id="CalMeasurementGamma-SG_60017-01341">
+    <MeasurementClassCode>Calibration</MeasurementClassCode>
+    <StartDateTime>2020-10-07T17:55:52.431+00:00</StartDateTime>
+    <RealTimeDuration>PT${calspec.realtime}S</RealTimeDuration>
+    <Spectrum id="GammaCal">
+      <Remark>Title: Gamma Cal</Remark>
+      <LiveTimeDuration>PT${calspec.livetime}S</LiveTimeDuration>
+      <ChannelData>${calspec.get_counts_as_str()} </ChannelData>
+    </Spectrum>
+  </RadMeasurement>
+
+  <RadMeasurement id="BackgroundMeasure7d4180000002" radMeasurementGroupReferences="BackgroundMeasurements-1">
+    <MeasurementClassCode>Background</MeasurementClassCode>
+    <StartDateTime>2023-01-03T14:29:52.566-06:00</StartDateTime>
+    <RealTimeDuration>PT${secondary_spectrum.realtime}S</RealTimeDuration>
+    <Spectrum id="GammaBackgroundMeasure7d4180000002">
+      <Remark>Title: Gamma BackgroundMeasure7d4180000002</Remark>
+      <LiveTimeDuration>PT${secondary_spectrum.livetime}S</LiveTimeDuration>
+      <ChannelData> ${secondary_spectrum.get_counts_as_str()} </ChannelData>
+    </Spectrum>
+    <Degraded>false</Degraded>
+    <ScaleFactor>1</ScaleFactor>
+  </RadMeasurement>
+  	
+</RadInstrumentData>

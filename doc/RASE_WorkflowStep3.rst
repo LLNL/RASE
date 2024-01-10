@@ -38,7 +38,7 @@ To define a standalone replay tool:
 
 *  Similarly, use the "Browse" buttons to identify the path to the “Replay Tool n42 Input Template” and the “Replay Results Translator.”
 
-If the user has access to Full Spectrum Web ID, it can be used as an alternative identification algorithm by selecting the corresponding checkbox in the "New Replay Software" dialog, and then entering the web address and selecting the appropriate instrument in the combo box.  If running Full Spectrum Web ID on your local machine with the default settings, enter  :code:`http://127.0.0.1:8082` as the web address.
+If the user has access to Full Spectrum Web ID, it can be used as an alternative identification algorithm by selecting the corresponding checkbox in the "New Replay Software" dialog, and then entering the web address :code:`https://full-spectrum.sandia.gov/` and selecting the appropriate instrument in the combo box. 
 
 Once the replay tool is defined, the “Run Replay Tool” and "Run Results Translator" buttons become available in the RASE main window.
 The entry in the “Instruments” table should now list your newly defined replay tool.

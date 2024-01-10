@@ -12,3 +12,5 @@ rase.log
 /doc/dynamic_doc/_build/
 /dynamic_build/
 /dynamic_dist/
+/base_spectra_config.yaml
+/tools/config_basebuild.yaml

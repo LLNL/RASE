@@ -50,7 +50,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = 'RASE'
-copyright = '2018-2022, Lawrence Livermore National Laboratory'
+copyright = '2018-2023, Lawrence Livermore National Laboratory'
 author = 'LLNL'
 
 # The version info for the project you're documenting, acts as replacement for

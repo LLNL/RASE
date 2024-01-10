@@ -1,11 +1,13 @@
 ###############################################################################
-# Copyright (c) 2018-2022 Lawrence Livermore National Security, LLC.
+# Copyright (c) 2018-2023 Lawrence Livermore National Security, LLC.
 # Produced at the Lawrence Livermore National Laboratory
 #
-# Written by J. Chavez, S. Czyz, G. Kosinovsky, V. Mozin, S. Sangiorgio.
+# Written by J. Brodsky, J. Chavez, S. Czyz, G. Kosinovsky, V. Mozin,
+#            S. Sangiorgio.
+#
 # RASE-support@llnl.gov.
 #
-# LLNL-CODE-841943, LLNL-CODE-829509
+# LLNL-CODE-858590, LLNL-CODE-829509
 #
 # All rights reserved.
 #
@@ -33,7 +35,7 @@ This module allows user to adjust scenario groups
 """
 from PySide6.QtCore import Slot
 from PySide6.QtWidgets import QWidget, QDialog, QLineEdit, QVBoxLayout, QCheckBox,QDialogButtonBox, QPushButton, \
-                                    QInputDialog, QMessageBox, QLabel
+                                    QInputDialog, QMessageBox, QLabel, QScrollArea
 from src.table_def import ScenarioGroup, Session
 
 
@@ -45,6 +47,7 @@ class GroupSettings(QDialog):
     """
     def __init__(self, parent=None, groups=[], scens=None, del_groups=False):
         QDialog.__init__(self, parent)
+        self.parent = parent
         self.groups = groups
         self.scens = scens
         self.del_groups = del_groups
@@ -59,8 +62,17 @@ class GroupSettings(QDialog):
         cb_list = [QCheckBox(v.replace('&', '&&')) for v in cols_list]
 
         self.layout = QVBoxLayout()
-        self.checklayout = QVBoxLayout()
         self.buttonlayout = QVBoxLayout()
+
+        self.scrollArea = QScrollArea(self.parent)
+        self.scrollArea.setObjectName(u"scrollArea")
+        self.scrollArea.setWidgetResizable(True)
+        self.scrollAreaWidgetContents = QWidget()
+        self.scrollAreaWidgetContents.setObjectName(u"scrollAreaWidgetContents")
+        self.checklayout = QVBoxLayout(self.scrollAreaWidgetContents)
+        self.scrollArea.setWidget(self.scrollAreaWidgetContents)
+
+        self.layout.addWidget(self.scrollArea)
 
         for cb in cb_list:
             self.checklayout.addWidget(cb)

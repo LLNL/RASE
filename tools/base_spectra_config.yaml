@@ -14,6 +14,14 @@ Generic N42 2012: &generic
   additionals:
     - ./RadMeasurement[MeasurementClassCode="Background"]
     - ./RadMeasurement[MeasurementClassCode="IntrinsicActivity"]
+
+CAEN DiscoverRAD:
+  measurement_spectrum_xpath: ./RadMeasurement[MeasurementClassCode="Foreground"]/Spectrum[@energyCalibrationReference="EnergyCalibration"]
+  subtraction_spectrum_xpath: ./RadMeasurement[MeasurementClassCode="Foreground"]/Spectrum[@energyCalibrationReference="EnergyCalibration"]
+  realtime_xpath: ./RadMeasurement[contains(@id,"S-") and  MeasurementClassCode="Foreground"]/RealTimeDuration
+  livetime_xpath: ./RadMeasurement[MeasurementClassCode="Foreground"]/Spectrum[@energyCalibrationReference="EnergyCalibration"]/LiveTimeDuration
+  calibration: ./EnergyCalibration[@id="EnergyCalibration"]/CoefficientValues
+
 Kromek:
   <<: *generic
   calibration: "Replace this text with your instrument's calibration coefficients."
@@ -22,12 +30,28 @@ Radseeker:
   <<: *generic
   calibration: ./EnergyCalibration[@id="CS1"]/CoefficientValues
   
-Symetrica:
+Symetrica: &Symetrica
   measurement_spectrum_xpath: ./RadMeasurement[@id="ForegroundMeasureSum"]/Spectrum
   subtraction_spectrum_xpath: ./RadMeasurement[@id="ForegroundMeasureSum"]/Spectrum
   realtime_xpath: ./RadMeasurement[@id="ForegroundMeasureSum"]/RealTimeDuration
   livetime_xpath: ./RadMeasurement[@id="ForegroundMeasureSum"]/Spectrum/LiveTimeDuration
   calibration: ./EnergyCalibration[contains(@id,"ECalGamma")]/CoefficientValues
+  secondaries:
+    Calibration:
+      spectrum: ./RadMeasurement[contains(@id,"CalMeasurementGamma")]/Spectrum
+      realtime: ./RadMeasurement[contains(@id,"CalMeasurementGamma")]/RealTimeDuration
+      livetime: ./RadMeasurement[contains(@id,"CalMeasurementGamma")]/Spectrum/LiveTimeDuration
+      classcode: Calibration
+    Background:
+      spectrum: ./RadMeasurement[MeasurementClassCode="Background"]/Spectrum[@radDetectorInformationReference="DetectorInfoGamma"]
+      realtime: ./RadMeasurement[MeasurementClassCode="Background"]/Spectrum[@radDetectorInformationReference="DetectorInfoGamma"]/../RealTimeDuration
+      livetime: ./RadMeasurement[MeasurementClassCode="Background"]/Spectrum[@radDetectorInformationReference="DetectorInfoGamma"]/LiveTimeDuration
+      classcode: Background
+
+SN11/23:
+  <<: *Symetrica
+  additionals:
+    - ./DerivedData/Spectrum[contains(@id,"Analysis0Background")]
 
 Verifinder: &Verifinder
   measurement_spectrum_xpath: ./Measurement/DetectorData/DetectorMeasurement/SpectrumMeasurement/Spectrum[SourceType="Item"]
@@ -36,6 +60,8 @@ Verifinder: &Verifinder
   livetime_xpath: ./Measurement/DetectorData/DetectorMeasurement/SpectrumMeasurement/Spectrum[SourceType="Item"]/LiveTime
   calibration: ./EnergyCalibration[contains(@id,"ECalGamma")]/CoefficientValues
 
-Verifinder_alt_config:
-  <<: *Verifinder
-  calibration: ./Measurement/DetectorData/DetectorMeasurement/SpectrumMeasurement/Spectrum[SourceType="Item"]/Calibration/Equation/Coefficients
+
+
+
+
+

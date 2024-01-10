@@ -376,9 +376,30 @@
          </widget>
         </item>
         <item>
-         <widget class="QPushButton" name="buttonExport">
+         <widget class="Line" name="line_2">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="buttonExportCSV">
           <property name="text">
-           <string>Export as csv</string>
+           <string>Export Results as csv</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="buttonExportJSON">
+          <property name="text">
+           <string>Export Results as json</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="Line" name="line">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
           </property>
          </widget>
         </item>

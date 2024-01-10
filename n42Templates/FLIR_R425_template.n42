@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<RadInstrumentData xmlns="http://physics.nist.gov/N42/2011/N42" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://physics.nist.gov/N42/2011/N42 http://physics.nist.gov/N42/2011/n42.xsd" n42DocUUID="97c8dc65-c664-487b-8652-10f4f6aa6c08">
+    <RadInstrumentInformation id="instrumentInformation">
+        <RadInstrumentManufacturerName>FLIR Systems</RadInstrumentManufacturerName>
+        <RadInstrumentIdentifier>422361700487</RadInstrumentIdentifier>
+        <RadInstrumentModelName>identiFINDER R425-GN</RadInstrumentModelName>
+        <RadInstrumentClassCode>Radionuclide Identifier</RadInstrumentClassCode>
+        <RadInstrumentVersion>
+            <RadInstrumentComponentName>Software</RadInstrumentComponentName>
+            <RadInstrumentComponentVersion>425.22.1</RadInstrumentComponentVersion>
+        </RadInstrumentVersion>
+        <RadInstrumentVersion>
+            <RadInstrumentComponentName>BuildNumber</RadInstrumentComponentName>
+            <RadInstrumentComponentVersion>94</RadInstrumentComponentVersion>
+        </RadInstrumentVersion>
+        <RadInstrumentVersion>
+            <RadInstrumentComponentName>Hardware</RadInstrumentComponentName>
+            <RadInstrumentComponentVersion>1.4</RadInstrumentComponentVersion>
+        </RadInstrumentVersion>
+        <RadInstrumentCharacteristics>
+            <CharacteristicGroup>
+                <CharacteristicGroupName>Reachback Information</CharacteristicGroupName>
+                <Characteristic>
+                    <CharacteristicName>Operator Name</CharacteristicName>
+                    <CharacteristicValue>Default Operator</CharacteristicValue>
+                    <CharacteristicValueUnits>unit-less</CharacteristicValueUnits>
+                    <CharacteristicValueDataClassCode>string</CharacteristicValueDataClassCode>
+                </Characteristic>
+                <Characteristic>
+                    <CharacteristicName>Callback Number</CharacteristicName>
+                    <CharacteristicValue>Not Set</CharacteristicValue>
+                    <CharacteristicValueUnits>unit-less</CharacteristicValueUnits>
+                    <CharacteristicValueDataClassCode>string</CharacteristicValueDataClassCode>
+                </Characteristic>
+            </CharacteristicGroup>
+        </RadInstrumentCharacteristics>
+    </RadInstrumentInformation>
+    <RadDetectorInformation id="gammaDetector-1">
+        <Remark>NaI (45x45x45)</Remark>
+        <RadDetectorCategoryCode>Gamma</RadDetectorCategoryCode>
+        <RadDetectorKindCode>NaI</RadDetectorKindCode>
+    </RadDetectorInformation>
+    <RadDetectorInformation id="neutronDetector-1">
+        <Remark>2 LiZnS panels</Remark>
+        <RadDetectorCategoryCode>Neutron</RadDetectorCategoryCode>
+        <RadDetectorKindCode>LiZnS</RadDetectorKindCode>
+    </RadDetectorInformation>
+    <EnergyCalibration id="energyCalibration">
+        <CoefficientValues>${detector.ecal0} ${detector.ecal1} ${detector.ecal2}</CoefficientValues>
+    </EnergyCalibration>
+    <RadMeasurement id="M1">
+      <MeasurementClassCode>Foreground</MeasurementClassCode>
+      <StartDateTime>2023-01-24T13:26:03.779Z</StartDateTime>
+      <RealTimeDuration>PT${scenario.acq_time}S</RealTimeDuration>
+      <Spectrum id="M1-Spectrum1863" radDetectorInformationReference="gammaDetector-1" energyCalibrationReference="energyCalibration">
+          <LiveTimeDuration>PT${scenario.acq_time}S</LiveTimeDuration>
+          <ChannelData>${sample_counts}</ChannelData>
+      </Spectrum>
+    </RadMeasurement>
+    <AnalysisResults radMeasurementReferences="M1">
+    </AnalysisResults>
+</RadInstrumentData>

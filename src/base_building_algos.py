@@ -1,11 +1,13 @@
 ###############################################################################
-# Copyright (c) 2018-2022 Lawrence Livermore National Security, LLC.
+# Copyright (c) 2018-2023 Lawrence Livermore National Security, LLC.
 # Produced at the Lawrence Livermore National Laboratory
 #
-# Written by J. Brodsky, J. Chavez, S. Czyz, G. Kosinovsky, V. Mozin, S. Sangiorgio.
+# Written by J. Brodsky, J. Chavez, S. Czyz, G. Kosinovsky, V. Mozin,
+#            S. Sangiorgio.
+#
 # RASE-support@llnl.gov.
 #
-# LLNL-CODE-841943, LLNL-CODE-829509
+# LLNL-CODE-858590, LLNL-CODE-829509
 #
 # All rights reserved.
 #
@@ -32,18 +34,19 @@
 from typing import Union
 from lxml import etree
 from src import rase_functions as Rf
+from src import spectrum_file_reading as reading
 from src.rase_functions import get_ET_from_file
 from src.utils import indent
 import numpy
-import copy
 import os.path
 from glob import glob
-import re
 from mako.template import Template
+from src.table_def import SecondarySpectrum
 
 base_template = '''<?xml version="1.0"?>
 <RadInstrumentData>
   <RadMeasurement id="Foreground">
+    <MeasurementClassCode>Foreground</MeasurementClassCode>
     <RealTimeDuration>${realtime}</RealTimeDuration>
     <Spectrum>
       <LiveTimeDuration Unit="sec">${livetime}</LiveTimeDuration>
@@ -54,6 +57,16 @@ base_template = '''<?xml version="1.0"?>
   <EnergyCalibration>
     <CoefficientValues>${ecal}</CoefficientValues>
   </EnergyCalibration>
+%for name, secondary in secondaries.items():
+  <RadMeasurement id="${name}">
+    <MeasurementClassCode>${secondary.classcode}</MeasurementClassCode>
+    <RealTimeDuration>PT${secondary.realtime}S</RealTimeDuration>
+    <Spectrum>
+      <LiveTimeDuration Unit="sec">PT${secondary.livetime}S</LiveTimeDuration>
+      <ChannelData>${secondary.get_counts_as_str()}</ChannelData>
+    </Spectrum>
+  </RadMeasurement>
+%endfor
 %for line in additional.splitlines():
   ${line}
 %endfor${additional}
@@ -68,7 +81,42 @@ base_template = '''<?xml version="1.0"?>
 # subtraction_spectrum_xpath (optional)
 # secondary_spectrum_xpath (optional)
 
+pcf_config_txt = 'PCF File'
+default_config = {
+    'default n42':
+        {
+            'measurement_spectrum_xpath': './RadMeasurement[MeasurementClassCode="Foreground"]/Spectrum',
+            'realtime_xpath': './RadMeasurement[MeasurementClassCode="Foreground"]/RealTimeDuration',
+            'livetime_xpath': './RadMeasurement[MeasurementClassCode="Foreground"]/Spectrum/LiveTimeDuration',
+            'calibration': './EnergyCalibration/CoefficientValues',
+            'subtraction_spectrum_xpath': './RadMeasurement[@id="Foreground"]/Spectrum',
+            'additionals': ['./RadMeasurement[MeasurementClassCode="Background"]',
+                            './RadMeasurement[MeasurementClassCode="IntrinsicActivity"]'
+                            ]
+        },
+    'rase n42':
+        {
+            'measurement_spectrum_xpath': './RadMeasurement[@id="Foreground"]/Spectrum',
+            'realtime_xpath': './RadMeasurement[@id="Foreground"]/RealTimeDuration',
+            'livetime_xpath': './RadMeasurement[@id="Foreground"]/Spectrum/LiveTimeDuration',
+            'calibration': './EnergyCalibration/CoefficientValues',
+            'subtraction_spectrum_xpath': './RadMeasurement[@id="Foreground"]/Spectrum',
+            'additionals': ['./RadMeasurement[MeasurementClassCode="Background"]',
+                            './RadMeasurement[MeasurementClassCode="IntrinsicActivity"]'
+                            ]
+        }
+}
 
+pcf_config = {
+    pcf_config_txt:     # We will translate PCF files into n42s
+        {
+            'measurement_spectrum_xpath': './RadMeasurement/Spectrum',
+            'realtime_xpath': './RadMeasurement/Spectrum/RealTimeDuration',
+            'livetime_xpath': './RadMeasurement/Spectrum/LiveTimeDuration',
+            'calibration': './EnergyCalibration/CoefficientValues',
+            'subtraction_spectrum_xpath': './RadMeasurement/Spectrum',
+        }
+}
 
 
 def uncompressCountedZeroes(counts):
@@ -91,12 +139,12 @@ def get_counts(specEl):
     Calls Uncompress method if the ChannelData element has an attribute containing
     "compression" equal to "CountedZeroes".
     """
-    chandataEl = Rf.requiredElement('ChannelData', specEl)
+    chandataEl = reading.requiredElement('ChannelData', specEl)
     # print(etree.tostring(chandataEl, encoding='unicode', method='xml'))
 
     try:
-        dataEl = Rf.requiredElement('Data', chandataEl)
-    except Rf.BaseSpectraFormatException:
+        dataEl = reading.requiredElement('Data', chandataEl)
+    except reading.BaseSpectraFormatException:
         dataEl = chandataEl
 
     counts = numpy.fromstring(dataEl.text, float, sep=' ')
@@ -110,7 +158,7 @@ def get_counts(specEl):
 def get_livetime(specEl):
     """Retrieves Livetime as a float from the Spectrum element
     """
-    timetext = Rf.requiredElement(('LiveTimeDuration', 'LiveTime'), specEl).text
+    timetext = reading.requiredElement(('LiveTimeDuration', 'LiveTime'), specEl).text
     return Rf.ConvertDurationToSeconds(timetext)
 
 
@@ -139,7 +187,11 @@ def insert_counts(specEl, counts):
         for element in parent.findall('ChannelData'):
             parent.remove(element)
     countsEl = etree.Element('ChannelData')
-    countstxt = ' '.join(f'{count:.4f}' for count in counts)
+    if all(counts.astype(float) == counts.astype(int)):
+    #TODO: Make a switch to decide whether int or float
+        countstxt = ' '.join(f'{round(count)}' for count in [0 if c < 0 else c for c in counts])
+    else:
+        countstxt = ' '.join(f'{count:.4f}' for count in counts)
     countsEl.text = countstxt
     specEl.append(countsEl)
 
@@ -174,7 +226,7 @@ def sensitivity_text(counts, livetime, uSievertsph = None, fluxValue = None, ):
 
 
 def build_base_ET(ET, measureXPath, realtimeXPath, livetimeXPath,
-                      subtraction_ET, subtractionXpath, calibration, additionals=[], uSievertsph=None, fluxValue=None, transform=None):
+                  subtraction_ET, subtractionXpath, calibration, additionals=[], secondaries_dict=None, uSievertsph=None, fluxValue=None, transform=None):
 
     specElements = ET.xpath(measureXPath)
     countslist = []
@@ -189,8 +241,12 @@ def build_base_ET(ET, measureXPath, realtimeXPath, livetimeXPath,
             counts = transform(counts)
         countslist.append(counts)
 
-    sumcounts = sum(countslist)
-    countstxt = ' '.join(f'{count:.4f}' for count in sumcounts)
+    sumcounts = numpy.array([0 if c < 0 else c for c in sum(countslist)])
+    if all(sumcounts.astype(float) == sumcounts.astype(int)):
+    #TODO: Make a switch to decide whether int or float
+        countstxt = ' '.join(f'{round(count)}' for count in sumcounts)
+    else:
+        countstxt = ' '.join(f'{count:.4f}' for count in sumcounts)
 
 
     realtimes = ET.xpath(realtimeXPath)  # assumes realtime is a property of the radmeasurement
@@ -208,7 +264,7 @@ def build_base_ET(ET, measureXPath, realtimeXPath, livetimeXPath,
         raise ValueError("Calibration XPath does not resolve to any element in input XML. "
                          "Please check base building config file and compare to the input XML.")
 
-    RASE_sensitivity, FLUX_sensitivity = sensitivity_text(counts,livetime_sum_s,uSievertsph,fluxValue)
+    RASE_sensitivity, FLUX_sensitivity = sensitivity_text(sumcounts,livetime_sum_s,uSievertsph,fluxValue)
 
     additional = ''
     if additionals:
@@ -221,9 +277,22 @@ def build_base_ET(ET, measureXPath, realtimeXPath, livetimeXPath,
                 additional+=etree.tostring(secondary_el, encoding='unicode')
                 additional+='\n'
 
+    secondaries = {}
+    if secondaries_dict:
+        for key, value in secondaries_dict.items():
+            sec = SecondarySpectrum(
+                realtime = Rf.ConvertDurationToSeconds(ET.xpath(value['realtime'])[0].text),
+                livetime = Rf.ConvertDurationToSeconds(ET.xpath(value['livetime'])[0].text),
+                classcode = value['classcode']
+            )
+            spectrum_element = ET.xpath(value['spectrum'])[0]
+            sec.counts = get_counts(spectrum_element)
+            secondaries[key] = sec
+
+
     makotemplate = Template(text=base_template, input_encoding='utf-8')
     output = makotemplate.render(spectrum=countstxt, realtime=realtime_sum_txt, livetime=livetime_sum_txt,
-                                 ecal=ecal,
+                                 ecal=ecal, secondaries=secondaries,
                                  additional=additional, RASE_sens=RASE_sensitivity, FLUX_sens=FLUX_sensitivity)
 
     return output
@@ -272,7 +341,7 @@ def do_all(inputfile, config:dict, outputfolder, manufacturer, model, source, su
 
     output = build_base_ET(ET=ET, measureXPath=config['measurement_spectrum_xpath'], realtimeXPath=config['realtime_xpath'], livetimeXPath=config['livetime_xpath'],
                       subtraction_ET=subtraction_ET, subtractionXpath=config.get('subtraction_spectrum_xpath'),
-                    calibration=config['calibration'], additionals=config.get('additionals'), uSievertsph=uSievertsph, fluxValue=fluxValue, transform=transform)
+                    calibration=config['calibration'], additionals=config.get('additionals'), secondaries_dict=config.get('secondaries'), uSievertsph=uSievertsph, fluxValue=fluxValue, transform=transform)
     outputfilename = base_output_filename(manufacturer, model, source, description)
     write_base_text(output, outputfolder, outputfilename)
 
@@ -310,7 +379,7 @@ def do_list(inputfiles, config:dict, outputfolder, manufacturer, model, source, 
     for inputfile in inputfiles:
         ET_orig = get_ET_from_file(inputfile)
         ET = build_base_ET(ET=ET_orig, measureXPath=config['measurement_spectrum_xpath'], realtimeXPath=config['realtime_xpath'], livetimeXPath=config['livetime_xpath'],
-                      subtraction_ET=subtraction_ET, subtractionXpath=config.get('subtraction_spectrum_xpath'), calibration=config['calibration'], additionals=config.get('additionals'), uSievertsph=uSievertsph, fluxValue=fluxValue, transform=transform)
+                           subtraction_ET=subtraction_ET, subtractionXpath=config.get('subtraction_spectrum_xpath'), calibration=config['calibration'], additionals=config.get('additionals'), secondaries_dict=config.get('secondaries'), uSievertsph=uSievertsph, fluxValue=fluxValue, transform=transform)
         comboET = add_bases(etree.ElementTree(etree.fromstring(bytes(ET,encoding='utf-8'))), comboET)
     outputfilename = base_output_filename(manufacturer, model, source, description)
     write_base_ET(comboET, outputfolder, outputfilename)

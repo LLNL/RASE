@@ -1,14 +1,25 @@
 .. _base_spectra_creation_tool:
 
-**************************
+***************************
+Base Spectra Creation Tools
+***************************
+
+RASE includes tools to help develop new base spectra from data acquired with an instrument. The wizard tool with guided instruction is recommended for novice users. A standard tool is also available.   This page provides some details on how to use these tools.
+
+For an overview of the process and information about what data are necessary for generating base spectra, see :ref:`create_base_spectra`
+
+
+++++++++++++++++++++++++++++
+Base Spectra Creation Wizard
+++++++++++++++++++++++++++++
+
+The Base Spectra Creation Wizard can be accessed from the main RASE menu by selecting *Tools >> Base Spectra Creation Wizard*.
+
+This tool provides step-by-step instructions for creating base spectra from n42 or PCF files (either from measurements or GADRAS simulations). For uncommon n42 files formats, custom definitions can be provided, following the instructions provided in the *Advanced Operation* section below.
+
+++++++++++++++++++++++++++
 Base Spectra Creation Tool
-**************************
-
-+++++++++++++++
-Basic Operation
-+++++++++++++++
-
-A *Base Spectra Creation Tool* was introduced in RASE to help develop new base spectra from data acquired with an instrument. This page provides some details on how to use this tool.  For an overview of the process and information about what data are necessary for generating base spectra, see :ref:`create_base_spectra`
+++++++++++++++++++++++++++
 
 The Base Spectra Creation dialog can be accessed from the main RASE menu by selecting *Tools >> Base Spectra Creation*.
 
@@ -64,3 +75,9 @@ For any of the above fields, the user is advised to make use of the features of 
     :scale: 33 %
 
     **“Base Spectra Creation Tool” dialog.**
+
+
+.. figure:: _static/baseSpecCreationWizard.png
+    :scale: 25 %
+
+    **“Base Spectra Creation Wizard" series of dialogs.**

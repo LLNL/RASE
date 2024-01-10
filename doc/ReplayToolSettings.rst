@@ -46,7 +46,7 @@ RASE code was successfully tested with 2016, 2017, and 2018 versions of the FLIR
     *  n42 Template File: FLIR_ID2_template_spectrum.n42
     *  Suffix of input files: .n42
 * Identification Results Translator:
-    *  Executable: FLIR-IdentiFinder-ResultsTranslator.exe
+    *  Executable: none - leave empty
     *  Command Line checkbox: checked
     *  Command Arguments: INPUTDIR OUTPUTDIR [this is a default entry]
 
@@ -66,7 +66,7 @@ R300 base spectra and the RASE analysis routine were tested with the 2018 versio
     *  n42 Template File: FLIR_R300_template.n42
     *  Suffix of input files: .n42
 * Identification Results Translator:
-    *  Executable: FLIR-IdentiFinder-ResultsTranslator.exe
+    *  Executable: none - leave empty
     *  Command Line checkbox: checked
     *  Command Arguments: INPUTDIR OUTPUTDIR [this is the default entry]
 
@@ -84,19 +84,40 @@ Note: Care should be taken with the selection of .n42 template, as the correct t
 * Replay Tool:
     *  Executable: replay.exe
     *  Command Line checkbox: checked
-    *  Command Arguments: -r INPUTDIR -o OUTPUTDIR [see the replay tool manual for additional command line paprmeters that can be used here]
+    *  Command Arguments: -r INPUTDIR -o OUTPUTDIR [see the replay tool manual for additional command line parameters that can be used here]
 * Sampled Spectra n42 Template:
     *  n42 Template File: FLIR_R400_UW-LGH_template.n42
     *  Suffix of input files: .n42
 * Identification Results Translator:
-    *  Executable: FLIR-IdentiFinder-ResultsTranslator.exe
+    *  Executable: none - leave empty
+    *  Command Line checkbox: checked
+    *  Command Arguments: INPUTDIR OUTPUTDIR [this is the default entry]
+
+
+FLIR R425 Replay Tool
+=====================
+FLIR R425 requires a different replay tool and settings than the previous FLIR instruments tested with the RASE code.
+This RASE analysis routine was tested with the 2022 version of the replay tool, v425.22.1.
+
+
+**Settings**
+
+* Replay Tool:
+    *  Executable: r425ReplayTool.exe
+    *  Command Line checkbox: checked
+    *  Command Arguments: INPUTDIR -o OUTPUTDIR -w [see the replay tool manual for additional command line parameters that can be used here]
+* Sampled Spectra n42 Template:
+    *  n42 Template File: FLIR_R425_template.n42
+    *  Suffix of input files: .n42
+* Identification Results Translator:
+    *  Executable: none - leave empty
     *  Command Line checkbox: checked
     *  Command Arguments: INPUTDIR OUTPUTDIR [this is the default entry]
 
 
 FLIR R440 Replay Tool
 =====================
-FLIR R440 requires a different replay tool and settings than the rest of the FLIR instruments tested with the RASE code.
+FLIR R440 requires a different replay tool and settings than the FLIR Identifinder instruments tested with the RASE code.
 
 **Settings**
 
@@ -144,7 +165,26 @@ This option will automatically return to "enabled" upon logging out.
 
 ORTEC RadEagle and RadEaglet Replay Tool
 ========================================
-ORTEC RadEagle and RadEaglet instruments require a different replay tool and settings than the HPGe-based systems.
+ORTEC RadEagle and RadEaglet instruments require a different replay tool and settings than the HPGe-based systems. These instructions are for the most current (as of 04/2023) version of the innoRIID RadEagle and RadEaglet replay tool. 
+
+**Settings**
+
+* Replay Tool:
+    *  Executable: ReplayTool_3.8.9.exe
+    *  Command Line checkbox: checked
+    *  Command Arguments: 2048 INPUTDIR/ OUTPUTDIR/
+* Sampled Spectra n42 Template:
+    *  n42 Template File: ORTEC-RadEaglet_spectrum.n42
+    *  Suffix of input files: .n42
+* Identification Results Translator:
+    *  Executable: none - leave empty
+    *  Command Line checkbox: checked
+    *  Command Arguments: INPUTDIR OUTPUTDIR [this is the default entry]
+
+
+ORTEC RadEagle and RadEaglet Replay Tool (Legacy)
+=================================================
+ORTEC RadEagle and RadEaglet instruments require a different replay tool and settings than the HPGe-based systems. Note that these instructions are for the older version of the replay tool; for the latest replay tool, see above.
 
 **Settings**
 
@@ -159,8 +199,8 @@ ORTEC RadEagle and RadEaglet instruments require a different replay tool and set
     *  Executable: none - leave empty
     *  Command Line checkbox: checked
     *  Command Arguments: INPUTDIR OUTPUTDIR [this is the default entry]
-
-
+	
+	
 Smiths Replay Tool
 ==================
 The procedure for Smiths Radseeker CL and Radseeker CS instruments involves a stand-alone replay tool that is called by the RASE code during the analysis workflow but the user must manually interact with it to perform the identification analysis.
@@ -177,7 +217,7 @@ Define the instrument using the base spectra and generate sampled spectra as usu
     *  n42 Template File: Smith_RadseekerCL_template_spectrum.n42 [or Smith_RadseekerCS_template_spectrum.n42]
     *  Suffix of input files: _U.n42
 * Identification Results Translator:
-    *  Executable: Smith_RadSeeker_ResultsTranslator.exe
+    *  Executable: none - leave empty
     *  Command Line checkbox: checked
     *  Command Arguments: INPUTDIR OUTPUTDIR [this is a default entry]
 
@@ -208,12 +248,13 @@ The current implementation of the template makes use of a fixed background with 
     *  n42 Template File: Symetrica_SN33N_template.n42
     *  Suffix of input files: .n42
 * Identification Results Translator:
-    *  Executable: Symetrica-ResultsTranslator.exe
+    *  Executable: none - leave empty
     *  Command Line checkbox: checked
     *  Command Arguments: INPUTDIR OUTPUTDIR [this is a default entry]
 
+
 Kromek D5 Replay Tool
-================================================
+=====================
 Kromek provides a replay tool for their D5 instrument, called :code:`PCSOffiline`, that is packaged for Linux operating systems.
 As of version 170.1.5.7, the replay tool only accepts a single file as input.  To facilitate use within RASE, which
 requires processing an entire folder, a wrapper shell script :code:`KromekD5_replaytool_wrapper.sh` is provided in the :code:`tools`.
@@ -221,7 +262,7 @@ requires processing an entire folder, a wrapper shell script :code:`KromekD5_rep
 If you are not running RASE on a unix system, one way to run the replay tool on other machines is to dockerize it.
 To facilitate this process, we provide the :code:`Dockerfile-KromekD5` file in the :code:`tools` folder.
 Note that it assumes the :code:`PCSOffile.deb` package and the wrapper shell script are in the same directory as the :code:`Dockerfile`.
-To create the image, simply run :code:`docker build -t kromek-rt -f Dockerfile-KromekD5`.
+To create the image, simply run :code:`docker build -t kromek-rt -f Dockerfile-KromekD5 .`
 
 **Settings**
 
@@ -233,129 +274,89 @@ To create the image, simply run :code:`docker build -t kromek-rt -f Dockerfile-K
     *  n42 Template File: :code:`Kromek_D5_template.n42`
     *  Suffix of input files: :code:`.csv`
 * Identification Results Translator:
-    *  Executable: :code:`KromekD5-ResultsTranslator.exe`
+    *  Executable: :code:`none - leave empty`
     *  Command Line checkbox: checked
     *  Command Arguments: :code:`INPUTDIR OUTPUTDIR` [this is a default entry]
 
-
-GADRAS Isotope ID Replay Tool
-=============================
-
-Starting from version 2, the RASE code supports seamless integration of the GADRAS Isotope ID engine in the analysis workflow.
-This capability allows the user to use GADRAS Isotope ID as a "universal" replay tool for any instrument (provided that an appropriate DRF is defined)
-that can be executed directly from the RASE main window without a need to switch between applications.
-This feature is available only for approved users. Please contact the RASE developement team to request it.
-The executable that enables calls to the GADRAS API can be used as a stand-alone utility or can be defined in the RASE graphical
-user interface follows the same general approach as for a typical command-line replay tool.
-
-Prerequisites
---------------
-
-1. GADRAS version 18.8.11 (64-bit) version must be installed. Using other versions of GADRAS may result in errors. If compatibility with another GADRAS version or a 32-bit compilation is needed, please contact the RASE development team.
-
-2. Presently, a standard complete GADRAS installation with defaults setting is required (i.e. code installed in :code:`C:\\GADRAS directory`).
-
-3. Three directories should be set up:
-    * Detector directory. This is a folder that contains the GADRAS detector model and DRF. It can be placed at a default :code:`C:\\GADRAS\\Detector path`, or in any other location on the hard drive. This directory must contain the detector.dat file with the DRF of the particular instrument. Additionally, it is best practice (but not required) that the directory contain the :code:`DB.pcf` file.  This can be generated by running the IsotopeID algorithm from within the GADRAS GUI with the desired detector and copying the file from the GADRAS detector directory to the working detector directory.  If :code:`DB.pcf` is not present in the detector directory, the first time the code is run it will generate the :code:`DB.pcf` file, which takes several minutes to generate.
-
-    * Input directory. This directory contains the RASE-generated .n42 sampled spectra to be analyzed. This directory is created by the RASE code automatically, and a path to its location is contained under the INPUTDIR keyword.
-    * Output directory. An empty directory that will contain the GADRAS Isotope ID analysis results in text files (one file per each input sampled spectrum in the .n42 format). This directory is also created automatically by the RASE code, and its path is contained in the OUTPUTDIR keyword.
-
-User Notes
-----------
-
-The GADRAS Isotope ID requires input spectra in a .pcf file format. The RASE code generates sampled spectra in the .n42 format, therefore these files must be converted prior to making calls through the GADRAS API. This is completed automatically by the provided executable.
-
-Background spectra can be provided for the GADRAS Isotope ID analysis in two ways:
-    - As a second spectra entry in the sampled .n42 file. This is currently specified in the "template" file, where the first spectral entry contains placeholders for the sampled foreground spectrum, and the second entry is the pre-existing background spectrum.
-    - As a single file with one background spectrum entry; it is specified as a command-line argument. This file will be used as a fixed background for the analysis of all sampled spectra in the current scenario.
-
-If no fixed background file is provided, the code will try to use the second spectrum listed in each of the .n42 sampled files
-(the first spectrum in the n42 file is assumed to be the foreground, the second spectrum is assumed to be the background).
-If the n42 files each only contain a single foreground spectrum, and no fixed background spectrum is supplied, the GADRAS IsotopeID
-will be called without any background spectrum, which may degrade the identification performance.
-Note that the fixed background file could be specified either as an .n42 file or a GADRAS .pcf format. If the fixed background file is an n42 file,
-the executable will automatically create a .pcf file with the same spectrum and put it in the same location as the original background .n42 file.
-If the fixed background file is in the .pcf format, it will remain unchanged.
+Note that the Replay Tool command arguments should be entered exactly as described above.
+If the replay tool fails to yield results on Windows, and if the replay tool log file says something along the lines of "no such file or directory," try opening the :code:`KromekD5_replaytool_wrapper.sh` file in Notepad++, go to edit -> EOL conversion, and change from CRLF to LF (credit to Vikas Rathore Oct 5, 2018 on Stack Overflow).
 
 
-**RASE settings if background is included as a second entry on each sampled file or when no background is provided:**
+CAEN DiscoveRAD Replay Tool
+===========================
+The CAEN DiscoveRAD replay tool has been tested to work on Windows 10. When running the tool, an additional interrupting pop-up window is generated when analyzing each scenario that cannot be suppressed. As such, it is recommended that when running CAEN DiscoveRAD replay analysis, the user refrains from parallel work to limit interference in the replay tool operation.
+Otherwise, regular analysis procedure applies.
+
+**Settings**
 
 * Replay Tool:
-    *  Executable: run_gadras_isotopeID.exe
+    *  Executable: Target.F501.ReplayTool.exe
     *  Command Line checkbox: checked
-    *  Command Arguments: :code:`-d <path to a directory containing the detector.dat file for this instrument> -i INPUTDIR -o OUTPUTDIR`
+    *  Command Arguments: :code:`-o OUTPUTDIR INPUTDIR`
 * Sampled Spectra n42 Template:
-    *  n42 Template File: :code:`GADRAS_IsotopeID_Template.n42` or :code:`GADRAS_IsotopeID+NoBKG_Template.n42`
-    *  Suffix of input files: .n42 or empty
+    *  n42 Template File: :code:`C:/Users/czyz1/PycharmProjects/rase/n42Templates/CAEN_DiscoveRAD_template.n42`
+    *  Suffix of input files: :code:`.csv`
 * Identification Results Translator:
-    *  Executable: :code:`GADRAS_CL_ResultsTranslator-v2.py`
+    *  Executable: :code:`none - leave empty`
     *  Command Line checkbox: checked
     *  Command Arguments: :code:`INPUTDIR OUTPUTDIR` [this is a default entry]
 
 
-**RASE settings if a fixed background is provided as a single file:**
+GADRAS Full Spectrum Isotope ID (web version)
+=============================================
+Sandia National Laboratory has released an online version of the GADRAS Isotope ID tool which is publicly available at
+`https://full-spectrum.sandia.gov <https://full-spectrum.sandia.gov/>`_.
+The tool is very flexible, works with standard RASE-formatted sample spectra, and may be used with any
+detector so long as a suitably compatible Detector Response Function (DRF) is specified.
+
+To use Full Spectrum ID as the identification algorithm in RASE, simply select the "Full Spectrum Web ID" option in the :code:`Edit
+Replay Software` menu. The web address to access the WebID server is already pre-populated. The user must select the
+appropriate DRF from the drop-down list. The updated list can be retrieved by clicking on the corresponding button.
+Once configured, RASE will take care of sending spectra to the server and parsing the results automatically.
+
+Spectra supplied to Full Spectrum should contain a secondary background for optimal results.  Please configure
+the detector accordingly using the :code:`Edit Detector` dialog.
+
+
+GADRAS Full Spectrum Isotope ID (standalone version)
+====================================================
+A standalone version of the GADRAS Full Spectrum Isosope ID is also available as an executable.
+This can be run in two modes: (1) as a web server, and (2) as a standard command line replay tool. When run in web
+server mode, the tool works equivalent as the one on the public website (described above), but running on the
+localhost at `http://127.0.0.1:8002 <http://127.0.0.1:8002>`_.
+
+If the user is using the command line capability, use the settings that follow. The command line tool is made to accept files
+one at a time, so a wrapper shell script has been written to accommodate RASE directory structure. The
+:code:`FullSpec_replaytool_wrapper.sh` can be found in the :code:`tools`. A corresponding version with extension :code:`.cmd`
+can be used on Windows operating system. Note that the path to the executable *must not have any spaces*.
+
+**Settings**
 
 * Replay Tool:
+    *  Executable: path to the wrapper e.g. :code:`usr/local/rase/tools/FullSpec_replaytool_wrapper.cmd`
     *  Command Line checkbox: checked
-    *  Command Arguments: :code:`-d <path to a directory containing the detector.dat file for this instrument> -b <background file in .n42 or .pcf format> -i INPUTDIR -o OUTPUTDIR`
+    *  Command Arguments: :code:`/usr/path/to/full-spec.exe INPUTDIR OUTPUTDIR <DRF_name_here>`
 * Sampled Spectra n42 Template:
-    *  n42 Template File: :code:`GADRAS_IsotopeID_Template.n42` or :code:`GADRAS_IsotopeID+NoBKG_Template.n42`
-    *  Suffix of input files: .n42 or empty
+    *  n42 Template File: none - leave empty
+    *  Suffix of input files: .n42
 * Identification Results Translator:
-    *  Executable: :code:`GADRAS_CL_ResultsTranslator-v2.py`
+    *  Executable: :code:`SandiaWebID-CmdLine_ResultsTranslator.exe`
     *  Command Line checkbox: checked
     *  Command Arguments: :code:`INPUTDIR OUTPUTDIR` [this is a default entry]
 
+For the :code:`<DRF_name_here>` field, the user should supply the name of whichever DRF they would like to use with the detector, with
+proper capitalization. The user may review which DRFs are available in the drop-down "Instrument DRF" menu in the "Full Spectrum
+Web ID" window of the :code:`Edit Replay Software` menu.
 
-**Complete list of command line parameters and syntax:**
+To add custom DRFs, a folder must be added to the :code:`/usr/path/to/fullspec_exe/gadras_isotope_id_run_directory/drfs` directory
+which contains the following files:
 
-.. code-block:: bash
+    * :code:`DB.pcf`
+    * :code:`Detector.dat`
+    * :code:`Rebin.dat`
+    * :code:`Response.win`
 
-   python run_gadras_isotopeID.py [-h] -i INPUT_DIR -d DETECTOR_DIR
-                                       -o OUTPUT_DIR [-b BKG_FILE] [-v]
+As for the web version, spectra supplied to Full Spectrum should contain a secondary background for optimal results.  Please configure
+the detector accordingly using the :code:`Edit Detector` dialog.
 
-Script that converts input n42 files to .pcf files and makes the call to
-IsotopeID via the GADRAS API
 
-optional arguments:
-  -h, --help            show this help message and exit
-  -i INPUT_DIR, --inputDir INPUT_DIR
-                        Directory containing input (n42) files
-  -d DETECTOR_DIR, --detectorDir DETECTOR_DIR
-                        Directory containing GADRAS detctor model
-  -o OUTPUT_DIR, --outputDir OUTPUT_DIR
-                        Directory to contain output resutls files
-  -b BKG_FILE, --backgroundFile BKG_FILE
-                        fixed background file to use for IsotopeID
-  -v                    verbose mode
-
-**Example command line calls**
-
-Example call for the case when the background spectra are included in the same .n42 file as the sampled foreground spectra:
-
-.. code-block:: bash
-
-   run_gadras_isotopeID.exe --detectorDir=Microdetective
-                            --inputDir=test_n42
-                            --outputDir=test_out -v*
-
-or, equivalent:
-
-.. code-block:: bash
-
-   run_gadras_isotopeID.exe -d ./Microdetective/ -i ./test_n42/ -o ./test_out/ -v*
-
-Example call for the case when a fixed background spectrum spectrum is provided in a separate file:
-
-.. code-block:: bash
-
-   run_gadras_isotopeID.exe --detectorDir=Microdetective --inputDir=test_n42
-                            --outputDir=test_out  --backgroundFile=bkg.n42 -v*
-
-or, equivalent:
-
-.. code-block:: bash
-
-   run_gadras_isotopeID.exe -d ./Microdetective/ -i ./test_n42/
-                            -o ./test_out/ -b bkg.n42 -v*
