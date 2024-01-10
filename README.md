@@ -78,7 +78,7 @@ Citation
 Please cite use of the RASE software as:
 
 L. Bentley-Tammero, J. P. Brodsky, J. Chavez, S. A. Czyz, G. Kosinovsky, V. Mozin, & S. Sangiorgio. 
-(2022, Nov 4). LLNL/RASE: RASE v2.3 (Version v2.3). Zenodo. http://doi.org/10.5281/zenodo.7278588
+(2024, Jan 10). LLNL/RASE: RASE v2.4 (Version v2.4). Zenodo. http://doi.org/10.5281/zenodo.10480562
 
 
 Acknowledgements
